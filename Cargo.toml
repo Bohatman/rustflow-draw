@@ -1,0 +1,18 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/renderer",
+    "crates/layout",
+    "crates/io-formats",
+    "crates/ui-bridge",
+    "apps/desktop",
+    "tests/visual-regression",
+    "tests/benchmarks",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["RustFlow Draw Team"]

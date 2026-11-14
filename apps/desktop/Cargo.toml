@@ -1,0 +1,11 @@
+[package]
+name = "rustflow-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Desktop application shell for RustFlow Draw"
+
+[dependencies]
+rustflow-core = { path = "../../crates/core" }
+rustflow-renderer = { path = "../../crates/renderer" }
+rustflow-ui-bridge = { path = "../../crates/ui-bridge" }

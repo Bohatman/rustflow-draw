@@ -1,0 +1,10 @@
+[package]
+name = "rustflow-visual-regression"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+rustflow-core = { path = "../../crates/core" }
+rustflow-renderer = { path = "../../crates/renderer" }
