@@ -1,8 +1,6 @@
 //! Command pattern and deterministic Undo/Redo history stack for RustFlow Draw.
 
-use crate::scene::{
-    Edge, EdgeId, GroupId, Node, NodeId, NodeStyle, SceneGraph, TextStyle,
-};
+use crate::scene::{Edge, EdgeId, GroupId, Node, NodeId, NodeStyle, SceneGraph, TextStyle};
 use crate::{Point, Rect};
 
 #[derive(Debug, Clone, PartialEq)]

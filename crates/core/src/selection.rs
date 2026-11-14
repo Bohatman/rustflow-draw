@@ -285,46 +285,54 @@ pub fn compute_smart_guides(
     ];
 
     for other in &others {
-        let other_x_points = [other.bounds.x, other.bounds.center().x, other.bounds.right()];
+        let other_x_points = [
+            other.bounds.x,
+            other.bounds.center().x,
+            other.bounds.right(),
+        ];
         for &cx in &cand_x_points {
             for &ox in &other_x_points {
                 let diff = ox - cx;
-                if diff.abs() <= snap_threshold {
-                    if best_dx.as_ref().map_or(true, |(b, _)| diff.abs() < b.abs()) {
-                        let start = candidate_bounds.y.min(other.bounds.y);
-                        let end = candidate_bounds.bottom().max(other.bounds.bottom());
-                        best_dx = Some((
-                            diff,
-                            AlignmentGuide {
-                                orientation: GuideOrientation::Vertical,
-                                coordinate: ox,
-                                start,
-                                end,
-                            },
-                        ));
-                    }
+                if diff.abs() <= snap_threshold
+                    && best_dx.as_ref().is_none_or(|(b, _)| diff.abs() < b.abs())
+                {
+                    let start = candidate_bounds.y.min(other.bounds.y);
+                    let end = candidate_bounds.bottom().max(other.bounds.bottom());
+                    best_dx = Some((
+                        diff,
+                        AlignmentGuide {
+                            orientation: GuideOrientation::Vertical,
+                            coordinate: ox,
+                            start,
+                            end,
+                        },
+                    ));
                 }
             }
         }
 
-        let other_y_points = [other.bounds.y, other.bounds.center().y, other.bounds.bottom()];
+        let other_y_points = [
+            other.bounds.y,
+            other.bounds.center().y,
+            other.bounds.bottom(),
+        ];
         for &cy in &cand_y_points {
             for &oy in &other_y_points {
                 let diff = oy - cy;
-                if diff.abs() <= snap_threshold {
-                    if best_dy.as_ref().map_or(true, |(b, _)| diff.abs() < b.abs()) {
-                        let start = candidate_bounds.x.min(other.bounds.x);
-                        let end = candidate_bounds.right().max(other.bounds.right());
-                        best_dy = Some((
-                            diff,
-                            AlignmentGuide {
-                                orientation: GuideOrientation::Horizontal,
-                                coordinate: oy,
-                                start,
-                                end,
-                            },
-                        ));
-                    }
+                if diff.abs() <= snap_threshold
+                    && best_dy.as_ref().is_none_or(|(b, _)| diff.abs() < b.abs())
+                {
+                    let start = candidate_bounds.x.min(other.bounds.x);
+                    let end = candidate_bounds.right().max(other.bounds.right());
+                    best_dy = Some((
+                        diff,
+                        AlignmentGuide {
+                            orientation: GuideOrientation::Horizontal,
+                            coordinate: oy,
+                            start,
+                            end,
+                        },
+                    ));
                 }
             }
         }

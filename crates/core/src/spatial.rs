@@ -149,9 +149,9 @@ impl<T: Copy + PartialEq> RTree<T> {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        let leaf_count = (entries.len() + cap - 1) / cap;
+        let leaf_count = entries.len().div_ceil(cap);
         let slice_count = (leaf_count as f32).sqrt().ceil() as usize;
-        let slice_size = (entries.len() + slice_count - 1) / slice_count;
+        let slice_size = entries.len().div_ceil(slice_count);
 
         let mut children = Vec::new();
         for slice in entries.chunks_mut(slice_size.max(1)) {

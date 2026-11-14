@@ -207,11 +207,13 @@ mod tests {
     fn document_multi_page_tabs_and_minimap_frustum() {
         let mut doc = Document::new("Architecture Spec", 1280.0, 720.0);
         assert_eq!(doc.pages().len(), 1);
-        doc.active_page_mut().scene.insert_node(Node::new_react_flow_card(
-            1,
-            "Gateway",
-            Rect::new(100.0, 100.0, 180.0, 80.0),
-        ));
+        doc.active_page_mut()
+            .scene
+            .insert_node(Node::new_react_flow_card(
+                1,
+                "Gateway",
+                Rect::new(100.0, 100.0, 180.0, 80.0),
+            ));
 
         let page2 = doc.add_page("Page-2: Data Pipeline");
         assert_eq!(doc.pages().len(), 2);

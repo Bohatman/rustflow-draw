@@ -107,7 +107,12 @@ impl PaletteCatalog {
                 shape: ShapeKind::Hexagon,
                 default_width: 130.0,
                 default_height: 90.0,
-                tags: vec!["aws".into(), "cloud".into(), "serverless".into(), "lambda".into()],
+                tags: vec![
+                    "aws".into(),
+                    "cloud".into(),
+                    "serverless".into(),
+                    "lambda".into(),
+                ],
             },
             StencilItem {
                 id: "cloud.gcp.cloudrun".into(),
@@ -163,7 +168,10 @@ impl PaletteCatalog {
             .filter(|item| {
                 item.label.to_ascii_lowercase().contains(&q)
                     || item.id.to_ascii_lowercase().contains(&q)
-                    || item.tags.iter().any(|t| t.to_ascii_lowercase().contains(&q))
+                    || item
+                        .tags
+                        .iter()
+                        .any(|t| t.to_ascii_lowercase().contains(&q))
             })
             .collect()
     }
@@ -175,7 +183,12 @@ impl PaletteCatalog {
             .collect()
     }
 
-    pub fn instantiate(&self, stencil_id: &str, node_id: NodeId, drop_world: Point) -> Option<Node> {
+    pub fn instantiate(
+        &self,
+        stencil_id: &str,
+        node_id: NodeId,
+        drop_world: Point,
+    ) -> Option<Node> {
         let stencil = self.items.iter().find(|i| i.id == stencil_id)?;
         let bounds = Rect::new(
             drop_world.x,

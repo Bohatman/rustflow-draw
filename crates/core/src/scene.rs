@@ -89,7 +89,12 @@ pub struct Port {
 }
 
 impl Port {
-    pub fn new(id: PortId, name: impl Into<String>, direction: PortDirection, side: PortSide) -> Self {
+    pub fn new(
+        id: PortId,
+        name: impl Into<String>,
+        direction: PortDirection,
+        side: PortSide,
+    ) -> Self {
         Self {
             id,
             name: name.into(),
@@ -205,9 +210,24 @@ impl Node {
             text_style: TextStyle::default(),
             ports: vec![
                 Port::new(base_port + 1, "in-top", PortDirection::Input, PortSide::Top),
-                Port::new(base_port + 2, "out-right", PortDirection::Output, PortSide::Right),
-                Port::new(base_port + 3, "out-bottom", PortDirection::Output, PortSide::Bottom),
-                Port::new(base_port + 4, "in-left", PortDirection::Input, PortSide::Left),
+                Port::new(
+                    base_port + 2,
+                    "out-right",
+                    PortDirection::Output,
+                    PortSide::Right,
+                ),
+                Port::new(
+                    base_port + 3,
+                    "out-bottom",
+                    PortDirection::Output,
+                    PortSide::Bottom,
+                ),
+                Port::new(
+                    base_port + 4,
+                    "in-left",
+                    PortDirection::Input,
+                    PortSide::Left,
+                ),
             ],
             z_index: 0,
             locked: false,
@@ -463,18 +483,12 @@ impl SceneGraph {
             let c2 = dst_node.bounds.center();
             if (c2.x - c1.x).abs() >= (c2.y - c1.y).abs() {
                 if c2.x >= c1.x {
-                    (
-                        Point::new(src_node.bounds.right(), c1.y),
-                        PortSide::Right,
-                    )
+                    (Point::new(src_node.bounds.right(), c1.y), PortSide::Right)
                 } else {
                     (Point::new(src_node.bounds.x, c1.y), PortSide::Left)
                 }
             } else if c2.y >= c1.y {
-                (
-                    Point::new(c1.x, src_node.bounds.bottom()),
-                    PortSide::Bottom,
-                )
+                (Point::new(c1.x, src_node.bounds.bottom()), PortSide::Bottom)
             } else {
                 (Point::new(c1.x, src_node.bounds.y), PortSide::Top)
             }
@@ -537,11 +551,7 @@ impl SceneGraph {
     /// Frustum query returning visible nodes sorted by `z_index`.
     pub fn query_visible_nodes(&self, frustum: &Rect) -> Vec<&Node> {
         let ids = self.node_rtree.query_rect(frustum);
-        let mut visible: Vec<&Node> = self
-            .nodes
-            .iter()
-            .filter(|n| ids.contains(&n.id))
-            .collect();
+        let mut visible: Vec<&Node> = self.nodes.iter().filter(|n| ids.contains(&n.id)).collect();
         visible.sort_by_key(|n| (n.z_index, n.id));
         visible
     }
@@ -549,11 +559,7 @@ impl SceneGraph {
     /// Frustum query returning visible edges sorted by `z_index`.
     pub fn query_visible_edges(&self, frustum: &Rect) -> Vec<&Edge> {
         let ids = self.edge_rtree.query_rect(frustum);
-        let mut visible: Vec<&Edge> = self
-            .edges
-            .iter()
-            .filter(|e| ids.contains(&e.id))
-            .collect();
+        let mut visible: Vec<&Edge> = self.edges.iter().filter(|e| ids.contains(&e.id)).collect();
         visible.sort_by_key(|e| (e.z_index, e.id));
         visible
     }
@@ -590,10 +596,8 @@ impl SceneGraph {
             for port in &node.ports {
                 let pos = port.world_position(&node.bounds);
                 let dist = pos.distance_to(world_pt);
-                if dist <= snap_radius {
-                    if best.map_or(true, |(best_d, ..)| dist < best_d) {
-                        best = Some((dist, node.id, port.id, pos));
-                    }
+                if dist <= snap_radius && best.is_none_or(|(best_d, ..)| dist < best_d) {
+                    best = Some((dist, node.id, port.id, pos));
                 }
             }
         }

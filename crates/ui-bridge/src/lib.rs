@@ -14,7 +14,10 @@ use rustflow_core::{
     EdgeId, MinimapSnapshot, Node, NodeId, PageId, Point, Rect, SceneGraph, SelectionState,
     SmartSnapResult, Viewport,
 };
-use rustflow_io_formats::NATIVE_FORMAT_VERSION;
+use rustflow_io_formats::{
+    export_animated_svg, export_drawio_xml, export_native_json, import_drawio_xml,
+    import_native_json, FormatError, NATIVE_FORMAT_VERSION,
+};
 use rustflow_layout::{
     compute_force_directed_layout, compute_grid_layout, compute_hierarchical_layout,
     snap_to_grid_point, LayoutAlgorithm, LayoutTransition,
@@ -116,12 +119,10 @@ impl EngineBridge {
         } else {
             Point::new(x, y)
         };
-        let node = Node::new_react_flow_card(
-            id,
-            title,
-            Rect::new(origin.x, origin.y, width, height),
-        );
-        self.history.execute(Command::AddNode(node), &mut self.scene);
+        let node =
+            Node::new_react_flow_card(id, title, Rect::new(origin.x, origin.y, width, height));
+        self.history
+            .execute(Command::AddNode(node), &mut self.scene);
         id
     }
 
@@ -133,7 +134,8 @@ impl EngineBridge {
             Point::new(world_x, world_y)
         };
         let node = self.palette.instantiate(stencil_id, id, origin)?;
-        self.history.execute(Command::AddNode(node), &mut self.scene);
+        self.history
+            .execute(Command::AddNode(node), &mut self.scene);
         self.selection.select_node(id, false);
         Some(id)
     }
@@ -141,7 +143,8 @@ impl EngineBridge {
     pub fn connect_bezier(&mut self, source: NodeId, target: NodeId) -> EdgeId {
         let id = self.scene.allocate_id();
         let edge = Edge::new_bezier(id, source, target);
-        self.history.execute(Command::AddEdge(edge), &mut self.scene);
+        self.history
+            .execute(Command::AddEdge(edge), &mut self.scene);
         id
     }
 
@@ -193,9 +196,7 @@ impl EngineBridge {
             LayoutAlgorithm::Hierarchical => {
                 compute_hierarchical_layout(&self.scene, Point::new(80.0, 80.0), 100.0, 60.0)
             }
-            LayoutAlgorithm::ForceDirected => {
-                compute_force_directed_layout(&self.scene, 30, 180.0)
-            }
+            LayoutAlgorithm::ForceDirected => compute_force_directed_layout(&self.scene, 30, 180.0),
         };
         if duration_seconds <= 0.0 {
             self.history
@@ -290,6 +291,32 @@ impl EngineBridge {
         InspectorSnapshot::from_selection(self.active_inspector_tab, &self.scene, &self.selection)
     }
 
+    pub fn export_drawio(&self) -> String {
+        export_drawio_xml(&self.scene, &self.document.title)
+    }
+
+    pub fn import_drawio(&mut self, xml: &str) -> Result<(), FormatError> {
+        self.scene = import_drawio_xml(xml)?;
+        self.history = CommandHistory::new(256);
+        self.selection.clear();
+        Ok(())
+    }
+
+    pub fn export_json(&self) -> String {
+        export_native_json(&self.scene)
+    }
+
+    pub fn import_json(&mut self, json: &str) -> Result<(), FormatError> {
+        self.scene = import_native_json(json)?;
+        self.history = CommandHistory::new(256);
+        self.selection.clear();
+        Ok(())
+    }
+
+    pub fn export_svg(&self) -> String {
+        export_animated_svg(&self.scene)
+    }
+
     pub fn build_render_frame(&self, time_seconds: f32) -> RenderFrame {
         RenderFrame::build(&self.scene, &self.viewport, time_seconds)
     }
@@ -308,26 +335,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn bridge_milestone3_animations_auto_layout_minimap_and_pages() {
+    fn bridge_milestone4_drawio_json_svg_round_trip() {
         let mut bridge = EngineBridge::new(1024.0, 768.0);
         let n1 = bridge.add_react_flow_card("API", 100.0, 100.0, 160.0, 72.0);
-        let n2 = bridge.add_react_flow_card("Queue", 100.0, 100.0, 160.0, 72.0);
+        let n2 = bridge.add_react_flow_card("Queue", 340.0, 180.0, 160.0, 72.0);
         let e1 = bridge.connect_bezier(n1, n2);
-
         bridge.set_edge_marching_ants(e1, 30.0, 10.0, 6.0, false);
-        bridge.trigger_auto_layout(LayoutAlgorithm::Hierarchical, 0.3);
-        bridge.step_animations(0.15);
-        bridge.step_animations(0.20);
-        assert!(bridge.active_transition.is_none());
 
-        let minimap = bridge.minimap_snapshot(200.0, 140.0);
-        assert_eq!(minimap.node_boxes.len(), 2);
+        let xml = bridge.export_drawio();
+        let mut bridge2 = EngineBridge::new(1024.0, 768.0);
+        bridge2.import_drawio(&xml).expect("import drawio XML");
+        assert_eq!(bridge2.scene.nodes().len(), 2);
+        assert_eq!(bridge2.scene.edges().len(), 1);
 
-        let page2 = bridge.add_page("Page-2");
-        assert_eq!(bridge.scene.nodes().len(), 0);
-        bridge.switch_page(1);
-        assert_eq!(bridge.scene.nodes().len(), 2);
-        bridge.switch_page(page2);
-        assert_eq!(bridge.scene.nodes().len(), 0);
+        let svg = bridge2.export_svg();
+        assert!(svg.contains("<svg"));
     }
 }

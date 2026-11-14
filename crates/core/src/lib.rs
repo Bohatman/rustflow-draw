@@ -195,8 +195,7 @@ impl Viewport {
 
     pub fn visible_world_rect(&self) -> Rect {
         let top_left = self.screen_to_world(Point::ZERO);
-        let bottom_right =
-            self.screen_to_world(Point::new(self.screen_width, self.screen_height));
+        let bottom_right = self.screen_to_world(Point::new(self.screen_width, self.screen_height));
         Rect::new(
             top_left.x,
             top_left.y,

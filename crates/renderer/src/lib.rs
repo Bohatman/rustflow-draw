@@ -556,7 +556,11 @@ impl HeadlessFramebuffer {
     pub fn render_scene(&mut self, scene: &SceneGraph, vp: &Viewport, time_seconds: f32) {
         // 1. Render pan-zoom dot grid
         for dot in compute_visible_grid_dots(vp) {
-            self.set_pixel(dot.x.round() as i32, dot.y.round() as i32, [199, 206, 219, 255]);
+            self.set_pixel(
+                dot.x.round() as i32,
+                dot.y.round() as i32,
+                [199, 206, 219, 255],
+            );
         }
 
         let frame = RenderFrame::build(scene, vp, time_seconds);
