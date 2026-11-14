@@ -1,4 +1,14 @@
-//! Core types and geometry primitives for RustFlow Draw.
+//! Core types, spatial R-Tree, scene graph, and viewport primitives for RustFlow Draw.
+
+pub mod scene;
+pub mod spatial;
+
+pub use scene::{
+    ColorRgba, Edge, EdgeAnimation, EdgeId, EdgeKind, GroupId, Node, NodeId, NodeStyle, PageId,
+    Port, PortDirection, PortId, PortSide, QuickConnectDirection, SceneGraph, ShapeKind, TextAlign,
+    TextStyle, ThemeMode,
+};
+pub use spatial::{RTree, SpatialEntry};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
