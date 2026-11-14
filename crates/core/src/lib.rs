@@ -1,11 +1,13 @@
-//! Core types, spatial R-Tree, scene graph, command stack, selection, and viewport primitives.
+//! Core types, spatial R-Tree, scene graph, command stack, selection, multi-page document, and viewport primitives.
 
 pub mod command;
+pub mod document;
 pub mod scene;
 pub mod selection;
 pub mod spatial;
 
 pub use command::{Command, CommandHistory};
+pub use document::{Document, MinimapNodeBox, MinimapSnapshot, Page};
 pub use scene::{
     ColorRgba, Edge, EdgeAnimation, EdgeId, EdgeKind, GroupId, Node, NodeId, NodeStyle, PageId,
     Port, PortDirection, PortId, PortSide, QuickConnectDirection, SceneGraph, ShapeKind, TextAlign,
@@ -162,6 +164,11 @@ impl Viewport {
     pub fn pan_by(&mut self, delta_screen_x: f32, delta_screen_y: f32) {
         self.pan.x += delta_screen_x;
         self.pan.y += delta_screen_y;
+    }
+
+    pub fn center_on_world(&mut self, world_pt: Point) {
+        self.pan.x = self.screen_width * 0.5 - world_pt.x * self.zoom;
+        self.pan.y = self.screen_height * 0.5 - world_pt.y * self.zoom;
     }
 
     /// Cursor-centered smooth zoom clamped between 10% (`0.10`) and 800% (`8.00`).
