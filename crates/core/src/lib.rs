@@ -1,12 +1,19 @@
-//! Core types, spatial R-Tree, scene graph, and viewport primitives for RustFlow Draw.
+//! Core types, spatial R-Tree, scene graph, command stack, selection, and viewport primitives.
 
+pub mod command;
 pub mod scene;
+pub mod selection;
 pub mod spatial;
 
+pub use command::{Command, CommandHistory};
 pub use scene::{
     ColorRgba, Edge, EdgeAnimation, EdgeId, EdgeKind, GroupId, Node, NodeId, NodeStyle, PageId,
     Port, PortDirection, PortId, PortSide, QuickConnectDirection, SceneGraph, ShapeKind, TextAlign,
     TextStyle, ThemeMode,
+};
+pub use selection::{
+    compute_smart_guides, AlignmentGuide, GuideOrientation, SelectionState, SmartSnapResult,
+    SpacingIndicator,
 };
 pub use spatial::{RTree, SpatialEntry};
 
