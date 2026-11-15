@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const port = Number(process.env.PORT || 5173);
+const port = Number(process.env.PORT || process.argv[2] || 6129);
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -12,6 +12,12 @@ const MIME_TYPES = {
   ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".ico": "image/x-icon",
   ".json": "application/json; charset=utf-8",
   ".wasm": "application/wasm",
 };

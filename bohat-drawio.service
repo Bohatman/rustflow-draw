@@ -1,0 +1,16 @@
+[Unit]
+Description=Bohat Draw.io (RustFlow Draw Web Engine on Port 6129)
+After=network.target
+
+[Service]
+Type=simple
+User=bohat
+WorkingDirectory=/home/bohat/projects/rustflow-draw
+Environment=PORT=6129
+ExecStart=/bin/bash /home/bohat/projects/rustflow-draw/start.sh
+Restart=always
+RestartSec=3
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
