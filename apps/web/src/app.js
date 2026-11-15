@@ -1,46 +1,52 @@
-// Interactive Web Frontend for RustFlow Draw
+// Developer-Focused Interactive Web App for RustFlow Draw (All 6 SDLC Phases)
 const STENCILS = [
-  { id: "flowchart.process", label: "Process Card", category: "Flowchart", w: 170, h: 76, shape: "card" },
-  { id: "flowchart.decision", label: "Decision Diamond", category: "Flowchart", w: 130, h: 96, shape: "diamond" },
-  { id: "flowchart.database", label: "Database Cylinder", category: "Flowchart", w: 130, h: 86, shape: "card" },
-  { id: "uml.class", label: "UML Class", category: "UML & BPMN", w: 180, h: 96, shape: "card" },
-  { id: "bpmn.task", label: "BPMN Task", category: "UML & BPMN", w: 165, h: 76, shape: "card" },
-  { id: "cloud.aws.lambda", label: "AWS Lambda", category: "Cloud (AWS/GCP/Azure)", w: 170, h: 78, shape: "card" },
-  { id: "cloud.gcp.cloudrun", label: "GCP Cloud Run", category: "Cloud (AWS/GCP/Azure)", w: 170, h: 78, shape: "card" },
-  { id: "cloud.azure.aks", label: "Azure AKS Cluster", category: "Cloud (AWS/GCP/Azure)", w: 175, h: 78, shape: "card" },
+  { id: "flowchart.process", label: "Process Card", category: "Flowchart", w: 175, h: 78, shape: "card" },
+  { id: "flowchart.decision", label: "Decision Diamond", category: "Flowchart", w: 135, h: 98, shape: "diamond" },
+  { id: "flowchart.database", label: "Database Cylinder", category: "Flowchart", w: 150, h: 82, shape: "card" },
+  { id: "uml.class", label: "UML Class", category: "UML & BPMN", w: 185, h: 92, shape: "card" },
+  { id: "bpmn.task", label: "BPMN Service Task", category: "UML & BPMN", w: 170, h: 78, shape: "card" },
+  { id: "cloud.aws.lambda", label: "AWS Lambda", category: "Cloud & K8s", w: 175, h: 78, shape: "card" },
+  { id: "cloud.gcp.cloudrun", label: "GCP Cloud Run", category: "Cloud & K8s", w: 175, h: 78, shape: "card" },
+  { id: "cloud.k8s.pod", label: "K8s Pod Replica", category: "Cloud & K8s", w: 175, h: 78, shape: "card" },
 ];
 
-function createInitialPages() {
+function createDogfoodPages() {
   return [
     {
       id: 1,
-      name: "Page-1: Architecture",
-      pan: { x: 80, y: 60 },
+      name: "Page-1: RustFlow Architecture",
+      pan: { x: 60, y: 50 },
       zoom: 1.0,
       nodes: [
-        { id: 1, title: "API Gateway", body: "Rust + WebGPU", x: 100, y: 120, w: 180, h: 80, fill: "#ffffff", stroke: "#6366f1", shape: "card" },
-        { id: 2, title: "Auth Worker", body: "JWT Verification", x: 380, y: 60, w: 180, h: 80, fill: "#ffffff", stroke: "#6366f1", shape: "card" },
-        { id: 3, title: "Core Scene Engine", body: "R-Tree + Undo Stack", x: 380, y: 200, w: 180, h: 80, fill: "#ffffff", stroke: "#10b981", shape: "card" },
-        { id: 4, title: "Event Store DB", body: "Local-First CRDT", x: 660, y: 130, w: 180, h: 80, fill: "#ffffff", stroke: "#f59e0b", shape: "card" },
+        { id: 1, title: "crates/core", body: "R-Tree + Scene + CRDT", x: 80, y: 150, w: 185, h: 82, fill: "#1e293b", stroke: "#818cf8", shape: "card", z: 1 },
+        { id: 2, title: "crates/renderer", body: "wgpu WGSL + Bezier", x: 360, y: 60, w: 185, h: 82, fill: "#1e293b", stroke: "#38bdf8", shape: "card", z: 2 },
+        { id: 3, title: "crates/layout", body: "Sugiyama + Force + Spring", x: 360, y: 175, w: 185, h: 82, fill: "#1e293b", stroke: "#34d399", shape: "card", z: 3 },
+        { id: 4, title: "crates/io-formats", body: ".drawio XML + SVG + PDF", x: 360, y: 290, w: 185, h: 82, fill: "#1e293b", stroke: "#fbbf24", shape: "card", z: 4 },
+        { id: 5, title: "crates/ui-bridge", body: "WASM & Tauri v2 Shell", x: 650, y: 175, w: 190, h: 82, fill: "#1e293b", stroke: "#f472b6", shape: "card", z: 5 },
       ],
       edges: [
-        { id: 101, source: 1, target: 2, label: "HTTPS", anim: "pulse" },
-        { id: 102, source: 1, target: 3, label: "gRPC", anim: "ants" },
-        { id: 103, source: 2, target: 4, label: "Audit", anim: "pulse" },
-        { id: 104, source: 3, target: 4, label: "Snapshots", anim: "ants" },
+        { id: 101, source: 1, target: 2, label: "Frustum Query", anim: "pulse", kind: "bezier" },
+        { id: 102, source: 1, target: 3, label: "Graph Moves", anim: "ants", kind: "bezier" },
+        { id: 103, source: 1, target: 4, label: "AST Round-Trip", anim: "pulse", kind: "bezier" },
+        { id: 104, source: 2, target: 5, label: "Frame Buffers", anim: "pulse", kind: "bezier" },
+        { id: 105, source: 3, target: 5, label: "Transitions", anim: "ants", kind: "bezier" },
+        { id: 106, source: 4, target: 5, label: "Exporters", anim: "ants", kind: "bezier" },
       ],
       undoStack: [],
       redoStack: [],
     },
     {
       id: 2,
-      name: "Page-2: Sandbox",
+      name: "Page-2: Microservice Flow",
       pan: { x: 80, y: 60 },
       zoom: 1.0,
       nodes: [
-        { id: 10, title: "Ingress Node", body: "Double-click or edit right", x: 160, y: 160, w: 180, h: 80, fill: "#ffffff", stroke: "#6366f1", shape: "card" },
+        { id: 10, title: "API Gateway", body: "Rate Limiter + TLS", x: 120, y: 140, w: 180, h: 80, fill: "#1e293b", stroke: "#818cf8", shape: "card", z: 1 },
+        { id: 11, title: "Billing Worker", body: "Kafka Consumer", x: 400, y: 140, w: 180, h: 80, fill: "#1e293b", stroke: "#34d399", shape: "card", z: 2 },
       ],
-      edges: [],
+      edges: [
+        { id: 201, source: 10, target: 11, label: "Events", anim: "pulse", kind: "bezier" },
+      ],
       undoStack: [],
       redoStack: [],
     },
@@ -48,16 +54,21 @@ function createInitialPages() {
 }
 
 const state = {
-  pages: createInitialPages(),
+  pages: createDogfoodPages(),
   activePageId: 1,
   selectedNodeId: 1,
   draggingNode: null,
+  resizingNode: null,
   panning: null,
   connectingFromNode: null,
   mouseWorld: { x: 0, y: 0 },
   smartGuides: [],
-  nextId: 200,
+  nextId: 300,
   edgeAnimPreset: "pulse",
+  edgeKindPreset: "bezier",
+  theme: "dark",
+  fps: 60,
+  lastFrameTime: performance.now(),
 };
 
 function page() {
@@ -75,6 +86,7 @@ const canvas = document.getElementById("rustflow-canvas");
 const ctx = canvas.getContext("2d");
 const minimapCanvas = document.getElementById("minimap-canvas");
 const minimapCtx = minimapCanvas.getContext("2d");
+const inlineEditor = document.getElementById("inline-editor");
 
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
@@ -103,6 +115,17 @@ function getNodePorts(n) {
   ];
 }
 
+// Draw.io Quick-Add Directional Arrows around the selected node
+function getQuickArrows(n) {
+  const pad = 22;
+  return [
+    { dir: "up", x: n.x + n.w / 2, y: n.y - pad, dx: 0, dy: -(n.h + 70), label: "↑" },
+    { dir: "right", x: n.x + n.w + pad, y: n.y + n.h / 2, dx: n.w + 90, dy: 0, label: "→" },
+    { dir: "down", x: n.x + n.w / 2, y: n.y + n.h + pad, dx: 0, dy: n.h + 70, label: "↓" },
+    { dir: "left", x: n.x - pad, y: n.y + n.h / 2, dx: -(n.w + 90), dy: 0, label: "←" },
+  ];
+}
+
 function computeSmartGuides(movingNode) {
   const guides = [];
   const threshold = 6;
@@ -116,7 +139,7 @@ function computeSmartGuides(movingNode) {
     for (const [mx, ox] of checksX) {
       if (Math.abs(mx - ox) <= threshold) {
         movingNode.x += ox - mx;
-        guides.push({ type: "v", x: ox, y1: Math.min(movingNode.y, other.y) - 20, y2: Math.max(movingNode.y + movingNode.h, other.y + other.h) + 20 });
+        guides.push({ type: "v", x: ox, y1: Math.min(movingNode.y, other.y) - 24, y2: Math.max(movingNode.y + movingNode.h, other.y + other.h) + 24 });
         break;
       }
     }
@@ -128,7 +151,7 @@ function computeSmartGuides(movingNode) {
     for (const [my, oy] of checksY) {
       if (Math.abs(my - oy) <= threshold) {
         movingNode.y += oy - my;
-        guides.push({ type: "h", y: oy, x1: Math.min(movingNode.x, other.x) - 20, x2: Math.max(movingNode.x + movingNode.w, other.x + other.w) + 20 });
+        guides.push({ type: "h", y: oy, x1: Math.min(movingNode.x, other.x) - 24, x2: Math.max(movingNode.x + movingNode.w, other.x + other.w) + 24 });
         break;
       }
     }
@@ -136,15 +159,50 @@ function computeSmartGuides(movingNode) {
   return guides;
 }
 
-// Pointer interaction
 canvas.addEventListener("mousedown", (e) => {
+  inlineEditor.style.display = "none";
   const rect = canvas.getBoundingClientRect();
   const sx = e.clientX - rect.left;
   const sy = e.clientY - rect.top;
   const wpt = screenToWorld(sx, sy);
   const p = page();
 
-  // Check port handle click first (connection drag)
+  const selectedNode = p.nodes.find((n) => n.id === state.selectedNodeId);
+  if (selectedNode) {
+    // 1. Check bottom-right resize handle
+    if (Math.hypot(wpt.x - (selectedNode.x + selectedNode.w), wpt.y - (selectedNode.y + selectedNode.h)) <= 10) {
+      saveSnapshot();
+      state.resizingNode = { node: selectedNode, aspect: selectedNode.w / Math.max(1, selectedNode.h) };
+      return;
+    }
+    // 2. Check Draw.io quick-add directional arrows
+    for (const arrow of getQuickArrows(selectedNode)) {
+      if (Math.hypot(wpt.x - arrow.x, wpt.y - arrow.y) <= 11) {
+        saveSnapshot();
+        const newNode = {
+          ...selectedNode,
+          id: ++state.nextId,
+          x: selectedNode.x + arrow.dx,
+          y: selectedNode.y + arrow.dy,
+          z: p.nodes.length + 1,
+        };
+        p.nodes.push(newNode);
+        p.edges.push({
+          id: ++state.nextId,
+          source: selectedNode.id,
+          target: newNode.id,
+          label: "Flow",
+          anim: state.edgeAnimPreset,
+          kind: state.edgeKindPreset,
+        });
+        state.selectedNodeId = newNode.id;
+        syncInspector();
+        return;
+      }
+    }
+  }
+
+  // 3. Check port handle click (connection drag)
   for (const n of p.nodes) {
     for (const port of getNodePorts(n)) {
       if (Math.hypot(wpt.x - port.x, wpt.y - port.y) <= 9) {
@@ -154,8 +212,9 @@ canvas.addEventListener("mousedown", (e) => {
     }
   }
 
-  // Check node hit-test
-  const hit = [...p.nodes].reverse().find((n) => wpt.x >= n.x && wpt.x <= n.x + n.w && wpt.y >= n.y && wpt.y <= n.y + n.h);
+  // 4. Check node hit-test (sorted by z-index)
+  const sorted = [...p.nodes].sort((a, b) => (a.z || 0) - (b.z || 0));
+  const hit = sorted.reverse().find((n) => wpt.x >= n.x && wpt.x <= n.x + n.w && wpt.y >= n.y && wpt.y <= n.y + n.h);
   if (hit) {
     saveSnapshot();
     state.selectedNodeId = hit.id;
@@ -168,6 +227,32 @@ canvas.addEventListener("mousedown", (e) => {
   }
 });
 
+// Inline double-click text editing on canvas
+canvas.addEventListener("dblclick", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const wpt = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+  const hit = page().nodes.find((n) => wpt.x >= n.x && wpt.x <= n.x + n.w && wpt.y >= n.y && wpt.y <= n.y + n.h);
+  if (!hit) return;
+  state.selectedNodeId = hit.id;
+  const spt = worldToScreen(hit.x, hit.y);
+  inlineEditor.style.display = "block";
+  inlineEditor.style.left = `${spt.x}px`;
+  inlineEditor.style.top = `${spt.y}px`;
+  inlineEditor.style.width = `${hit.w * page().zoom}px`;
+  inlineEditor.value = hit.title;
+  inlineEditor.focus();
+  inlineEditor.onkeydown = (ev) => {
+    if (ev.key === "Enter") {
+      saveSnapshot();
+      hit.title = inlineEditor.value;
+      inlineEditor.style.display = "none";
+      syncInspector();
+    } else if (ev.key === "Escape") {
+      inlineEditor.style.display = "none";
+    }
+  };
+});
+
 window.addEventListener("mousemove", (e) => {
   const rect = canvas.getBoundingClientRect();
   const sx = e.clientX - rect.left;
@@ -175,7 +260,16 @@ window.addEventListener("mousemove", (e) => {
   state.mouseWorld = screenToWorld(sx, sy);
   const p = page();
 
-  if (state.draggingNode) {
+  if (state.resizingNode) {
+    const { node, aspect } = state.resizingNode;
+    node.w = Math.max(80, Math.round((state.mouseWorld.x - node.x) / 10) * 10);
+    if (e.shiftKey) {
+      node.h = Math.max(48, Math.round(node.w / aspect));
+    } else {
+      node.h = Math.max(48, Math.round((state.mouseWorld.y - node.y) / 10) * 10);
+    }
+    syncInspector();
+  } else if (state.draggingNode) {
     const { node, offsetX, offsetY } = state.draggingNode;
     node.x = Math.round((state.mouseWorld.x - offsetX) / 10) * 10;
     node.y = Math.round((state.mouseWorld.y - offsetY) / 10) * 10;
@@ -194,10 +288,10 @@ window.addEventListener("mouseup", () => {
     const dst = p.nodes.find(
       (n) =>
         n.id !== src.id &&
-        state.mouseWorld.x >= n.x - 12 &&
-        state.mouseWorld.x <= n.x + n.w + 12 &&
-        state.mouseWorld.y >= n.y - 12 &&
-        state.mouseWorld.y <= n.y + n.h + 12
+        state.mouseWorld.x >= n.x - 14 &&
+        state.mouseWorld.x <= n.x + n.w + 14 &&
+        state.mouseWorld.y >= n.y - 14 &&
+        state.mouseWorld.y <= n.y + n.h + 14
     );
     if (dst) {
       saveSnapshot();
@@ -207,10 +301,12 @@ window.addEventListener("mouseup", () => {
         target: dst.id,
         label: "Flow",
         anim: state.edgeAnimPreset,
+        kind: state.edgeKindPreset,
       });
     }
   }
   state.draggingNode = null;
+  state.resizingNode = null;
   state.panning = null;
   state.connectingFromNode = null;
   state.smartGuides = [];
@@ -233,7 +329,28 @@ canvas.addEventListener(
   { passive: false }
 );
 
-// Palette rendering & search
+function addStencilToCanvas(item) {
+  saveSnapshot();
+  const p = page();
+  const center = screenToWorld(canvas.width / 2 - item.w / 2, canvas.height / 2 - item.h / 2);
+  const newNode = {
+    id: ++state.nextId,
+    title: item.label,
+    body: item.id,
+    x: Math.round(center.x / 20) * 20,
+    y: Math.round(center.y / 20) * 20,
+    w: item.w,
+    h: item.h,
+    fill: state.theme === "light" ? "#ffffff" : "#1e293b",
+    stroke: "#818cf8",
+    shape: item.shape,
+    z: p.nodes.length + 1,
+  };
+  p.nodes.push(newNode);
+  state.selectedNodeId = newNode.id;
+  syncInspector();
+}
+
 function renderPalette(filter = "") {
   const container = document.getElementById("palette-list");
   container.innerHTML = "";
@@ -247,7 +364,7 @@ function renderPalette(filter = "") {
     if (!items.length) continue;
 
     const section = document.createElement("div");
-    section.style.marginBottom = "12px";
+    section.style.marginBottom = "10px";
     const title = document.createElement("div");
     title.className = "palette-section-title";
     title.textContent = cat;
@@ -259,26 +376,7 @@ function renderPalette(filter = "") {
       const card = document.createElement("div");
       card.className = "stencil-card";
       card.textContent = "+ " + item.label;
-      card.onclick = () => {
-        saveSnapshot();
-        const p = page();
-        const center = screenToWorld(canvas.width / 2 - item.w / 2, canvas.height / 2 - item.h / 2);
-        const newNode = {
-          id: ++state.nextId,
-          title: item.label,
-          body: item.id,
-          x: Math.round(center.x / 20) * 20,
-          y: Math.round(center.y / 20) * 20,
-          w: item.w,
-          h: item.h,
-          fill: "#ffffff",
-          stroke: "#6366f1",
-          shape: item.shape,
-        };
-        p.nodes.push(newNode);
-        state.selectedNodeId = newNode.id;
-        syncInspector();
-      };
+      card.onclick = () => addStencilToCanvas(item);
       grid.appendChild(card);
     }
     section.appendChild(grid);
@@ -288,7 +386,21 @@ function renderPalette(filter = "") {
 document.getElementById("palette-search").addEventListener("input", (e) => renderPalette(e.target.value));
 renderPalette();
 
-// Page tabs
+function renderOutline() {
+  const list = document.getElementById("outline-list");
+  list.innerHTML = "";
+  for (const n of page().nodes) {
+    const el = document.createElement("div");
+    el.className = "outline-item" + (n.id === state.selectedNodeId ? " active" : "");
+    el.innerHTML = `<span>${n.title}</span><span style="opacity:0.6">#${n.id}</span>`;
+    el.onclick = () => {
+      state.selectedNodeId = n.id;
+      syncInspector();
+    };
+    list.appendChild(el);
+  }
+}
+
 function renderPageTabs() {
   const container = document.getElementById("page-tabs");
   container.innerHTML = "";
@@ -326,8 +438,8 @@ function renderPageTabs() {
 }
 renderPageTabs();
 
-// Inspector synchronization
 function syncInspector() {
+  renderOutline();
   const n = page().nodes.find((item) => item.id === state.selectedNodeId);
   const titleEl = document.getElementById("insp-title");
   const bodyEl = document.getElementById("insp-body");
@@ -372,10 +484,24 @@ for (const [id, key, isNum] of [
     const n = page().nodes.find((item) => item.id === state.selectedNodeId);
     if (!n) return;
     n[key] = isNum ? Number(e.target.value) || 40 : e.target.value;
+    renderOutline();
   });
 }
 
-// Toolbar buttons & shortcuts
+document.getElementById("btn-front").onclick = () => {
+  const p = page();
+  const n = p.nodes.find((item) => item.id === state.selectedNodeId);
+  if (!n) return;
+  n.z = Math.max(0, ...p.nodes.map((x) => x.z || 0)) + 1;
+};
+
+document.getElementById("btn-back").onclick = () => {
+  const p = page();
+  const n = p.nodes.find((item) => item.id === state.selectedNodeId);
+  if (!n) return;
+  n.z = Math.min(0, ...p.nodes.map((x) => x.z || 0)) - 1;
+};
+
 function undo() {
   const p = page();
   if (!p.undoStack.length) return;
@@ -417,21 +543,7 @@ function deleteSelected() {
   syncInspector();
 }
 
-document.getElementById("btn-undo").onclick = undo;
-document.getElementById("btn-redo").onclick = redo;
-document.getElementById("btn-duplicate").onclick = duplicateSelected;
-document.getElementById("btn-delete").onclick = deleteSelected;
-document.getElementById("select-edge-anim").onchange = (e) => {
-  state.edgeAnimPreset = e.target.value;
-};
-document.getElementById("btn-zoom-in").onclick = () => {
-  page().zoom = Math.min(8.0, page().zoom * 1.2);
-};
-document.getElementById("btn-zoom-out").onclick = () => {
-  page().zoom = Math.max(0.1, page().zoom / 1.2);
-};
-
-document.getElementById("btn-layout-hier").onclick = () => {
+function runHierarchicalLayout() {
   const p = page();
   saveSnapshot();
   const layers = {};
@@ -451,24 +563,42 @@ document.getElementById("btn-layout-hier").onclick = () => {
   }
   Object.entries(byLayer).forEach(([layerIdx, group]) => {
     group.forEach((n, sibIdx) => {
-      n.x = 120 + Number(layerIdx) * 260;
-      n.y = 100 + sibIdx * 130;
+      n.x = 100 + Number(layerIdx) * 260;
+      n.y = 80 + sibIdx * 125;
     });
   });
   syncInspector();
-};
+}
 
-document.getElementById("btn-layout-grid").onclick = () => {
+function runGridLayout() {
   const p = page();
   saveSnapshot();
   p.nodes.forEach((n, idx) => {
     const col = idx % 3;
     const row = Math.floor(idx / 3);
     n.x = 100 + col * 240;
-    n.y = 100 + row * 140;
+    n.y = 90 + row * 135;
   });
   syncInspector();
+}
+
+document.getElementById("btn-undo").onclick = undo;
+document.getElementById("btn-redo").onclick = redo;
+document.getElementById("btn-duplicate").onclick = duplicateSelected;
+document.getElementById("btn-delete").onclick = deleteSelected;
+document.getElementById("select-edge-anim").onchange = (e) => {
+  state.edgeAnimPreset = e.target.value;
 };
+document.getElementById("select-edge-kind").onchange = (e) => {
+  state.edgeKindPreset = e.target.value;
+  for (const edge of page().edges) edge.kind = state.edgeKindPreset;
+};
+document.getElementById("select-theme").onchange = (e) => {
+  state.theme = e.target.value;
+  document.documentElement.setAttribute("data-theme", state.theme);
+};
+document.getElementById("btn-layout-hier").onclick = runHierarchicalLayout;
+document.getElementById("btn-layout-grid").onclick = runGridLayout;
 
 function downloadFile(filename, content, mime) {
   const blob = new Blob([content], { type: mime });
@@ -478,7 +608,7 @@ function downloadFile(filename, content, mime) {
   a.click();
 }
 
-document.getElementById("btn-export-drawio").onclick = () => {
+function exportDrawioXml() {
   const p = page();
   let xml = `<mxfile host="RustFlowDraw" version="1.0.0">\n  <diagram id="page-${p.id}" name="${p.name}">\n    <mxGraphModel dx="1280" dy="720" grid="1" gridSize="20">\n      <root>\n        <mxCell id="0"/>\n        <mxCell id="1" parent="0"/>\n`;
   for (const n of p.nodes) {
@@ -489,20 +619,19 @@ document.getElementById("btn-export-drawio").onclick = () => {
   }
   xml += `      </root>\n    </mxGraphModel>\n  </diagram>\n</mxfile>`;
   downloadFile("diagram.drawio", xml, "application/xml");
-};
+}
 
-document.getElementById("btn-export-svg").onclick = () => {
+function exportAnimatedSvg() {
   const p = page();
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="1000" height="600">\n  <style>\n    @keyframes rfd-ants { to { stroke-dashoffset: -28; } }\n    .ants { stroke-dasharray: 9 5; animation: rfd-ants 0.8s linear infinite; }\n    text { font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; fill: #0f172a; }\n  </style>\n`;
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="1000" height="600">\n  <style>\n    @keyframes rfd-ants { to { stroke-dashoffset: -28; } }\n    .ants { stroke-dasharray: 9 5; animation: rfd-ants 0.8s linear infinite; }\n    text { font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; fill: #f8fafc; }\n  </style>\n`;
   for (const e of p.edges) {
     const src = p.nodes.find((n) => n.id === e.source);
     const dst = p.nodes.find((n) => n.id === e.target);
     if (!src || !dst) continue;
     const x1 = src.x + src.w, y1 = src.y + src.h / 2;
     const x2 = dst.x, y2 = dst.y + dst.h / 2;
-    const cx1 = x1 + 80, cx2 = x2 - 80;
-    const d = `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`;
-    svg += `  <path d="${d}" fill="none" stroke="#6366f1" stroke-width="2" class="${e.anim === "ants" ? "ants" : ""}"/>\n`;
+    const d = `M ${x1} ${y1} C ${x1 + 80} ${y1}, ${x2 - 80} ${y2}, ${x2} ${y2}`;
+    svg += `  <path d="${d}" fill="none" stroke="#818cf8" stroke-width="2" class="${e.anim === "ants" ? "ants" : ""}"/>\n`;
   }
   for (const n of p.nodes) {
     svg += `  <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="10" fill="${n.fill}" stroke="${n.stroke}" stroke-width="2"/>\n`;
@@ -510,9 +639,72 @@ document.getElementById("btn-export-svg").onclick = () => {
   }
   svg += `</svg>`;
   downloadFile("diagram-animated.svg", svg, "image/svg+xml");
-};
+}
+
+document.getElementById("btn-export-drawio").onclick = exportDrawioXml;
+document.getElementById("btn-export-svg").onclick = exportAnimatedSvg;
+
+// Developer Command Palette (Ctrl+K)
+const cmdOverlay = document.getElementById("cmd-overlay");
+const cmdInput = document.getElementById("cmd-input");
+const cmdList = document.getElementById("cmd-list");
+
+const COMMANDS = [
+  { label: "Auto-Layout: Sugiyama Hierarchical", shortcut: "Layout", run: runHierarchicalLayout },
+  { label: "Auto-Layout: Uniform Grid", shortcut: "Layout", run: runGridLayout },
+  { label: "Theme: Switch to Dark Mode", shortcut: "Theme", run: () => { document.getElementById("select-theme").value = "dark"; document.documentElement.setAttribute("data-theme", "dark"); } },
+  { label: "Theme: Switch to Light Mode", shortcut: "Theme", run: () => { document.getElementById("select-theme").value = "light"; document.documentElement.setAttribute("data-theme", "light"); } },
+  { label: "Theme: Switch to High Contrast", shortcut: "Theme", run: () => { document.getElementById("select-theme").value = "contrast"; document.documentElement.setAttribute("data-theme", "contrast"); } },
+  { label: "Export: Download .drawio XML", shortcut: "IO", run: exportDrawioXml },
+  { label: "Export: Download Animated SVG", shortcut: "IO", run: exportAnimatedSvg },
+  ...STENCILS.map((s) => ({ label: `Add Stencil: ${s.label}`, shortcut: s.category, run: () => addStencilToCanvas(s) })),
+];
+
+function openCommandPalette() {
+  cmdOverlay.classList.add("open");
+  cmdInput.value = "";
+  renderCommandList("");
+  cmdInput.focus();
+}
+
+function closeCommandPalette() {
+  cmdOverlay.classList.remove("open");
+}
+
+function renderCommandList(query) {
+  cmdList.innerHTML = "";
+  const q = query.trim().toLowerCase();
+  const filtered = COMMANDS.filter((c) => !q || c.label.toLowerCase().includes(q) || c.shortcut.toLowerCase().includes(q));
+  for (const cmd of filtered) {
+    const row = document.createElement("div");
+    row.className = "cmd-item";
+    row.innerHTML = `<span>${cmd.label}</span><span style="opacity:0.65">${cmd.shortcut}</span>`;
+    row.onclick = () => {
+      cmd.run();
+      closeCommandPalette();
+    };
+    cmdList.appendChild(row);
+  }
+}
+
+document.getElementById("btn-cmd-palette").onclick = openCommandPalette;
+cmdInput.addEventListener("input", (e) => renderCommandList(e.target.value));
+cmdOverlay.addEventListener("click", (e) => {
+  if (e.target === cmdOverlay) closeCommandPalette();
+});
 
 window.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    if (cmdOverlay.classList.contains("open")) closeCommandPalette();
+    else openCommandPalette();
+    return;
+  }
+  if (e.key === "Escape") {
+    closeCommandPalette();
+    inlineEditor.style.display = "none";
+    return;
+  }
   if (e.target.tagName === "INPUT") return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
     e.preventDefault();
@@ -525,10 +717,19 @@ window.addEventListener("keydown", (e) => {
     duplicateSelected();
   } else if (e.key === "Delete" || e.key === "Backspace") {
     deleteSelected();
+  } else if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+    const n = page().nodes.find((item) => item.id === state.selectedNodeId);
+    if (!n) return;
+    e.preventDefault();
+    const step = e.shiftKey ? 20 : 5;
+    if (e.key === "ArrowUp") n.y -= step;
+    if (e.key === "ArrowDown") n.y += step;
+    if (e.key === "ArrowLeft") n.x -= step;
+    if (e.key === "ArrowRight") n.x += step;
+    syncInspector();
   }
 });
 
-// Cubic Bezier helper
 function evalBezier(p0, p1, p2, p3, t) {
   const u = 1 - t;
   return {
@@ -537,8 +738,11 @@ function evalBezier(p0, p1, p2, p3, t) {
   };
 }
 
-// Main 60-120 FPS render loop
 function renderLoop(timestamp) {
+  const dt = Math.max(1, timestamp - state.lastFrameTime);
+  state.fps = Math.round(state.fps * 0.9 + (1000 / dt) * 0.1);
+  state.lastFrameTime = timestamp;
+
   const timeSec = timestamp * 0.001;
   const p = page();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -546,7 +750,7 @@ function renderLoop(timestamp) {
   // 1. Infinite pan-zoom dot grid
   const gridStep = 20 * p.zoom;
   if (gridStep >= 6) {
-    ctx.fillStyle = "#cbd5e1";
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--grid-dot").trim() || "#334155";
     const startX = ((p.pan.x % gridStep) + gridStep) % gridStep;
     const startY = ((p.pan.y % gridStep) + gridStep) % gridStep;
     for (let x = startX; x < canvas.width; x += gridStep) {
@@ -561,8 +765,8 @@ function renderLoop(timestamp) {
   ctx.scale(p.zoom, p.zoom);
 
   // 2. Smart Alignment Guides
-  ctx.strokeStyle = "#ec4899";
-  ctx.lineWidth = 1 / p.zoom;
+  ctx.strokeStyle = "#f43f5e";
+  ctx.lineWidth = 1.2 / p.zoom;
   ctx.setLineDash([4 / p.zoom, 4 / p.zoom]);
   for (const g of state.smartGuides) {
     ctx.beginPath();
@@ -577,7 +781,7 @@ function renderLoop(timestamp) {
   }
   ctx.setLineDash([]);
 
-  // 3. Edges & GPU-style Animations (Marching Ants & Pulse Particles)
+  // 3. Edges & GPU-style Animations
   for (const e of p.edges) {
     const src = p.nodes.find((n) => n.id === e.source);
     const dst = p.nodes.find((n) => n.id === e.target);
@@ -591,8 +795,17 @@ function renderLoop(timestamp) {
 
     ctx.beginPath();
     ctx.moveTo(p0.x, p0.y);
-    ctx.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
-    ctx.strokeStyle = "#6366f1";
+    if (e.kind === "straight") {
+      ctx.lineTo(p3.x, p3.y);
+    } else if (e.kind === "orthogonal" || e.kind === "smoothstep") {
+      const midX = (p0.x + p3.x) * 0.5;
+      ctx.lineTo(midX, p0.y);
+      ctx.lineTo(midX, p3.y);
+      ctx.lineTo(p3.x, p3.y);
+    } else {
+      ctx.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+    }
+    ctx.strokeStyle = "#818cf8";
     ctx.lineWidth = 2.2;
 
     if (e.anim === "ants") {
@@ -610,36 +823,36 @@ function renderLoop(timestamp) {
         const pt = evalBezier(p0, p1, p2, p3, t);
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
-        ctx.fillStyle = "#4f46e5";
-        ctx.shadowColor = "#6366f1";
-        ctx.shadowBlur = 10;
+        ctx.fillStyle = "#38bdf8";
+        ctx.shadowColor = "#38bdf8";
+        ctx.shadowBlur = 12;
         ctx.fill();
         ctx.shadowBlur = 0;
       }
     }
   }
 
-  // Active connection line
   if (state.connectingFromNode) {
     ctx.beginPath();
     ctx.moveTo(state.connectingFromNode.port.x, state.connectingFromNode.port.y);
     ctx.lineTo(state.mouseWorld.x, state.mouseWorld.y);
-    ctx.strokeStyle = "#6366f1";
+    ctx.strokeStyle = "#818cf8";
     ctx.setLineDash([5, 5]);
     ctx.stroke();
     ctx.setLineDash([]);
   }
 
-  // 4. React Flow Node Cards & Ports
-  for (const n of p.nodes) {
+  // 4. React Flow Node Cards, Ports, Resize Handles & Quick-Add Arrows
+  const sortedNodes = [...p.nodes].sort((a, b) => (a.z || 0) - (b.z || 0));
+  for (const n of sortedNodes) {
     const selected = n.id === state.selectedNodeId;
     ctx.save();
-    ctx.shadowColor = selected ? "rgba(99, 102, 241, 0.28)" : "rgba(15, 23, 42, 0.08)";
-    ctx.shadowBlur = selected ? 16 : 10;
+    ctx.shadowColor = selected ? "rgba(129, 140, 248, 0.35)" : "rgba(0, 0, 0, 0.25)";
+    ctx.shadowBlur = selected ? 18 : 10;
     ctx.shadowOffsetY = 4;
 
     ctx.fillStyle = n.fill;
-    ctx.strokeStyle = selected ? "#4f46e5" : n.stroke;
+    ctx.strokeStyle = selected ? "#38bdf8" : n.stroke;
     ctx.lineWidth = selected ? 2.5 : 1.5;
 
     ctx.beginPath();
@@ -656,34 +869,46 @@ function renderLoop(timestamp) {
     ctx.stroke();
     ctx.restore();
 
-    // Header bar for React Flow cards
-    if (n.shape !== "diamond") {
-      ctx.fillStyle = "#f1f5f9";
-      ctx.beginPath();
-      ctx.roundRect(n.x + 1, n.y + 1, n.w - 2, 26, [9, 9, 0, 0]);
-      ctx.fill();
-    }
-
-    ctx.fillStyle = "#0f172a";
+    const textColor = state.theme === "light" && n.fill === "#ffffff" ? "#0f172a" : "#f8fafc";
+    ctx.fillStyle = textColor;
     ctx.font = "600 13px Inter, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(n.title, n.x + n.w / 2, n.shape === "diamond" ? n.y + n.h / 2 + 4 : n.y + 18);
+    ctx.fillText(n.title, n.x + n.w / 2, n.shape === "diamond" ? n.y + n.h / 2 + 4 : n.y + 30);
 
     if (n.body && n.shape !== "diamond") {
-      ctx.fillStyle = "#64748b";
-      ctx.font = "400 11px Inter, sans-serif";
-      ctx.fillText(n.body, n.x + n.w / 2, n.y + 52);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "400 11px monospace";
+      ctx.fillText(n.body, n.x + n.w / 2, n.y + 54);
     }
 
-    // Ports / Handles
     for (const port of getNodePorts(n)) {
       ctx.beginPath();
       ctx.arc(port.x, port.y, 4.5, 0, Math.PI * 2);
-      ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "#6366f1";
+      ctx.fillStyle = "#0b0f19";
+      ctx.strokeStyle = "#818cf8";
       ctx.lineWidth = 2;
       ctx.fill();
       ctx.stroke();
+    }
+
+    if (selected) {
+      // Bottom-right resize handle
+      ctx.fillStyle = "#38bdf8";
+      ctx.fillRect(n.x + n.w - 5, n.y + n.h - 5, 10, 10);
+
+      // Draw.io Quick-Add Directional Arrows
+      for (const arrow of getQuickArrows(n)) {
+        ctx.beginPath();
+        ctx.arc(arrow.x, arrow.y, 9, 0, Math.PI * 2);
+        ctx.fillStyle = "#1e293b";
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 1.5;
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#38bdf8";
+        ctx.font = "700 11px sans-serif";
+        ctx.fillText(arrow.label, arrow.x, arrow.y + 4);
+      }
     }
   }
 
@@ -693,20 +918,20 @@ function renderLoop(timestamp) {
   minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
   const scale = 0.14;
   minimapCtx.save();
-  minimapCtx.translate(16, 16);
+  minimapCtx.translate(14, 14);
   minimapCtx.scale(scale, scale);
   for (const n of p.nodes) {
-    minimapCtx.fillStyle = n.id === state.selectedNodeId ? "#6366f1" : "#94a3b8";
+    minimapCtx.fillStyle = n.id === state.selectedNodeId ? "#38bdf8" : "#64748b";
     minimapCtx.fillRect(n.x, n.y, n.w, n.h);
   }
   const tl = screenToWorld(0, 0);
   const br = screenToWorld(canvas.width, canvas.height);
-  minimapCtx.strokeStyle = "#4f46e5";
+  minimapCtx.strokeStyle = "#818cf8";
   minimapCtx.lineWidth = 10;
   minimapCtx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
   minimapCtx.restore();
 
-  document.getElementById("status-bar").textContent = `Zoom: ${Math.round(p.zoom * 100)}% | Nodes: ${p.nodes.length} | Edges: ${p.edges.length}`;
+  document.getElementById("status-bar").textContent = `FPS: ${state.fps} | Zoom: ${Math.round(p.zoom * 100)}% | Nodes: ${p.nodes.length} | Edges: ${p.edges.length}`;
   requestAnimationFrame(renderLoop);
 }
 requestAnimationFrame(renderLoop);

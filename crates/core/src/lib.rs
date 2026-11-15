@@ -1,12 +1,14 @@
 //! Core types, spatial R-Tree, scene graph, command stack, selection, multi-page document, and viewport primitives.
 
 pub mod command;
+pub mod crdt;
 pub mod document;
 pub mod scene;
 pub mod selection;
 pub mod spatial;
 
 pub use command::{Command, CommandHistory};
+pub use crdt::{CrdtOp, CrdtReplica, HlcTimestamp, ThemeTokens};
 pub use document::{Document, MinimapNodeBox, MinimapSnapshot, Page};
 pub use scene::{
     ColorRgba, Edge, EdgeAnimation, EdgeId, EdgeKind, GroupId, Node, NodeId, NodeStyle, PageId,
