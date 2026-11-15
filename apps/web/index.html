@@ -1,146 +1,258 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="apple90s">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RustFlow Draw — Minimalist Developer Diagramming Engine</title>
+    <title>RustFlow Draw 8.5 — Macintosh Platinum Diagramming Engine</title>
     <style>
+      /* ==========================================================================
+         THEME TOKENS: APPLE 90s PLATINUM (DEFAULT) + DARK / LIGHT / SYSTEM 1 B&W
+         ========================================================================== */
+      :root,
+      :root[data-theme="apple90s"] {
+        --bg-desktop: #8080a4;
+        --bg-canvas: #f5f3ec;
+        --bg-panel: #dddddd;
+        --bg-subtle: #eeeeee;
+        --bg-well: #ffffff;
+        --bg-hover: #cccccc;
+        --border-outer: #000000;
+        --border-color: #777777;
+        --border-strong: #000000;
+        --bevel-light: #ffffff;
+        --bevel-dark: #888888;
+        --text-primary: #000000;
+        --text-muted: #3a3a3a;
+        --accent: #000080;
+        --accent-bright: #0055cc;
+        --accent-soft: #000080;
+        --accent-text: #ffffff;
+        --grid-dot: #b5b1a6;
+        --window-shadow: 2px 2px 0px #000000;
+        --btn-radius: 3px;
+        --panel-radius: 0px;
+        --font-ui: "Charcoal", "Chicago", "Geneva", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        --font-mono: "Monaco", "Menlo", "Courier New", monospace;
+      }
+
       :root[data-theme="light"] {
+        --bg-desktop: #cbd5e1;
         --bg-canvas: #f8fafc;
-        --bg-panel: #ffffff;
+        --bg-panel: #e8ecf2;
         --bg-subtle: #f1f5f9;
-        --bg-hover: #e2e8f0;
-        --border-color: #e2e8f0;
-        --border-strong: #cbd5e1;
+        --bg-well: #ffffff;
+        --bg-hover: #cbd5e1;
+        --border-outer: #1e293b;
+        --border-color: #94a3b8;
+        --border-strong: #0f172a;
+        --bevel-light: #ffffff;
+        --bevel-dark: #94a3b8;
         --text-primary: #0f172a;
-        --text-muted: #64748b;
-        --accent: #4f46e5;
-        --accent-soft: rgba(79, 70, 229, 0.1);
+        --text-muted: #475569;
+        --accent: #2563eb;
+        --accent-bright: #2563eb;
+        --accent-soft: #2563eb;
+        --accent-text: #ffffff;
         --grid-dot: #cbd5e1;
+        --window-shadow: 2px 2px 0px #1e293b;
+        --btn-radius: 3px;
+        --panel-radius: 0px;
+        --font-ui: "Charcoal", "Chicago", "Geneva", -apple-system, BlinkMacSystemFont, sans-serif;
+        --font-mono: "Monaco", "Menlo", monospace;
       }
+
       :root[data-theme="dark"] {
-        --bg-canvas: #090d16;
-        --bg-panel: #0f1420;
-        --bg-subtle: #161d2e;
-        --bg-hover: #1e293b;
-        --border-color: #1e293b;
-        --border-strong: #334155;
+        --bg-desktop: #090d16;
+        --bg-canvas: #0d121d;
+        --bg-panel: #242936;
+        --bg-subtle: #2f3646;
+        --bg-well: #161b26;
+        --bg-hover: #3b4458;
+        --border-outer: #000000;
+        --border-color: #475569;
+        --border-strong: #94a3b8;
+        --bevel-light: #475267;
+        --bevel-dark: #11151d;
         --text-primary: #f1f5f9;
-        --text-muted: #8b9bb4;
+        --text-muted: #a3b1c6;
         --accent: #38bdf8;
-        --accent-soft: rgba(56, 189, 248, 0.12);
-        --grid-dot: #1e293b;
+        --accent-bright: #38bdf8;
+        --accent-soft: #0284c7;
+        --accent-text: #ffffff;
+        --grid-dot: #263147;
+        --window-shadow: 2px 2px 0px #000000;
+        --btn-radius: 3px;
+        --panel-radius: 0px;
+        --font-ui: "Charcoal", "Chicago", "Geneva", -apple-system, BlinkMacSystemFont, sans-serif;
+        --font-mono: "Monaco", "Menlo", monospace;
       }
+
       :root[data-theme="contrast"] {
-        --bg-canvas: #000000;
-        --bg-panel: #0a0a0a;
-        --bg-subtle: #141414;
-        --bg-hover: #262626;
-        --border-color: #404040;
-        --border-strong: #facc15;
-        --text-primary: #ffffff;
-        --text-muted: #d4d4d4;
-        --accent: #22d3ee;
-        --accent-soft: rgba(34, 211, 238, 0.2);
-        --grid-dot: #333333;
+        --bg-desktop: #000000;
+        --bg-canvas: #ffffff;
+        --bg-panel: #ffffff;
+        --bg-subtle: #ffffff;
+        --bg-well: #ffffff;
+        --bg-hover: #000000;
+        --border-outer: #000000;
+        --border-color: #000000;
+        --border-strong: #000000;
+        --bevel-light: #000000;
+        --bevel-dark: #000000;
+        --text-primary: #000000;
+        --text-muted: #000000;
+        --accent: #000000;
+        --accent-bright: #000000;
+        --accent-soft: #000000;
+        --accent-text: #ffffff;
+        --grid-dot: #000000;
+        --window-shadow: 3px 3px 0px #000000;
+        --btn-radius: 0px;
+        --panel-radius: 0px;
+        --font-ui: "Chicago", "Monaco", monospace;
+        --font-mono: "Monaco", monospace;
       }
+
       * {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
         user-select: none;
-        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family: var(--font-ui);
+        -webkit-font-smoothing: antialiased;
       }
+
       body {
         width: 100vw;
         height: 100vh;
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        background: var(--bg-canvas);
+        background: var(--bg-desktop);
         color: var(--text-primary);
       }
 
-      /* Minimalist SVG Icon Helper */
+      /* Minimalist Monoline SVG Icon Helper */
       .icon-svg {
-        width: 14px;
-        height: 14px;
+        width: 13px;
+        height: 13px;
         stroke: currentColor;
-        stroke-width: 1.75;
+        stroke-width: 1.85;
         stroke-linecap: round;
         stroke-linejoin: round;
         fill: none;
         flex-shrink: 0;
       }
 
-      /* 1. Minimalist Top Dropdown Menubar */
+      /* ==========================================================================
+         1. ICONIC APPLE 90s SYSTEM 7 / MAC OS 8 TOP MENU BAR
+         ========================================================================== */
       .menubar {
-        height: 32px;
+        height: 26px;
         background: var(--bg-panel);
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 2px solid var(--border-outer);
+        box-shadow: inset 0 1px 0 var(--bevel-light);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 12px;
-        z-index: 50;
+        padding: 0 10px;
+        z-index: 60;
       }
+
       .menubar-left {
         display: flex;
         align-items: center;
-        gap: 2px;
+        height: 100%;
+        gap: 1px;
       }
+
+      /* 6-Color 90s Apple Rainbow Badge + Brand */
       .brand-logo {
-        font-weight: 600;
+        font-weight: 700;
         font-size: 12.5px;
         letter-spacing: -0.01em;
         color: var(--text-primary);
-        margin-right: 10px;
+        padding: 0 10px 0 4px;
+        height: 100%;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 7px;
       }
-      .brand-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 2px;
-        background: var(--accent);
-        display: inline-block;
+
+      .apple-rainbow-icon {
+        width: 14px;
+        height: 15px;
+        border: 1px solid #000;
+        border-radius: 3px 3px 5px 5px;
+        background: linear-gradient(
+          180deg,
+          #61bb46 0%,
+          #61bb46 16.6%,
+          #fdb827 16.6%,
+          #fdb827 33.3%,
+          #f5821f 33.3%,
+          #f5821f 50%,
+          #e03a3e 50%,
+          #e03a3e 66.6%,
+          #963d97 66.6%,
+          #963d97 83.3%,
+          #009ddc 83.3%,
+          #009ddc 100%
+        );
+        box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.45);
+        position: relative;
+        flex-shrink: 0;
       }
+      .apple-rainbow-icon::before {
+        content: "";
+        position: absolute;
+        top: -4px;
+        left: 6px;
+        width: 4px;
+        height: 3px;
+        background: #61bb46;
+        border: 1px solid #000;
+        border-radius: 3px 0 3px 0;
+      }
+
       .menu-item {
         position: relative;
-        padding: 4px 9px;
+        padding: 0 10px;
+        height: 100%;
+        display: flex;
+        align-items: center;
         font-size: 12px;
-        border-radius: 5px;
+        font-weight: 700;
         cursor: pointer;
-        color: var(--text-muted);
-        transition: background 0.12s, color 0.12s;
+        color: var(--text-primary);
       }
       .menu-item:hover,
       .menu-item.open {
-        background: var(--bg-subtle);
-        color: var(--text-primary);
+        background: var(--accent-soft);
+        color: var(--accent-text);
       }
+
       .dropdown-menu {
         display: none;
         position: absolute;
         top: 100%;
-        left: 0;
-        margin-top: 4px;
-        min-width: 215px;
+        left: -1px;
+        margin-top: 0;
+        min-width: 224px;
         background: var(--bg-panel);
-        border: 1px solid var(--border-strong);
-        border-radius: 7px;
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
-        padding: 4px;
+        border: 1.5px solid var(--border-outer);
+        box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.85), inset 1px 1px 0 var(--bevel-light), inset -1px -1px 0 var(--bevel-dark);
+        padding: 3px 0;
         z-index: 100;
       }
       .menu-item.open .dropdown-menu {
         display: block;
       }
+
       .dropdown-entry {
-        padding: 6px 10px;
+        padding: 5px 12px;
         font-size: 12px;
-        border-radius: 4px;
+        font-weight: 600;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -149,136 +261,252 @@
       }
       .dropdown-entry:hover {
         background: var(--accent-soft);
-        color: var(--accent);
+        color: var(--accent-text);
+      }
+      .dropdown-entry:hover .dropdown-shortcut {
+        color: var(--accent-text);
       }
       .dropdown-shortcut {
         font-size: 11px;
         color: var(--text-muted);
-        font-family: monospace;
+        font-family: var(--font-mono);
+        font-weight: 600;
       }
       .dropdown-divider {
-        height: 1px;
-        background: var(--border-color);
-        margin: 4px 2px;
+        height: 2px;
+        border-top: 1px solid var(--bevel-dark);
+        border-bottom: 1px solid var(--bevel-light);
+        margin: 3px 0;
       }
 
-      /* 2. Minimalist Single-Line Quick Toolbar */
+      .menubar-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 11.5px;
+        font-weight: 700;
+      }
+      .mac-app-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 1px 7px;
+        border-left: 1px solid var(--bevel-dark);
+        box-shadow: -1px 0 0 var(--bevel-light);
+      }
+
+      /* ==========================================================================
+         2. PLATINUM BEVELED QUICK CONTROL STRIP (TOOLBAR)
+         ========================================================================== */
       .quick-toolbar {
-        height: 38px;
+        height: 36px;
         background: var(--bg-panel);
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1.5px solid var(--border-outer);
+        box-shadow: inset 1px 1px 0 var(--bevel-light), inset -1px -1px 0 var(--bevel-dark);
         display: flex;
         align-items: center;
         gap: 5px;
-        padding: 0 12px;
+        padding: 0 10px;
         overflow-x: auto;
         white-space: nowrap;
         z-index: 40;
       }
       .toolbar-sep {
-        width: 1px;
-        height: 16px;
-        background: var(--border-color);
-        margin: 0 4px;
+        width: 2px;
+        height: 20px;
+        border-left: 1px solid var(--bevel-dark);
+        border-right: 1px solid var(--bevel-light);
+        margin: 0 3px;
       }
-      button, select, input {
-        font-size: 12px;
-        border-radius: 5px;
-        border: 1px solid var(--border-color);
+
+      /* Tactile 90s Apple Platinum 3D Beveled Buttons & Inputs */
+      button,
+      select {
+        font-size: 11.5px;
+        font-weight: 700;
+        border-radius: var(--btn-radius);
+        border: 1.5px solid var(--border-outer);
         background: var(--bg-subtle);
         color: var(--text-primary);
-        padding: 4px 8px;
+        padding: 3px 8px;
         cursor: pointer;
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        transition: border-color 0.12s, background 0.12s;
+        box-shadow: inset 1px 1px 0 var(--bevel-light), inset -1px -1px 0 var(--bevel-dark), 1px 1px 0 rgba(0, 0, 0, 0.2);
       }
-      button:hover, select:hover {
-        border-color: var(--border-strong);
+      button:hover,
+      select:hover {
         background: var(--bg-hover);
       }
+      button:active {
+        background: var(--accent-soft);
+        color: var(--accent-text);
+        box-shadow: inset 1px 1px 0 #000000;
+        transform: translate(0.5px, 0.5px);
+      }
       button.danger:hover {
-        border-color: #f43f5e;
-        color: #f43f5e;
+        background: #e03a3e;
+        color: #ffffff;
+        box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.4);
       }
 
-      /* Main 3-Column Workspace */
+      input[type="text"],
+      input[type="number"] {
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 0px;
+        border: 1.5px solid var(--border-outer);
+        background: var(--bg-well);
+        color: var(--text-primary);
+        padding: 4px 7px;
+        box-shadow: inset 1.5px 1.5px 0 var(--bevel-dark), inset -1px -1px 0 var(--bevel-light);
+      }
+      input[type="text"]:focus,
+      input[type="number"]:focus {
+        outline: 2px solid var(--accent-bright);
+        outline-offset: -1px;
+      }
+
+      /* ==========================================================================
+         3. CLASSIC MAC OS 8 PINSTRIPE WINDOW CHROME & 3-COLUMN WORKSPACE
+         ========================================================================== */
       .workspace {
         flex: 1;
         display: grid;
-        grid-template-columns: 248px 1fr 280px;
+        grid-template-columns: 256px 1fr 286px;
+        gap: 4px;
+        padding: 4px;
         overflow: hidden;
         position: relative;
+        background: var(--bg-desktop);
+        /* Classic Mac OS 8 Desktop stipple pattern */
+        background-image: radial-gradient(rgba(0, 0, 0, 0.16) 1px, transparent 0);
+        background-size: 4px 4px;
       }
 
-      /* Left Sidebar: Minimalist Drag-and-Drop Stencil Palette */
-      .sidebar-left {
+      .mac-window {
         background: var(--bg-panel);
-        border-right: 1px solid var(--border-color);
-        padding: 10px;
+        border: 1.5px solid var(--border-outer);
+        box-shadow: var(--window-shadow), inset 1px 1px 0 var(--bevel-light), inset -1px -1px 0 var(--bevel-dark);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* Authentic 90s Apple Platinum Pinstripe Window Title Bar */
+      .mac-titlebar {
+        height: 22px;
+        padding: 0 6px;
+        border-bottom: 1.5px solid var(--border-outer);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        background: repeating-linear-gradient(
+          0deg,
+          var(--bg-panel) 0px,
+          var(--bg-panel) 1px,
+          var(--bevel-light) 1px,
+          var(--bevel-light) 2px
+        );
+        box-shadow: inset 1px 1px 0 var(--bevel-light), inset -1px -1px 0 var(--bevel-dark);
+        flex-shrink: 0;
+      }
+      .mac-window-box {
+        width: 11px;
+        height: 11px;
+        background: var(--bg-subtle);
+        border: 1px solid var(--border-outer);
+        box-shadow: inset 1px 1px 0 var(--bevel-light), inset -1px -1px 0 var(--bevel-dark);
+        flex-shrink: 0;
+      }
+      .mac-titlebar-label {
+        background: var(--bg-panel);
+        padding: 0 8px;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Left Sidebar: Stencil Palette Window */
+      .sidebar-left-body {
+        padding: 8px;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 8px;
+        flex: 1;
       }
       .palette-hint {
         font-size: 10.5px;
+        font-weight: 600;
         color: var(--text-muted);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 2px;
+        padding: 2px 2px;
       }
       .search-input {
         width: 100%;
-        padding: 6px 9px;
         cursor: text;
       }
       .palette-section-title {
-        font-size: 10px;
-        font-weight: 600;
+        font-size: 10.5px;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--text-muted);
+        letter-spacing: 0.04em;
+        color: var(--text-primary);
+        background: var(--bg-hover);
+        border: 1px solid var(--border-color);
+        box-shadow: inset 1px 1px 0 var(--bevel-light);
+        padding: 2px 6px;
         margin-bottom: 6px;
       }
       .stencil-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 6px;
+        gap: 5px;
       }
       .stencil-card {
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        padding: 6px 7px;
+        border: 1.5px solid var(--border-outer);
+        border-radius: 2px;
+        padding: 5px 6px;
         font-size: 11px;
-        font-weight: 500;
+        font-weight: 700;
         display: flex;
         align-items: center;
-        gap: 7px;
+        gap: 6px;
         background: var(--bg-subtle);
+        box-shadow: inset 1px 1px 0 var(--bevel-light), inset -1px -1px 0 var(--bevel-dark), 1px 1px 0 rgba(0, 0, 0, 0.25);
         cursor: grab;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        transition: border-color 0.12s, transform 0.1s, background 0.12s;
       }
       .stencil-card:hover {
-        border-color: var(--accent);
-        background: var(--bg-hover);
+        background: var(--bg-well);
+        border-color: var(--accent-bright);
       }
       .stencil-card:active {
         cursor: grabbing;
-        transform: scale(0.97);
+        background: var(--accent-soft);
+        color: var(--accent-text);
+        box-shadow: inset 1px 1px 0 #000000;
+        transform: translate(1px, 1px);
       }
 
-      /* Center Canvas */
+      /* Center Canvas Window */
       .canvas-container {
         position: relative;
         width: 100%;
-        height: 100%;
+        flex: 1;
         overflow: hidden;
+        border: 1px solid var(--border-color);
+        box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.2);
       }
       canvas#rustflow-canvas {
         width: 100%;
@@ -287,80 +515,86 @@
       }
       .minimap {
         position: absolute;
-        right: 14px;
-        bottom: 14px;
+        right: 12px;
+        bottom: 12px;
         width: 176px;
         height: 112px;
-        background: var(--bg-panel);
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+        background: var(--bg-well);
+        border: 1.5px solid var(--border-outer);
+        box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.65);
         pointer-events: none;
       }
 
-      /* 3. Draw.io Minimalist Right Format Panel */
-      .sidebar-right {
-        background: var(--bg-panel);
-        border-left: 1px solid var(--border-color);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
-      .format-header {
-        padding: 9px 12px;
-        font-size: 12px;
-        font-weight: 600;
+      /* Right Sidebar: Format Inspector Window */
+      .format-subheader {
+        padding: 6px 10px;
+        font-size: 11px;
+        font-weight: 700;
         border-bottom: 1px solid var(--border-color);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: var(--bg-panel);
+        background: var(--bg-subtle);
+        box-shadow: inset 1px 1px 0 var(--bevel-light);
       }
       .format-tabs {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        border-bottom: 1px solid var(--border-color);
+        gap: 3px;
+        padding: 5px 8px 0 8px;
+        border-bottom: 1.5px solid var(--border-outer);
         background: var(--bg-panel);
       }
       .format-tab {
-        padding: 8px 4px;
+        padding: 5px 4px;
         text-align: center;
-        font-size: 11.5px;
-        font-weight: 500;
-        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-primary);
         cursor: pointer;
-        border-bottom: 2px solid transparent;
+        background: var(--bg-hover);
+        border: 1.5px solid var(--border-outer);
+        border-bottom: none;
+        border-radius: 4px 4px 0 0;
+        box-shadow: inset 1px 1px 0 var(--bevel-light);
       }
       .format-tab.active {
-        color: var(--accent);
-        border-bottom-color: var(--accent);
-        background: var(--accent-soft);
+        background: var(--bg-subtle);
+        color: var(--accent-bright);
+        position: relative;
+        top: 1.5px;
+        padding-bottom: 6.5px;
       }
       .format-body {
         flex: 1;
-        padding: 12px;
+        padding: 10px;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
+        background: var(--bg-subtle);
       }
       .format-section {
         display: flex;
         flex-direction: column;
         gap: 6px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid var(--border-color);
+        padding: 8px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        box-shadow: inset 1px 1px 0 var(--bevel-light), inset -1px -1px 0 var(--bevel-dark);
       }
       .format-section label {
         font-size: 11px;
-        color: var(--text-muted);
-        font-weight: 500;
+        color: var(--text-primary);
+        font-weight: 700;
       }
       .format-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 6px;
         align-items: center;
+        font-size: 11.5px;
+        font-weight: 600;
       }
       .swatch-grid {
         display: grid;
@@ -369,25 +603,30 @@
       }
       .swatch {
         height: 22px;
-        border-radius: 4px;
-        border: 1.5px solid transparent;
+        border-radius: 1px;
+        border: 1.5px solid var(--border-outer);
+        box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.5), 1px 1px 0 rgba(0, 0, 0, 0.35);
         cursor: pointer;
       }
       .swatch:hover {
-        transform: scale(1.06);
-        border-color: var(--text-primary);
+        transform: translate(-1px, -1px);
+        box-shadow: 2px 2px 0 #000000;
       }
 
-      /* Footer Page Tabs */
+      /* ==========================================================================
+         4. MACINTOSH FINDER FOOTER & PAGE TABS
+         ========================================================================== */
       footer {
         height: 28px;
         background: var(--bg-panel);
-        border-top: 1px solid var(--border-color);
+        border-top: 1.5px solid var(--border-outer);
+        box-shadow: inset 1px 1px 0 var(--bevel-light);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 12px;
+        padding: 0 10px;
         font-size: 11px;
+        font-weight: 700;
       }
       .page-tabs {
         display: flex;
@@ -395,66 +634,77 @@
         gap: 4px;
       }
       .page-tab {
-        padding: 3px 10px;
-        border-radius: 4px;
+        padding: 2px 10px;
+        border: 1.5px solid var(--border-outer);
+        background: var(--bg-hover);
+        box-shadow: inset 1px 1px 0 var(--bevel-light), inset -1px -1px 0 var(--bevel-dark);
         cursor: pointer;
-        color: var(--text-muted);
-        font-weight: 500;
+        color: var(--text-primary);
+        font-weight: 700;
       }
       .page-tab.active {
         background: var(--accent-soft);
-        color: var(--accent);
+        color: var(--accent-text);
+        box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.3);
       }
       .status-bar {
-        color: var(--text-muted);
-        font-family: monospace;
+        color: var(--text-primary);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        background: var(--bg-well);
+        border: 1px solid var(--border-color);
+        box-shadow: inset 1px 1px 0 var(--bevel-dark);
+        padding: 2px 8px;
       }
 
-      /* Command Palette & Modals */
+      /* ==========================================================================
+         5. CLASSIC MAC SYSTEM 7 / OS 8 DIALOG MODALS & TOASTS
+         ========================================================================== */
       .cmd-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.55);
+        background: rgba(0, 0, 0, 0.45);
         display: none;
         align-items: flex-start;
         justify-content: center;
-        padding-top: 12vh;
+        padding-top: 11vh;
         z-index: 200;
       }
       .cmd-overlay.open {
         display: flex;
       }
       .cmd-modal {
-        width: 520px;
+        width: 530px;
         background: var(--bg-panel);
-        border: 1px solid var(--border-strong);
-        border-radius: 8px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+        border: 2px solid var(--border-outer);
+        box-shadow: 5px 5px 0px #000000, inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark);
         overflow: hidden;
       }
       .cmd-input {
         width: 100%;
-        padding: 10px 14px;
+        padding: 9px 12px;
         font-size: 13px;
         border: none;
-        border-bottom: 1px solid var(--border-color);
-        border-radius: 0;
+        border-bottom: 1.5px solid var(--border-outer);
         outline: none;
       }
       .cmd-list {
         max-height: 280px;
         overflow-y: auto;
+        background: var(--bg-well);
       }
       .cmd-item {
-        padding: 8px 14px;
+        padding: 7px 12px;
         font-size: 12px;
+        font-weight: 700;
         display: flex;
         justify-content: space-between;
         cursor: pointer;
+        border-bottom: 1px dotted var(--border-color);
       }
       .cmd-item:hover {
         background: var(--accent-soft);
-        color: var(--accent);
+        color: var(--accent-text);
       }
       #inline-editor {
         position: absolute;
@@ -462,26 +712,27 @@
         z-index: 30;
         padding: 4px 8px;
         font-size: 13px;
-        font-weight: 500;
+        font-weight: 700;
         text-align: center;
-        border: 1.5px solid var(--accent);
+        border: 2px solid var(--border-outer);
+        background: var(--bg-well);
+        box-shadow: 3px 3px 0px #000000;
       }
       .toast-badge {
         position: absolute;
-        left: 16px;
-        bottom: 16px;
-        background: var(--bg-panel);
-        border: 1px solid var(--border-strong);
+        left: 14px;
+        bottom: 14px;
+        background: var(--bg-well);
+        border: 2px solid var(--border-outer);
         color: var(--text-primary);
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 500;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+        padding: 5px 12px;
+        font-size: 11.5px;
+        font-weight: 700;
+        box-shadow: 3px 3px 0px #000000;
         pointer-events: none;
         opacity: 0;
         transform: translateY(6px);
-        transition: opacity 0.15s ease, transform 0.15s ease;
+        transition: opacity 0.12s ease, transform 0.12s ease;
         z-index: 45;
       }
       .toast-badge.show {
@@ -491,108 +742,120 @@
       .shortcuts-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 8px 18px;
-        padding: 14px;
-        font-size: 12px;
+        gap: 6px 16px;
+        padding: 12px;
+        font-size: 11.5px;
+        font-weight: 600;
+        background: var(--bg-subtle);
       }
       .shortcut-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 4px 0;
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1px dotted var(--border-color);
       }
       .kbd {
-        font-family: monospace;
-        font-size: 11px;
-        background: var(--bg-subtle);
-        border: 1px solid var(--border-color);
-        padding: 2px 6px;
-        border-radius: 4px;
-        color: var(--accent);
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        font-weight: 700;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-outer);
+        box-shadow: inset 1px 1px 0 var(--bevel-light), 1px 1px 0 #000000;
+        padding: 1px 6px;
+        color: var(--text-primary);
       }
     </style>
   </head>
   <body>
-    <!-- Row 1: Minimalist Dropdown Menu Bar -->
+    <!-- Row 1: Iconic Apple 90s System 7 / Mac OS 8 Menu Bar -->
     <nav class="menubar" id="menubar">
       <div class="menubar-left">
-        <div class="brand-logo"><span class="brand-dot"></span>RustFlow</div>
+        <div class="brand-logo" title="RustFlow Draw — Macintosh System 8.5 Platinum Edition">
+          <span class="apple-rainbow-icon"></span>
+          <span>RustFlow</span>
+        </div>
 
         <div class="menu-item" data-menu="file">
           File
           <div class="dropdown-menu">
-            <div class="dropdown-entry" data-action="new-page"><span>New Page Tab</span><span class="dropdown-shortcut">Page+</span></div>
+            <div class="dropdown-entry" data-action="new-page"><span>New Page Tab</span><span class="dropdown-shortcut">⌘N</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="export-drawio"><span>Save .drawio XML</span><span class="dropdown-shortcut">Ctrl+S</span></div>
-            <div class="dropdown-entry" data-action="export-svg"><span>Export Animated SVG</span><span class="dropdown-shortcut">Ctrl+E</span></div>
-            <div class="dropdown-entry" data-action="export-json"><span>Export Native JSON</span><span class="dropdown-shortcut">.json</span></div>
+            <div class="dropdown-entry" data-action="export-drawio"><span>Save .drawio XML...</span><span class="dropdown-shortcut">⌘S</span></div>
+            <div class="dropdown-entry" data-action="export-svg"><span>Export Animated SVG...</span><span class="dropdown-shortcut">⌘E</span></div>
+            <div class="dropdown-entry" data-action="export-json"><span>Export Native JSON...</span><span class="dropdown-shortcut">.json</span></div>
           </div>
         </div>
 
         <div class="menu-item" data-menu="edit">
           Edit
           <div class="dropdown-menu">
-            <div class="dropdown-entry" data-action="undo"><span>Undo</span><span class="dropdown-shortcut">Ctrl+Z</span></div>
-            <div class="dropdown-entry" data-action="redo"><span>Redo</span><span class="dropdown-shortcut">Ctrl+Y</span></div>
+            <div class="dropdown-entry" data-action="undo"><span>Undo</span><span class="dropdown-shortcut">⌘Z</span></div>
+            <div class="dropdown-entry" data-action="redo"><span>Redo</span><span class="dropdown-shortcut">⌘Y</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="cut"><span>Cut</span><span class="dropdown-shortcut">Ctrl+X</span></div>
-            <div class="dropdown-entry" data-action="copy"><span>Copy</span><span class="dropdown-shortcut">Ctrl+C</span></div>
-            <div class="dropdown-entry" data-action="paste"><span>Paste</span><span class="dropdown-shortcut">Ctrl+V</span></div>
-            <div class="dropdown-entry" data-action="duplicate"><span>Duplicate</span><span class="dropdown-shortcut">Ctrl+D</span></div>
+            <div class="dropdown-entry" data-action="cut"><span>Cut</span><span class="dropdown-shortcut">⌘X</span></div>
+            <div class="dropdown-entry" data-action="copy"><span>Copy</span><span class="dropdown-shortcut">⌘C</span></div>
+            <div class="dropdown-entry" data-action="paste"><span>Paste</span><span class="dropdown-shortcut">⌘V</span></div>
+            <div class="dropdown-entry" data-action="duplicate"><span>Duplicate</span><span class="dropdown-shortcut">⌘D</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="select-all"><span>Select All</span><span class="dropdown-shortcut">Ctrl+A</span></div>
+            <div class="dropdown-entry" data-action="select-all"><span>Select All</span><span class="dropdown-shortcut">⌘A</span></div>
             <div class="dropdown-entry" data-action="clear-selection"><span>Deselect All</span><span class="dropdown-shortcut">Esc</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="delete"><span>Delete Selected</span><span class="dropdown-shortcut">Del</span></div>
+            <div class="dropdown-entry" data-action="delete"><span>Clear / Delete</span><span class="dropdown-shortcut">Del</span></div>
           </div>
         </div>
 
         <div class="menu-item" data-menu="view">
           View
           <div class="dropdown-menu">
-            <div class="dropdown-entry" data-action="fit-view"><span>Fit Diagram to Screen</span><span class="dropdown-shortcut">Ctrl+1</span></div>
-            <div class="dropdown-entry" data-action="zoom-in"><span>Zoom In</span><span class="dropdown-shortcut">Ctrl++</span></div>
-            <div class="dropdown-entry" data-action="zoom-out"><span>Zoom Out</span><span class="dropdown-shortcut">Ctrl+-</span></div>
-            <div class="dropdown-entry" data-action="zoom-reset"><span>Reset View (100%)</span><span class="dropdown-shortcut">Ctrl+0</span></div>
+            <div class="dropdown-entry" data-action="fit-view"><span>Fit Diagram to Window</span><span class="dropdown-shortcut">⌘1</span></div>
+            <div class="dropdown-entry" data-action="zoom-in"><span>Zoom In</span><span class="dropdown-shortcut">⌘+</span></div>
+            <div class="dropdown-entry" data-action="zoom-out"><span>Zoom Out</span><span class="dropdown-shortcut">⌘-</span></div>
+            <div class="dropdown-entry" data-action="zoom-reset"><span>Actual Size (100%)</span><span class="dropdown-shortcut">⌘0</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="toggle-grid"><span>Toggle Grid</span><span class="dropdown-shortcut">Ctrl+G</span></div>
+            <div class="dropdown-entry" data-action="toggle-grid"><span>Cycle Grid Style</span><span class="dropdown-shortcut">⌘G</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="theme-dark"><span>Theme: Dark</span></div>
-            <div class="dropdown-entry" data-action="theme-light"><span>Theme: Light</span></div>
-            <div class="dropdown-entry" data-action="theme-contrast"><span>Theme: High Contrast</span></div>
+            <div class="dropdown-entry" data-action="theme-apple90s"><span>Theme: Apple 90s Platinum</span></div>
+            <div class="dropdown-entry" data-action="theme-dark"><span>Theme: Dark Platinum</span></div>
+            <div class="dropdown-entry" data-action="theme-light"><span>Theme: Light Modern</span></div>
+            <div class="dropdown-entry" data-action="theme-contrast"><span>Theme: System 1.0 B&amp;W</span></div>
           </div>
         </div>
 
         <div class="menu-item" data-menu="arrange">
           Arrange
           <div class="dropdown-menu">
-            <div class="dropdown-entry" data-action="layout-hier"><span>Auto-Layout: Hierarchical</span><span class="dropdown-shortcut">Ctrl+Shift+L</span></div>
+            <div class="dropdown-entry" data-action="layout-hier"><span>Auto-Layout: Hierarchical</span><span class="dropdown-shortcut">⇧⌘L</span></div>
             <div class="dropdown-entry" data-action="layout-grid"><span>Auto-Layout: Grid</span></div>
             <div class="dropdown-entry" data-action="layout-radial"><span>Auto-Layout: Radial Ring</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="bring-front"><span>Bring to Front</span><span class="dropdown-shortcut">Ctrl+]</span></div>
-            <div class="dropdown-entry" data-action="send-back"><span>Send to Back</span><span class="dropdown-shortcut">Ctrl+[</span></div>
+            <div class="dropdown-entry" data-action="bring-front"><span>Bring to Front</span><span class="dropdown-shortcut">⌘]</span></div>
+            <div class="dropdown-entry" data-action="send-back"><span>Send to Back</span><span class="dropdown-shortcut">⌘[</span></div>
           </div>
         </div>
 
         <div class="menu-item" data-menu="extras">
-          Extras
+          Special
           <div class="dropdown-menu">
-            <div class="dropdown-entry" data-action="shortcuts"><span>Keyboard Shortcuts</span><span class="dropdown-shortcut">?</span></div>
-            <div class="dropdown-entry" data-action="cmd-palette"><span>Command Palette</span><span class="dropdown-shortcut">Ctrl+K</span></div>
+            <div class="dropdown-entry" data-action="shortcuts"><span>Keyboard Shortcuts...</span><span class="dropdown-shortcut">?</span></div>
+            <div class="dropdown-entry" data-action="cmd-palette"><span>Command Launcher...</span><span class="dropdown-shortcut">⌘K</span></div>
             <div class="dropdown-divider"></div>
             <div class="dropdown-entry" data-action="stress-100"><span>Benchmark 100-Node Graph</span></div>
           </div>
         </div>
       </div>
 
-      <div style="font-size: 11px; color: var(--text-muted);">
-        Drag shapes from left panel · <b>Shift+Drag</b> Box Select · <b>?</b> Shortcuts
+      <div class="menubar-right">
+        <span style="color: var(--text-muted);">Drag Stencils · <b>Shift+Drag</b> Marquee · <b>?</b> Help</span>
+        <div class="mac-app-badge">
+          <span id="mac-clock">9:41 AM</span>
+          <span>·</span>
+          <span>Mac OS 8.5</span>
+        </div>
       </div>
     </nav>
 
-    <!-- Row 2: Minimalist Monoline SVG Quick Toolbar -->
+    <!-- Row 2: Platinum Beveled Quick Control Strip -->
     <div class="quick-toolbar">
       <button id="btn-undo" title="Undo (Ctrl+Z)">
         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
@@ -625,7 +888,7 @@
       </button>
       <div class="toolbar-sep"></div>
       <button id="btn-zoom-out" title="Zoom Out (Ctrl+-)">−</button>
-      <span id="zoom-label" style="font-size:11px; min-width:42px; text-align:center; font-family:monospace;">100%</span>
+      <span id="zoom-label" style="font-size:11px; min-width:44px; text-align:center; font-family:var(--font-mono); font-weight:700;">100%</span>
       <button id="btn-zoom-in" title="Zoom In (Ctrl++)">+</button>
       <button id="btn-fit-view" title="Fit Diagram to Screen (Ctrl+1)">
         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
@@ -653,35 +916,54 @@
       </button>
       <button id="btn-cmd-palette" title="Command Palette (Ctrl+K)">
         <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        Ctrl+K
+        ⌘K
       </button>
     </div>
 
-    <!-- Main 3-Column Workspace -->
+    <!-- Main 3-Column Macintosh Platinum Workspace -->
     <div class="workspace">
-      <!-- Left Sidebar: Minimalist Drag-and-Drop Stencil Palette -->
-      <aside class="sidebar-left">
-        <input id="palette-search" class="search-input" type="text" placeholder="Filter 27 minimalist symbols..." />
-        <div class="palette-hint">
-          <span>Drag onto canvas or click</span>
-          <span style="font-family:monospace;">27 shapes</span>
+      <!-- Left Window: Drag-and-Drop Stencil Palette -->
+      <aside class="mac-window">
+        <div class="mac-titlebar">
+          <span class="mac-window-box"></span>
+          <span class="mac-titlebar-label">Stencils &amp; Symbols</span>
+          <span class="mac-window-box"></span>
         </div>
-        <div id="palette-list"></div>
+        <div class="sidebar-left-body">
+          <input id="palette-search" class="search-input" type="text" placeholder="Search 27 symbols..." />
+          <div class="palette-hint">
+            <span>Drag to canvas or click</span>
+            <span style="font-family:var(--font-mono);">27 items</span>
+          </div>
+          <div id="palette-list"></div>
+        </div>
       </aside>
 
-      <!-- Center Infinite Canvas -->
-      <main class="canvas-container">
-        <canvas id="rustflow-canvas"></canvas>
-        <input id="inline-editor" type="text" />
-        <div id="toast-badge" class="toast-badge"></div>
-        <canvas id="minimap-canvas" class="minimap" width="176" height="112"></canvas>
+      <!-- Center Window: Infinite Drafting Canvas -->
+      <main class="mac-window">
+        <div class="mac-titlebar">
+          <span class="mac-window-box"></span>
+          <span class="mac-titlebar-label" id="window-canvas-title">RustFlow Canvas — Macintosh Platinum</span>
+          <span class="mac-window-box"></span>
+        </div>
+        <div class="canvas-container">
+          <canvas id="rustflow-canvas"></canvas>
+          <input id="inline-editor" type="text" />
+          <div id="toast-badge" class="toast-badge"></div>
+          <canvas id="minimap-canvas" class="minimap" width="176" height="112"></canvas>
+        </div>
       </main>
 
-      <!-- Right Sidebar: Minimalist Context-Sensitive Format Panel -->
-      <aside class="sidebar-right">
-        <div class="format-header">
+      <!-- Right Window: Context-Sensitive Format Inspector -->
+      <aside class="mac-window">
+        <div class="mac-titlebar">
+          <span class="mac-window-box"></span>
+          <span class="mac-titlebar-label">Inspector</span>
+          <span class="mac-window-box"></span>
+        </div>
+        <div class="format-subheader">
           <span id="format-context-title">Format</span>
-          <span id="format-selection-badge" style="font-size:10px; color:var(--accent); font-family:monospace;">Diagram</span>
+          <span id="format-selection-badge" style="font-size:10.5px; color:var(--accent-bright); font-family:var(--font-mono);">Diagram</span>
         </div>
         <div class="format-tabs" id="format-tabs">
           <div class="format-tab active" data-tab="style">Style</div>
@@ -692,49 +974,58 @@
       </aside>
     </div>
 
+    <!-- Macintosh Finder Bottom Bar -->
     <footer>
       <div class="page-tabs" id="page-tabs"></div>
       <div class="status-bar" id="status-bar">FPS: 60 | Zoom: 100% | Selected: 1 | Nodes: 5 | Edges: 6</div>
     </footer>
 
+    <!-- Command Launcher Dialog -->
     <div class="cmd-overlay" id="cmd-overlay">
       <div class="cmd-modal">
+        <div class="mac-titlebar">
+          <span class="mac-window-box"></span>
+          <span class="mac-titlebar-label">Macintosh Command Launcher</span>
+          <span class="mac-window-box"></span>
+        </div>
         <input id="cmd-input" class="cmd-input" type="text" placeholder="Type a command or shape name (Esc to close)..." />
         <div id="cmd-list" class="cmd-list"></div>
       </div>
     </div>
 
+    <!-- Keyboard Shortcuts Dialog -->
     <div class="cmd-overlay" id="shortcuts-overlay">
-      <div class="cmd-modal" style="width: 600px;">
-        <div class="format-header" style="padding: 10px 14px;">
-          <span>Keyboard Shortcuts</span>
-          <button id="btn-close-shortcuts" style="padding: 2px 8px;">Esc</button>
+      <div class="cmd-modal" style="width: 610px;">
+        <div class="mac-titlebar">
+          <span class="mac-window-box" id="btn-close-shortcuts" style="cursor:pointer;" title="Close"></span>
+          <span class="mac-titlebar-label">Macintosh Keyboard Shortcuts</span>
+          <span class="mac-window-box"></span>
         </div>
         <div class="shortcuts-grid">
-          <div class="shortcut-row"><span>Select All</span><span class="kbd">Ctrl + A</span></div>
-          <div class="shortcut-row"><span>Copy Selection</span><span class="kbd">Ctrl + C</span></div>
-          <div class="shortcut-row"><span>Cut Selection</span><span class="kbd">Ctrl + X</span></div>
-          <div class="shortcut-row"><span>Paste Selection</span><span class="kbd">Ctrl + V</span></div>
-          <div class="shortcut-row"><span>Duplicate Selection</span><span class="kbd">Ctrl + D</span></div>
+          <div class="shortcut-row"><span>Select All</span><span class="kbd">⌘A / Ctrl+A</span></div>
+          <div class="shortcut-row"><span>Copy Selection</span><span class="kbd">⌘C / Ctrl+C</span></div>
+          <div class="shortcut-row"><span>Cut Selection</span><span class="kbd">⌘X / Ctrl+X</span></div>
+          <div class="shortcut-row"><span>Paste Selection</span><span class="kbd">⌘V / Ctrl+V</span></div>
+          <div class="shortcut-row"><span>Duplicate Selection</span><span class="kbd">⌘D / Ctrl+D</span></div>
           <div class="shortcut-row"><span>Delete Selection</span><span class="kbd">Del / Backspace</span></div>
-          <div class="shortcut-row"><span>Undo</span><span class="kbd">Ctrl + Z</span></div>
-          <div class="shortcut-row"><span>Redo</span><span class="kbd">Ctrl + Y / Ctrl+Shift+Z</span></div>
+          <div class="shortcut-row"><span>Undo</span><span class="kbd">⌘Z / Ctrl+Z</span></div>
+          <div class="shortcut-row"><span>Redo</span><span class="kbd">⌘Y / ⇧⌘Z</span></div>
           <div class="shortcut-row"><span>Multi-Select Toggle</span><span class="kbd">Shift + Click</span></div>
           <div class="shortcut-row"><span>Rubber-Band Box Select</span><span class="kbd">Shift + Drag</span></div>
           <div class="shortcut-row"><span>Edit Label Inline</span><span class="kbd">F2 / Enter / DblClick</span></div>
           <div class="shortcut-row"><span>Nudge Selection (5px / 20px)</span><span class="kbd">Arrows / Shift+Arrows</span></div>
-          <div class="shortcut-row"><span>Zoom In / Out</span><span class="kbd">Ctrl + + / Ctrl + -</span></div>
-          <div class="shortcut-row"><span>Reset Zoom (100%)</span><span class="kbd">Ctrl + 0</span></div>
-          <div class="shortcut-row"><span>Fit Diagram to Screen</span><span class="kbd">Ctrl + 1</span></div>
-          <div class="shortcut-row"><span>Toggle Grid Style</span><span class="kbd">Ctrl + G</span></div>
-          <div class="shortcut-row"><span>Bring to Front / Send Back</span><span class="kbd">Ctrl + ] / Ctrl + [</span></div>
-          <div class="shortcut-row"><span>Auto-Layout Hierarchical</span><span class="kbd">Ctrl + Shift + L</span></div>
-          <div class="shortcut-row"><span>Save .drawio XML</span><span class="kbd">Ctrl + S</span></div>
-          <div class="shortcut-row"><span>Command Palette</span><span class="kbd">Ctrl + K</span></div>
+          <div class="shortcut-row"><span>Zoom In / Out</span><span class="kbd">⌘+ / ⌘-</span></div>
+          <div class="shortcut-row"><span>Reset Zoom (100%)</span><span class="kbd">⌘0 / Ctrl+0</span></div>
+          <div class="shortcut-row"><span>Fit Diagram to Screen</span><span class="kbd">⌘1 / Ctrl+1</span></div>
+          <div class="shortcut-row"><span>Toggle Grid Style</span><span class="kbd">⌘G / Ctrl+G</span></div>
+          <div class="shortcut-row"><span>Bring to Front / Send Back</span><span class="kbd">⌘] / ⌘[</span></div>
+          <div class="shortcut-row"><span>Auto-Layout Hierarchical</span><span class="kbd">⇧⌘L / Ctrl+Shift+L</span></div>
+          <div class="shortcut-row"><span>Save .drawio XML</span><span class="kbd">⌘S / Ctrl+S</span></div>
+          <div class="shortcut-row"><span>Command Palette</span><span class="kbd">⌘K / Ctrl+K</span></div>
         </div>
       </div>
     </div>
 
-    <script type="module" src="/src/app.js?v=5"></script>
+    <script type="module" src="/src/app.js?v=6"></script>
   </body>
 </html>

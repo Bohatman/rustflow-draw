@@ -49,18 +49,20 @@ const STENCILS = [
 ];
 
 const STYLE_SWATCHES = [
+  // Apple 90s 6-Color Rainbow & Macintosh Platinum Swatches
+  { fill: "#ffffff", stroke: "#000080" },
+  { fill: "#f2faef", stroke: "#2d8a1e" },
+  { fill: "#fff9e6", stroke: "#c47f00" },
+  { fill: "#fff2eb", stroke: "#d95b00" },
+  { fill: "#fdecee", stroke: "#c92027" },
+  { fill: "#f5edf7", stroke: "#7a267b" },
+  { fill: "#e8f6fc", stroke: "#0077b5" },
+  { fill: "#e6e6e6", stroke: "#000000" },
+  // Dark / Modern Swatches
   { fill: "#131b2e", stroke: "#38bdf8" },
   { fill: "#161632", stroke: "#818cf8" },
   { fill: "#0c2924", stroke: "#34d399" },
-  { fill: "#2b1c10", stroke: "#fbbf24" },
   { fill: "#2d1220", stroke: "#f43f5e" },
-  { fill: "#241236", stroke: "#c084fc" },
-  { fill: "#ffffff", stroke: "#4f46e5" },
-  { fill: "#f0f9ff", stroke: "#0284c7" },
-  { fill: "#f0fdf4", stroke: "#16a34a" },
-  { fill: "#fffbeb", stroke: "#d97706" },
-  { fill: "#fff1f2", stroke: "#e11d48" },
-  { fill: "#0f172a", stroke: "#94a3b8" },
 ];
 
 function createDogfoodPages() {
@@ -71,19 +73,19 @@ function createDogfoodPages() {
       pan: { x: 50, y: 40 },
       zoom: 1.0,
       nodes: [
-        { id: 1, title: "crates/core", body: "R-Tree + Scene + CRDT", x: 70, y: 155, w: 180, h: 86, fill: "#131b2e", stroke: "#818cf8", shape: "uml_package", z: 1 },
-        { id: 2, title: "crates/renderer", body: "wgpu WGSL + Bezier", x: 355, y: 45, w: 185, h: 78, fill: "#131b2e", stroke: "#38bdf8", shape: "uml_component", z: 2 },
-        { id: 3, title: "crates/layout", body: "Sugiyama + Force + Spring", x: 355, y: 160, w: 185, h: 78, fill: "#131b2e", stroke: "#34d399", shape: "hexagon", z: 3 },
-        { id: 4, title: "crates/io-formats", body: ".drawio XML + SVG + PDF", x: 355, y: 280, w: 185, h: 82, fill: "#131b2e", stroke: "#fbbf24", shape: "document", z: 4 },
-        { id: 5, title: "crates/ui-bridge", body: "WASM & Tauri v2 Shell", x: 650, y: 155, w: 205, h: 108, fill: "#131b2e", stroke: "#f472b6", shape: "browser", z: 5 },
+        { id: 1, title: "crates/core", body: "R-Tree + Scene + CRDT", x: 70, y: 155, w: 180, h: 86, fill: "#ffffff", stroke: "#000080", shape: "uml_package", z: 1 },
+        { id: 2, title: "crates/renderer", body: "wgpu WGSL + Bezier", x: 355, y: 45, w: 185, h: 78, fill: "#e8f6fc", stroke: "#0077b5", shape: "uml_component", z: 2 },
+        { id: 3, title: "crates/layout", body: "Sugiyama + Force + Spring", x: 355, y: 160, w: 185, h: 78, fill: "#f2faef", stroke: "#2d8a1e", shape: "hexagon", z: 3 },
+        { id: 4, title: "crates/io-formats", body: ".drawio XML + SVG + PDF", x: 355, y: 280, w: 185, h: 82, fill: "#fff9e6", stroke: "#c47f00", shape: "document", z: 4 },
+        { id: 5, title: "crates/ui-bridge", body: "WASM & Tauri v2 Shell", x: 650, y: 155, w: 205, h: 108, fill: "#f5edf7", stroke: "#7a267b", shape: "browser", z: 5 },
       ],
       edges: [
-        { id: 101, source: 1, sourcePort: "right", target: 2, targetPort: "left", label: "Frustum Query", anim: "pulse", kind: "bezier", color: "#818cf8", width: 1.8, bend: null },
-        { id: 102, source: 1, sourcePort: "right", target: 3, targetPort: "left", label: "Graph Moves", anim: "ants", kind: "bezier", color: "#34d399", width: 1.8, bend: null },
-        { id: 103, source: 1, sourcePort: "right", target: 4, targetPort: "left", label: "AST Round-Trip", anim: "pulse", kind: "bezier", color: "#fbbf24", width: 1.8, bend: null },
-        { id: 104, source: 2, sourcePort: "right", target: 5, targetPort: "left", label: "Frame Buffers", anim: "pulse", kind: "bezier", color: "#38bdf8", width: 1.8, bend: null },
-        { id: 105, source: 3, sourcePort: "right", target: 5, targetPort: "left", label: "Transitions", anim: "ants", kind: "bezier", color: "#818cf8", width: 1.8, bend: null },
-        { id: 106, source: 4, sourcePort: "right", target: 5, targetPort: "left", label: "Exporters", anim: "ants", kind: "bezier", color: "#f472b6", width: 1.8, bend: null },
+        { id: 101, source: 1, sourcePort: "right", target: 2, targetPort: "left", label: "Frustum Query", anim: "pulse", kind: "bezier", color: "#0077b5", width: 1.8, bend: null },
+        { id: 102, source: 1, sourcePort: "right", target: 3, targetPort: "left", label: "Graph Moves", anim: "ants", kind: "bezier", color: "#2d8a1e", width: 1.8, bend: null },
+        { id: 103, source: 1, sourcePort: "right", target: 4, targetPort: "left", label: "AST Round-Trip", anim: "pulse", kind: "bezier", color: "#c47f00", width: 1.8, bend: null },
+        { id: 104, source: 2, sourcePort: "right", target: 5, targetPort: "left", label: "Frame Buffers", anim: "pulse", kind: "bezier", color: "#0077b5", width: 1.8, bend: null },
+        { id: 105, source: 3, sourcePort: "right", target: 5, targetPort: "left", label: "Transitions", anim: "ants", kind: "bezier", color: "#2d8a1e", width: 1.8, bend: null },
+        { id: 106, source: 4, sourcePort: "right", target: 5, targetPort: "left", label: "Exporters", anim: "ants", kind: "bezier", color: "#7a267b", width: 1.8, bend: null },
       ],
       undoStack: [],
       redoStack: [],
@@ -94,17 +96,17 @@ function createDogfoodPages() {
       pan: { x: 60, y: 50 },
       zoom: 1.0,
       nodes: [
-        { id: 10, title: "Client User", body: "HTTPS", x: 75, y: 132, w: 72, h: 76, fill: "#131b2e", stroke: "#38bdf8", shape: "actor", z: 1 },
-        { id: 11, title: "WAF Firewall", body: "Rate Limiter", x: 235, y: 133, w: 180, h: 74, fill: "#131b2e", stroke: "#f43f5e", shape: "firewall", z: 2 },
-        { id: 12, title: "Auth Check", body: "XOR", x: 495, y: 130, w: 80, h: 80, fill: "#131b2e", stroke: "#fbbf24", shape: "gateway_xor", z: 3 },
-        { id: 13, title: "Kafka Stream", body: "events-topic", x: 660, y: 80, w: 180, h: 72, fill: "#131b2e", stroke: "#34d399", shape: "queue", z: 4 },
-        { id: 14, title: "Postgres DB", body: "pgvector", x: 680, y: 210, w: 136, h: 92, fill: "#131b2e", stroke: "#818cf8", shape: "cylinder", z: 5 },
+        { id: 10, title: "Client User", body: "HTTPS", x: 75, y: 132, w: 72, h: 76, fill: "#ffffff", stroke: "#000080", shape: "actor", z: 1 },
+        { id: 11, title: "WAF Firewall", body: "Rate Limiter", x: 235, y: 133, w: 180, h: 74, fill: "#fdecee", stroke: "#c92027", shape: "firewall", z: 2 },
+        { id: 12, title: "Auth Check", body: "XOR", x: 495, y: 130, w: 80, h: 80, fill: "#fff9e6", stroke: "#c47f00", shape: "gateway_xor", z: 3 },
+        { id: 13, title: "Kafka Stream", body: "events-topic", x: 660, y: 80, w: 180, h: 72, fill: "#f2faef", stroke: "#2d8a1e", shape: "queue", z: 4 },
+        { id: 14, title: "Postgres DB", body: "pgvector", x: 680, y: 210, w: 136, h: 92, fill: "#e8f6fc", stroke: "#0077b5", shape: "cylinder", z: 5 },
       ],
       edges: [
-        { id: 201, source: 10, sourcePort: "right", target: 11, targetPort: "left", label: "Request", anim: "pulse", kind: "bezier", color: "#38bdf8", width: 1.8, bend: null },
-        { id: 202, source: 11, sourcePort: "right", target: 12, targetPort: "left", label: "Verify", anim: "ants", kind: "bezier", color: "#fbbf24", width: 1.8, bend: null },
-        { id: 203, source: 12, sourcePort: "right", target: 13, targetPort: "left", label: "Publish", anim: "pulse", kind: "bezier", color: "#34d399", width: 1.8, bend: null },
-        { id: 204, source: 12, sourcePort: "bottom", target: 14, targetPort: "left", label: "Persist", anim: "pulse", kind: "smoothstep", color: "#818cf8", width: 1.8, bend: null },
+        { id: 201, source: 10, sourcePort: "right", target: 11, targetPort: "left", label: "Request", anim: "pulse", kind: "bezier", color: "#000080", width: 1.8, bend: null },
+        { id: 202, source: 11, sourcePort: "right", target: 12, targetPort: "left", label: "Verify", anim: "ants", kind: "bezier", color: "#c47f00", width: 1.8, bend: null },
+        { id: 203, source: 12, sourcePort: "right", target: 13, targetPort: "left", label: "Publish", anim: "pulse", kind: "bezier", color: "#2d8a1e", width: 1.8, bend: null },
+        { id: 204, source: 12, sourcePort: "bottom", target: 14, targetPort: "left", label: "Persist", anim: "pulse", kind: "smoothstep", color: "#0077b5", width: 1.8, bend: null },
       ],
       undoStack: [],
       redoStack: [],
@@ -139,7 +141,7 @@ const state = {
   nextId: 400,
   edgeAnimPreset: "pulse",
   edgeKindPreset: "bezier",
-  theme: "dark",
+  theme: "apple90s",
   fps: 60,
   lastFrameTime: performance.now(),
   geometryVersion: 1,
@@ -148,6 +150,27 @@ const state = {
   layoutAnim: null,
   viewAnim: null,
 };
+
+function isLightCanvasTheme() {
+  return state.theme === "apple90s" || state.theme === "light" || state.theme === "contrast";
+}
+
+function isDarkHexColor(hex) {
+  if (!hex || typeof hex !== "string" || !hex.startsWith("#") || hex.length < 7) return false;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return r * 0.299 + g * 0.587 + b * 0.114 < 128;
+}
+
+const macClockEl = document.getElementById("mac-clock");
+function updateMacClock() {
+  if (!macClockEl) return;
+  const now = new Date();
+  macClockEl.textContent = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+updateMacClock();
+setInterval(updateMacClock, 15000);
 
 const canvas = document.getElementById("rustflow-canvas");
 const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true }) || canvas.getContext("2d", { alpha: false });
@@ -679,14 +702,16 @@ function handleMenuAction(action) {
       renderFormatPanel();
       showToast(`Grid: ${state.gridStyle.toUpperCase()}`);
       break;
+    case "theme-apple90s":
     case "theme-dark":
     case "theme-light":
     case "theme-contrast":
       state.theme = action.replace("theme-", "");
       cachedGridKey = "";
       document.documentElement.setAttribute("data-theme", state.theme);
+      renderPalette(document.getElementById("palette-search")?.value || "");
       renderFormatPanel();
-      showToast(`Theme: ${state.theme}`);
+      showToast(`Theme: ${state.theme === "apple90s" ? "Apple 90s Platinum" : state.theme}`);
       break;
     case "layout-hier":
       runHierarchicalLayout();
@@ -916,11 +941,12 @@ function renderFormatPanel() {
         </div>
       </div>
       <div class="format-section">
-        <label>Theme</label>
+        <label>Macintosh Appearance Theme</label>
         <select id="diag-theme">
-          <option value="dark" ${state.theme === "dark" ? "selected" : ""}>Dark Minimal</option>
-          <option value="light" ${state.theme === "light" ? "selected" : ""}>Light Minimal</option>
-          <option value="contrast" ${state.theme === "contrast" ? "selected" : ""}>High Contrast</option>
+          <option value="apple90s" ${state.theme === "apple90s" ? "selected" : ""}>Apple 90s Platinum (OS 8.5)</option>
+          <option value="dark" ${state.theme === "dark" ? "selected" : ""}>Dark Platinum</option>
+          <option value="light" ${state.theme === "light" ? "selected" : ""}>Light Modern</option>
+          <option value="contrast" ${state.theme === "contrast" ? "selected" : ""}>System 1.0 B&amp;W CRT</option>
         </select>
       </div>
       <div class="format-section" style="border-bottom:none;">
@@ -928,7 +954,7 @@ function renderFormatPanel() {
         <p style="font-size:11px; color:var(--text-muted); line-height:1.6;">
           <b>Drag</b> any symbol from the left panel onto the canvas.<br/>
           <b>Shift+Drag</b> to box-select multiple items.<br/>
-          <b>Ctrl+A / C / V / D / Z</b> supported.
+          <b>⌘A / ⌘C / ⌘V / ⌘D / ⌘Z</b> supported.
         </p>
       </div>
     `;
@@ -951,6 +977,7 @@ function renderFormatPanel() {
       state.theme = e.target.value;
       cachedGridKey = "";
       document.documentElement.setAttribute("data-theme", state.theme);
+      renderPalette(document.getElementById("palette-search")?.value || "");
     };
     return;
   }
@@ -1198,6 +1225,7 @@ function syncArrangeInputsIfDirty() {
 function createNodeFromStencil(item, worldX, worldY) {
   saveSnapshot();
   const p = page();
+  const lightCanvas = isLightCanvasTheme();
   const newNode = {
     id: ++state.nextId,
     title: item.label,
@@ -1206,8 +1234,8 @@ function createNodeFromStencil(item, worldX, worldY) {
     y: Math.round(worldY),
     w: item.w,
     h: item.h,
-    fill: state.theme === "light" ? "#ffffff" : "#131b2e",
-    stroke: "#38bdf8",
+    fill: lightCanvas ? "#ffffff" : "#131b2e",
+    stroke: state.theme === "apple90s" ? "#000080" : state.theme === "contrast" ? "#000000" : "#38bdf8",
     shape: item.shape,
     z: p.nodes.length + 1,
   };
@@ -2227,9 +2255,11 @@ function renderPalette(filter = "") {
       thumb.height = 22;
       thumb.style.flexShrink = "0";
       const tctx = thumb.getContext("2d");
-      tctx.fillStyle = "rgba(56, 189, 248, 0.08)";
-      tctx.strokeStyle = "#38bdf8";
-      tctx.lineWidth = 1.35;
+      const lightUI = isLightCanvasTheme();
+      tctx.fillStyle = lightUI ? "#ffffff" : "rgba(56, 189, 248, 0.08)";
+      tctx.strokeStyle =
+        state.theme === "apple90s" ? "#000080" : state.theme === "contrast" ? "#000000" : lightUI ? "#2563eb" : "#38bdf8";
+      tctx.lineWidth = 1.4;
       drawNodeShapeGeometry(tctx, { x: 2.5, y: 2.5, w: 25, h: 17, shape: item.shape }, true);
 
       const labelSpan = document.createElement("span");
@@ -2308,6 +2338,10 @@ function addNewPage() {
 
 function renderPageTabs() {
   const container = document.getElementById("page-tabs");
+  const titleEl = document.getElementById("window-canvas-title");
+  if (titleEl) {
+    titleEl.textContent = `${page().name} — Macintosh Platinum`;
+  }
   container.innerHTML = "";
   for (const p of state.pages) {
     const tab = document.createElement("div");
@@ -2923,7 +2957,13 @@ function drawInfiniteGridFast(p) {
     tile.height = macro;
     const tctx = tile.getContext("2d");
     const color =
-      state.theme === "light" ? "#cbd5e1" : state.theme === "contrast" ? "#333333" : "#1e293b";
+      state.theme === "apple90s"
+        ? "#b8b4a9"
+        : state.theme === "light"
+        ? "#cbd5e1"
+        : state.theme === "contrast"
+        ? "#000000"
+        : "#1e293b";
 
     if (state.gridStyle === "dots") {
       tctx.fillStyle = color;
@@ -2979,6 +3019,8 @@ function renderLoop(timestamp) {
 
   const timeSec = timestamp * 0.001;
   const p = page();
+  const lightCanvas = isLightCanvasTheme();
+  const selectColor = state.theme === "apple90s" ? "#0055cc" : state.theme === "contrast" ? "#000000" : "#38bdf8";
 
   if (state.layoutAnim) {
     const elapsed = timestamp - state.layoutAnim.startTime;
@@ -3010,7 +3052,14 @@ function renderLoop(timestamp) {
     }
   }
 
-  ctx.fillStyle = state.theme === "light" ? "#f8fafc" : state.theme === "contrast" ? "#000000" : "#090d16";
+  ctx.fillStyle =
+    state.theme === "apple90s"
+      ? "#f5f3ec"
+      : state.theme === "light"
+      ? "#f8fafc"
+      : state.theme === "contrast"
+      ? "#ffffff"
+      : "#0d121d";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   drawInfiniteGridFast(p);
@@ -3023,8 +3072,8 @@ function renderLoop(timestamp) {
   ctx.scale(p.zoom, p.zoom);
 
   if (state.smartGuides.length) {
-    ctx.strokeStyle = "#f43f5e";
-    ctx.lineWidth = 1.1 / p.zoom;
+    ctx.strokeStyle = "#e03a3e";
+    ctx.lineWidth = 1.2 / p.zoom;
     ctx.setLineDash([4 / p.zoom, 4 / p.zoom]);
     ctx.beginPath();
     for (let i = 0; i < state.smartGuides.length; i++) {
@@ -3041,7 +3090,7 @@ function renderLoop(timestamp) {
     ctx.setLineDash([]);
   }
 
-  ctx.font = "500 11px Inter, sans-serif";
+  ctx.font = '700 11px "Charcoal", "Chicago", "Geneva", sans-serif';
   ctx.textAlign = "center";
 
   for (let i = 0; i < p.edges.length; i++) {
@@ -3058,7 +3107,7 @@ function renderLoop(timestamp) {
     }
 
     const isSelected = state.selectedEdgeIds.has(e.id) || e.id === state.selectedEdgeId;
-    const strokeColor = isSelected ? "#38bdf8" : e.color || "#818cf8";
+    const strokeColor = isSelected ? selectColor : e.color || "#000080";
 
     ctx.beginPath();
     if (e.kind === "straight" || e.kind === "orthogonal" || e.kind === "smoothstep") {
@@ -3093,17 +3142,17 @@ function renderLoop(timestamp) {
         const tail2 = getPointAtArcDistance(geo, headDist - 5);
         const head = getPointAtArcDistance(geo, headDist);
 
-        ctx.fillStyle = "rgba(56, 189, 248, 0.16)";
+        ctx.fillStyle = lightCanvas ? "rgba(0, 85, 204, 0.16)" : "rgba(56, 189, 248, 0.16)";
         ctx.beginPath();
         ctx.arc(tail1.x, tail1.y, 3.6, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = "rgba(56, 189, 248, 0.32)";
+        ctx.fillStyle = lightCanvas ? "rgba(0, 85, 204, 0.32)" : "rgba(56, 189, 248, 0.32)";
         ctx.beginPath();
         ctx.arc(tail2.x, tail2.y, 4.6, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = "#e0f2fe";
+        ctx.fillStyle = lightCanvas ? strokeColor : "#e0f2fe";
         ctx.beginPath();
         ctx.arc(head.x, head.y, 3.2, 0, Math.PI * 2);
         ctx.fill();
@@ -3112,19 +3161,19 @@ function renderLoop(timestamp) {
 
     if (e.label) {
       const textW = geo.labelWidth;
-      ctx.fillStyle = state.theme === "light" ? "#ffffff" : "#0f1420";
+      ctx.fillStyle = lightCanvas ? "#ffffff" : "#161b26";
       ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.25;
       ctx.beginPath();
-      ctx.roundRect(geo.midPoint.x - textW * 0.5, geo.midPoint.y - 9.5, textW, 19, 5);
+      ctx.roundRect(geo.midPoint.x - textW * 0.5, geo.midPoint.y - 9.5, textW, 19, 3);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = state.theme === "light" ? "#0f172a" : "#e2e8f0";
+      ctx.fillStyle = lightCanvas ? "#000000" : "#f1f5f9";
       ctx.fillText(e.label, geo.midPoint.x, geo.midPoint.y + 3.5);
     }
 
     if (e.id === state.selectedEdgeId) {
-      ctx.strokeStyle = "rgba(251, 191, 36, 0.4)";
+      ctx.strokeStyle = "rgba(245, 130, 31, 0.55)";
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.moveTo(geo.p0.x, geo.p0.y);
@@ -3135,18 +3184,18 @@ function renderLoop(timestamp) {
 
       ctx.beginPath();
       ctx.arc(geo.midPoint.x, geo.midPoint.y, 6, 0, Math.PI * 2);
-      ctx.fillStyle = "#fbbf24";
-      ctx.strokeStyle = "#090d16";
-      ctx.lineWidth = 1.8;
+      ctx.fillStyle = "#fdb827";
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 1.6;
       ctx.fill();
       ctx.stroke();
 
       for (const ep of [geo.p0, geo.p3]) {
         ctx.beginPath();
         ctx.arc(ep.x, ep.y, 5.5, 0, Math.PI * 2);
-        ctx.fillStyle = "#22d3ee";
-        ctx.strokeStyle = "#090d16";
-        ctx.lineWidth = 1.8;
+        ctx.fillStyle = "#009ddc";
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 1.6;
         ctx.fill();
         ctx.stroke();
       }
@@ -3165,7 +3214,7 @@ function renderLoop(timestamp) {
     ctx.beginPath();
     ctx.moveTo(startPt.x, startPt.y);
     ctx.lineTo(endPt.x, endPt.y);
-    ctx.strokeStyle = state.snapTargetPort ? "#34d399" : "#38bdf8";
+    ctx.strokeStyle = state.snapTargetPort ? "#2d8a1e" : selectColor;
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 4]);
     ctx.stroke();
@@ -3174,13 +3223,13 @@ function renderLoop(timestamp) {
     if (state.snapTargetPort) {
       ctx.beginPath();
       ctx.arc(state.snapTargetPort.port.x, state.snapTargetPort.port.y, 10, 0, Math.PI * 2);
-      ctx.strokeStyle = "#34d399";
+      ctx.strokeStyle = "#2d8a1e";
       ctx.lineWidth = 2.5;
       ctx.stroke();
     }
   }
 
-  // Frustum-Culled Minimalist Nodes
+  // Frustum-Culled Minimalist Nodes with Apple 90s Platinum Hard Drop Shadow
   const visibleNodes = [];
   for (let i = 0; i < p.nodes.length; i++) {
     const n = p.nodes[i];
@@ -3196,72 +3245,87 @@ function renderLoop(timestamp) {
 
     const selected = state.selectedNodeIds.has(n.id);
     if (selected) {
-      ctx.strokeStyle = "rgba(56, 189, 248, 0.22)";
+      ctx.strokeStyle = lightCanvas ? "rgba(0, 85, 204, 0.25)" : "rgba(56, 189, 248, 0.22)";
       ctx.lineWidth = 4;
       ctx.strokeRect(n.x - 2.5, n.y - 2.5, n.w + 5, n.h + 5);
     }
 
+    ctx.save();
+    if (state.theme === "apple90s" || state.theme === "contrast") {
+      ctx.shadowColor = state.theme === "contrast" ? "rgba(0, 0, 0, 0.85)" : "rgba(0, 0, 0, 0.18)";
+      ctx.shadowOffsetX = 3 * p.zoom;
+      ctx.shadowOffsetY = 3 * p.zoom;
+      ctx.shadowBlur = 0;
+    }
     ctx.fillStyle = n.fill;
-    ctx.strokeStyle = selected ? "#38bdf8" : n.stroke;
-    ctx.lineWidth = selected ? 2.0 : 1.5;
+    ctx.strokeStyle = selected ? selectColor : n.stroke;
+    ctx.lineWidth = selected ? 2.1 : 1.65;
     drawNodeShapeGeometry(ctx, n, false);
+    ctx.restore();
 
     for (const port of getNodePorts(n)) {
       const isHovered =
         state.hoveredPort && state.hoveredPort.nodeId === n.id && state.hoveredPort.side === port.side;
       ctx.beginPath();
       ctx.arc(port.x, port.y, isHovered ? 6.5 : 4, 0, Math.PI * 2);
-      ctx.fillStyle = isHovered ? "#34d399" : "#090d16";
-      ctx.strokeStyle = isHovered ? "#ffffff" : "#64748b";
-      ctx.lineWidth = 1.6;
+      ctx.fillStyle = isHovered ? "#61bb46" : lightCanvas ? "#ffffff" : "#090d16";
+      ctx.strokeStyle = isHovered ? "#000000" : lightCanvas ? "#000000" : "#64748b";
+      ctx.lineWidth = 1.5;
       ctx.fill();
       ctx.stroke();
     }
   }
 
-  // Batched Title Text Pass
-  ctx.font = "600 12.5px Inter, sans-serif";
+  // Batched Title Text Pass (Apple 90s Charcoal / Chicago Typography)
+  ctx.font = '700 12.5px "Charcoal", "Chicago", "Geneva", sans-serif';
   ctx.textAlign = "center";
   for (let i = 0; i < visibleNodes.length; i++) {
     const n = visibleNodes[i];
     const pos = getNodeTextPlacement(n);
-    ctx.fillStyle =
-      pos.external
-        ? state.theme === "light"
-          ? "#0f172a"
-          : "#f1f5f9"
-        : state.theme === "light" && n.fill === "#ffffff"
-        ? "#0f172a"
-        : "#f1f5f9";
+    const darkFill = isDarkHexColor(n.fill);
+    ctx.fillStyle = pos.external
+      ? lightCanvas
+        ? "#000000"
+        : "#f1f5f9"
+      : darkFill
+      ? "#f1f5f9"
+      : "#000000";
     ctx.fillText(n.title, pos.cx, pos.titleY);
   }
 
-  // Batched Subtitle Text Pass
-  ctx.font = "400 10.5px monospace";
-  ctx.fillStyle = "#8b9bb4";
+  // Batched Subtitle Text Pass (Monaco Monospace)
+  ctx.font = '600 10.5px "Monaco", "Menlo", monospace';
   for (let i = 0; i < visibleNodes.length; i++) {
     const n = visibleNodes[i];
     if (!n.body) continue;
     const pos = getNodeTextPlacement(n);
+    const darkFill = isDarkHexColor(n.fill);
+    ctx.fillStyle = pos.external
+      ? lightCanvas
+        ? "#4a4a4a"
+        : "#94a3b8"
+      : darkFill
+      ? "#94a3b8"
+      : "#4a4a4a";
     ctx.fillText(n.body, pos.cx, pos.bodyY);
   }
 
   // Single-Selected Node Resize & Quick-Connect Overlay
   const selectedNode = nodeMap.get(state.selectedNodeId);
   if (selectedNode && state.selectedNodeIds.size === 1) {
-    ctx.fillStyle = "#38bdf8";
+    ctx.fillStyle = selectColor;
     ctx.fillRect(selectedNode.x + selectedNode.w - 4.5, selectedNode.y + selectedNode.h - 4.5, 9, 9);
 
-    ctx.font = "600 10.5px sans-serif";
+    ctx.font = '700 10.5px "Charcoal", sans-serif';
     for (const arrow of getQuickArrows(selectedNode)) {
       ctx.beginPath();
       ctx.arc(arrow.x, arrow.y, 8.5, 0, Math.PI * 2);
-      ctx.fillStyle = "#0f1420";
-      ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 1.3;
+      ctx.fillStyle = lightCanvas ? "#ffffff" : "#0f1420";
+      ctx.strokeStyle = selectColor;
+      ctx.lineWidth = 1.4;
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = "#38bdf8";
+      ctx.fillStyle = selectColor;
       ctx.fillText(arrow.label, arrow.x, arrow.y + 3.5);
     }
   }
@@ -3279,20 +3343,20 @@ function renderLoop(timestamp) {
       body: item.id.split(".").pop(),
     };
     ctx.save();
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = state.theme === "light" ? "#ffffff" : "#131b2e";
-    ctx.strokeStyle = "#38bdf8";
+    ctx.globalAlpha = 0.82;
+    ctx.fillStyle = lightCanvas ? "#ffffff" : "#131b2e";
+    ctx.strokeStyle = selectColor;
     ctx.lineWidth = 2;
     drawNodeShapeGeometry(ctx, ghostNode, false);
 
     ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.55)";
+    ctx.strokeStyle = selectColor;
     ctx.strokeRect(ghostX - 4, ghostY - 4, item.w + 8, item.h + 8);
     ctx.setLineDash([]);
 
     const pos = getNodeTextPlacement(ghostNode);
-    ctx.font = "600 12.5px Inter, sans-serif";
-    ctx.fillStyle = state.theme === "light" ? "#0f172a" : "#f1f5f9";
+    ctx.font = '700 12.5px "Charcoal", "Chicago", sans-serif';
+    ctx.fillStyle = lightCanvas ? "#000000" : "#f1f5f9";
     ctx.textAlign = "center";
     ctx.fillText(ghostNode.title, pos.cx, pos.titleY);
     ctx.restore();
@@ -3304,8 +3368,8 @@ function renderLoop(timestamp) {
     const my = Math.min(state.marqueeBox.startY, state.marqueeBox.endY);
     const mw = Math.abs(state.marqueeBox.endX - state.marqueeBox.startX);
     const mh = Math.abs(state.marqueeBox.endY - state.marqueeBox.startY);
-    ctx.fillStyle = "rgba(56, 189, 248, 0.1)";
-    ctx.strokeStyle = "#38bdf8";
+    ctx.fillStyle = lightCanvas ? "rgba(0, 85, 204, 0.1)" : "rgba(56, 189, 248, 0.1)";
+    ctx.strokeStyle = selectColor;
     ctx.lineWidth = 1.4 / p.zoom;
     ctx.setLineDash([5 / p.zoom, 3 / p.zoom]);
     ctx.fillRect(mx, my, mw, mh);
@@ -3325,10 +3389,10 @@ function renderLoop(timestamp) {
     minimapCtx.scale(scale, scale);
     for (let i = 0; i < p.nodes.length; i++) {
       const n = p.nodes[i];
-      minimapCtx.fillStyle = state.selectedNodeIds.has(n.id) ? "#38bdf8" : "#475569";
+      minimapCtx.fillStyle = state.selectedNodeIds.has(n.id) ? selectColor : lightCanvas ? "#777777" : "#475569";
       minimapCtx.fillRect(n.x, n.y, n.w, n.h);
     }
-    minimapCtx.strokeStyle = "#818cf8";
+    minimapCtx.strokeStyle = selectColor;
     minimapCtx.lineWidth = 10;
     minimapCtx.strokeRect(viewTL.x, viewTL.y, viewBR.x - viewTL.x, viewBR.y - viewTL.y);
     minimapCtx.restore();
@@ -3339,7 +3403,7 @@ function renderLoop(timestamp) {
   }
 
   if (frameCounter % 12 === 0) {
-    statusBarEl.textContent = `FPS: ${state.fps} | Zoom: ${Math.round(p.zoom * 100)}% | Selected: ${state.selectedNodeIds.size + state.selectedEdgeIds.size} | Nodes: ${p.nodes.length} | Edges: ${p.edges.length}`;
+    statusBarEl.textContent = `${p.nodes.length} items, ${p.edges.length} flows | Selected: ${state.selectedNodeIds.size + state.selectedEdgeIds.size} | Zoom: ${Math.round(p.zoom * 100)}% | ${state.fps} FPS`;
   }
 
   requestAnimationFrame(renderLoop);
