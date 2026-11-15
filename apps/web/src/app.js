@@ -298,12 +298,12 @@ function createDogfoodPages() {
         { id: 5, title: "crates/ui-bridge", body: "WASM & Tauri v2 Shell", x: 650, y: 155, w: 205, h: 108, fill: "#f5edf7", stroke: "#7a267b", shape: "browser", icon: "globe", iconPos: "left", imgUrl: "", z: 5 },
       ],
       edges: [
-        { id: 101, source: 1, sourcePort: "right", target: 2, targetPort: "left", label: "", anim: "pulse", kind: "bezier", color: "#0077b5", width: 1.8, bend: null },
-        { id: 102, source: 1, sourcePort: "right", target: 3, targetPort: "left", label: "", anim: "ants", kind: "bezier", color: "#2d8a1e", width: 1.8, bend: null },
-        { id: 103, source: 1, sourcePort: "right", target: 4, targetPort: "left", label: "", anim: "pulse", kind: "bezier", color: "#c47f00", width: 1.8, bend: null },
-        { id: 104, source: 2, sourcePort: "right", target: 5, targetPort: "left", label: "", anim: "pulse", kind: "bezier", color: "#0077b5", width: 1.8, bend: null },
-        { id: 105, source: 3, sourcePort: "right", target: 5, targetPort: "left", label: "", anim: "ants", kind: "bezier", color: "#2d8a1e", width: 1.8, bend: null },
-        { id: 106, source: 4, sourcePort: "right", target: 5, targetPort: "left", label: "", anim: "ants", kind: "bezier", color: "#7a267b", width: 1.8, bend: null },
+        { id: 101, source: 1, sourcePort: "right", target: 2, targetPort: "left", label: "", anim: "pulse", kind: "bezier", arrow: "one-way", color: "#0077b5", width: 1.8, bend: null },
+        { id: 102, source: 1, sourcePort: "right", target: 3, targetPort: "left", label: "", anim: "ants", kind: "bezier", arrow: "two-way", color: "#2d8a1e", width: 1.8, bend: null },
+        { id: 103, source: 1, sourcePort: "right", target: 4, targetPort: "left", label: "", anim: "pulse", kind: "bezier", arrow: "one-way", color: "#c47f00", width: 1.8, bend: null },
+        { id: 104, source: 2, sourcePort: "right", target: 5, targetPort: "left", label: "", anim: "pulse", kind: "bezier", arrow: "one-way", color: "#0077b5", width: 1.8, bend: null },
+        { id: 105, source: 3, sourcePort: "right", target: 5, targetPort: "left", label: "", anim: "ants", kind: "bezier", arrow: "one-way", color: "#2d8a1e", width: 1.8, bend: null },
+        { id: 106, source: 4, sourcePort: "right", target: 5, targetPort: "left", label: "", anim: "ants", kind: "bezier", arrow: "two-way", color: "#7a267b", width: 1.8, bend: null },
       ],
       undoStack: [],
       redoStack: [],
@@ -321,10 +321,10 @@ function createDogfoodPages() {
         { id: 14, title: "Postgres DB", body: "pgvector", x: 680, y: 210, w: 136, h: 92, fill: "#e8f6fc", stroke: "#0077b5", shape: "cylinder", icon: "database", iconPos: "left", imgUrl: "", z: 5 },
       ],
       edges: [
-        { id: 201, source: 10, sourcePort: "right", target: 11, targetPort: "left", label: "", anim: "pulse", kind: "bezier", color: "#000080", width: 1.8, bend: null },
-        { id: 202, source: 11, sourcePort: "right", target: 12, targetPort: "left", label: "", anim: "ants", kind: "bezier", color: "#c47f00", width: 1.8, bend: null },
-        { id: 203, source: 12, sourcePort: "right", target: 13, targetPort: "left", label: "", anim: "pulse", kind: "bezier", color: "#2d8a1e", width: 1.8, bend: null },
-        { id: 204, source: 12, sourcePort: "bottom", target: 14, targetPort: "left", label: "", anim: "pulse", kind: "smoothstep", color: "#0077b5", width: 1.8, bend: null },
+        { id: 201, source: 10, sourcePort: "right", target: 11, targetPort: "left", label: "", anim: "pulse", kind: "bezier", arrow: "two-way", color: "#000080", width: 1.8, bend: null },
+        { id: 202, source: 11, sourcePort: "right", target: 12, targetPort: "left", label: "", anim: "ants", kind: "bezier", arrow: "one-way", color: "#c47f00", width: 1.8, bend: null },
+        { id: 203, source: 12, sourcePort: "right", target: 13, targetPort: "left", label: "", anim: "pulse", kind: "bezier", arrow: "one-way", color: "#2d8a1e", width: 1.8, bend: null },
+        { id: 204, source: 12, sourcePort: "bottom", target: 14, targetPort: "left", label: "", anim: "pulse", kind: "smoothstep", arrow: "two-way", color: "#0077b5", width: 1.8, bend: null },
       ],
       undoStack: [],
       redoStack: [],
@@ -359,6 +359,7 @@ const state = {
   nextId: 400,
   edgeAnimPreset: "pulse",
   edgeKindPreset: "bezier",
+  edgeArrowPreset: "one-way",
   theme: "apple90s",
   fps: 60,
   lastFrameTime: performance.now(),
@@ -1464,6 +1465,8 @@ function renderFormatPanel() {
   if (edge) {
     formatBadgeEl.textContent = `Edge #${edge.id}`;
     if (state.activeFormatTab === "style") {
+      const curArrow = edge.arrow || "one-way";
+      const markers = getEdgeArrowMarkers(edge);
       formatBodyEl.innerHTML = `
         <div class="format-section">
           <label>Routing</label>
@@ -1473,6 +1476,35 @@ function renderFormatPanel() {
             <option value="orthogonal" ${edge.kind === "orthogonal" ? "selected" : ""}>Orthogonal</option>
             <option value="straight" ${edge.kind === "straight" ? "selected" : ""}>Straight Line</option>
           </select>
+          <label style="margin-top:6px;">Arrow Style</label>
+          <select id="edge-arrow">
+            <option value="one-way" ${curArrow === "one-way" ? "selected" : ""}>1-Way Directed (→)</option>
+            <option value="two-way" ${curArrow === "two-way" ? "selected" : ""}>2-Way Bidirectional (↔)</option>
+            <option value="none" ${curArrow === "none" ? "selected" : ""}>Non-Headed Line (—)</option>
+            <option value="reverse" ${curArrow === "reverse" ? "selected" : ""}>1-Way Reverse (←)</option>
+            <option value="open" ${curArrow === "open" ? "selected" : ""}>Open Arrow (—&gt;)</option>
+            <option value="diamond" ${curArrow === "diamond" ? "selected" : ""}>UML Diamond (—◇)</option>
+            <option value="circle" ${curArrow === "circle" ? "selected" : ""}>Socket Circle (—○)</option>
+            <option value="custom" ${curArrow === "custom" ? "selected" : ""}>Custom Start / End</option>
+          </select>
+          <div class="format-row" style="margin-top:4px;">
+            <span>Start</span>
+            <select id="edge-start-marker">
+              <option value="none" ${markers.start === "none" ? "selected" : ""}>None</option>
+              <option value="classic" ${markers.start === "classic" ? "selected" : ""}>Arrow (◀)</option>
+              <option value="open" ${markers.start === "open" ? "selected" : ""}>Open (&lt;)</option>
+              <option value="diamond" ${markers.start === "diamond" ? "selected" : ""}>Diamond (◇)</option>
+              <option value="circle" ${markers.start === "circle" ? "selected" : ""}>Circle (○)</option>
+            </select>
+            <span>End</span>
+            <select id="edge-end-marker">
+              <option value="none" ${markers.end === "none" ? "selected" : ""}>None</option>
+              <option value="classic" ${markers.end === "classic" ? "selected" : ""}>Arrow (▶)</option>
+              <option value="open" ${markers.end === "open" ? "selected" : ""}>Open (&gt;)</option>
+              <option value="diamond" ${markers.end === "diamond" ? "selected" : ""}>Diamond (◇)</option>
+              <option value="circle" ${markers.end === "circle" ? "selected" : ""}>Circle (○)</option>
+            </select>
+          </div>
           <label style="margin-top:6px;">Flow Animation</label>
           <select id="edge-anim">
             <option value="pulse" ${edge.anim === "pulse" ? "selected" : ""}>Pulse Particles</option>
@@ -1491,6 +1523,31 @@ function renderFormatPanel() {
       document.getElementById("edge-kind").onchange = (e) => {
         edge.kind = e.target.value;
         edge._ver = -1;
+      };
+      document.getElementById("edge-arrow").onchange = (e) => {
+        saveSnapshot();
+        edge.arrow = e.target.value;
+        delete edge.sourceArrow;
+        delete edge.targetArrow;
+        const toolbarArrow = document.getElementById("select-edge-arrow");
+        if (toolbarArrow && e.target.value !== "custom") toolbarArrow.value = e.target.value;
+        renderFormatPanel();
+      };
+      document.getElementById("edge-start-marker").onchange = (e) => {
+        saveSnapshot();
+        const cur = getEdgeArrowMarkers(edge);
+        edge.arrow = "custom";
+        edge.sourceArrow = e.target.value;
+        edge.targetArrow = cur.end;
+        renderFormatPanel();
+      };
+      document.getElementById("edge-end-marker").onchange = (e) => {
+        saveSnapshot();
+        const cur = getEdgeArrowMarkers(edge);
+        edge.arrow = "custom";
+        edge.sourceArrow = cur.start;
+        edge.targetArrow = e.target.value;
+        renderFormatPanel();
       };
       document.getElementById("edge-anim").onchange = (e) => {
         edge.anim = e.target.value;
@@ -1843,6 +1900,7 @@ canvas.addEventListener("mousedown", (e) => {
           label: "",
           anim: state.edgeAnimPreset,
           kind: state.edgeKindPreset,
+          arrow: state.edgeArrowPreset,
           color: state.theme === "apple90s" ? "#000080" : "#818cf8",
           width: 1.8,
           bend: null,
@@ -2202,6 +2260,7 @@ window.addEventListener("mouseup", (e) => {
         label: "",
         anim: state.edgeAnimPreset,
         kind: state.edgeKindPreset,
+        arrow: state.edgeArrowPreset,
         color: state.theme === "apple90s" ? "#000080" : "#818cf8",
         width: 1.8,
         bend: null,
@@ -3472,6 +3531,49 @@ document.getElementById("select-edge-kind").onchange = (e) => {
   }
   renderFormatPanel();
 };
+const selectEdgeArrowEl = document.getElementById("select-edge-arrow");
+if (selectEdgeArrowEl) {
+  selectEdgeArrowEl.onchange = (e) => {
+    state.edgeArrowPreset = e.target.value;
+    if (state.selectedEdgeIds.size > 0) saveSnapshot();
+    for (const eid of state.selectedEdgeIds) {
+      const ed = page().edges.find((x) => x.id === eid);
+      if (ed) {
+        ed.arrow = state.edgeArrowPreset;
+        delete ed.sourceArrow;
+        delete ed.targetArrow;
+      }
+    }
+    renderFormatPanel();
+  };
+}
+
+function getEdgeArrowMarkers(e) {
+  if (e.arrow === "custom" || e.sourceArrow || e.targetArrow) {
+    return {
+      start: e.sourceArrow || "none",
+      end: e.targetArrow || "classic",
+    };
+  }
+  const preset = e.arrow || "one-way";
+  switch (preset) {
+    case "two-way":
+      return { start: "classic", end: "classic" };
+    case "none":
+      return { start: "none", end: "none" };
+    case "reverse":
+      return { start: "classic", end: "none" };
+    case "open":
+      return { start: "none", end: "open" };
+    case "diamond":
+      return { start: "diamond", end: "classic" };
+    case "circle":
+      return { start: "circle", end: "classic" };
+    case "one-way":
+    default:
+      return { start: "none", end: "classic" };
+  }
+}
 
 function downloadFile(filename, content, mime) {
   const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
@@ -3573,14 +3675,16 @@ function renderDiagramFrameToContext(tctx, p, bounds, scale, timeSec) {
     tctx.stroke();
     if (e.anim === "ants") tctx.setLineDash([]);
 
-    const prevPt = geo.samples[Math.max(0, geo.samples.length - 2)];
-    drawArrowhead(tctx, prevPt, geo.p3, strokeColor);
+    drawEdgeArrowheads(tctx, e, geo, strokeColor);
 
     if (e.anim === "pulse") {
       const spacing = geo.totalLen * 0.5;
+      const isTwoWay = (e.arrow || "one-way") === "two-way";
       for (let pIdx = 0; pIdx < 2; pIdx++) {
-        const headDist = ((timeSec * geo.totalLen + pIdx * spacing) % geo.totalLen + geo.totalLen) % geo.totalLen;
-        const tail = getPointAtArcDistance(geo, headDist - 6);
+        const rawDist = ((timeSec * geo.totalLen + pIdx * spacing) % geo.totalLen + geo.totalLen) % geo.totalLen;
+        const headDist = isTwoWay && pIdx === 1 ? geo.totalLen - rawDist : rawDist;
+        const dirSign = isTwoWay && pIdx === 1 ? 1 : -1;
+        const tail = getPointAtArcDistance(geo, headDist + dirSign * 6);
         const head = getPointAtArcDistance(geo, headDist);
 
         tctx.fillStyle = lightCanvas ? "rgba(0, 85, 204, 0.35)" : "rgba(56, 189, 248, 0.35)";
@@ -4533,16 +4637,71 @@ function drawInfiniteGridFast(p) {
   }
 }
 
-function drawArrowhead(ctx, fromPt, toPt, color) {
+function drawArrowhead(ctx, fromPt, toPt, color, markerType = "classic") {
+  if (!markerType || markerType === "none") return;
   const angle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x);
-  const headLen = 9;
+  const headLen = 9.5;
+  ctx.save();
   ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(toPt.x, toPt.y);
-  ctx.lineTo(toPt.x - headLen * Math.cos(angle - Math.PI / 6.5), toPt.y - headLen * Math.sin(angle - Math.PI / 6.5));
-  ctx.lineTo(toPt.x - headLen * Math.cos(angle + Math.PI / 6.5), toPt.y - headLen * Math.sin(angle + Math.PI / 6.5));
-  ctx.closePath();
-  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.8;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  if (markerType === "open") {
+    ctx.beginPath();
+    ctx.moveTo(toPt.x - headLen * Math.cos(angle - Math.PI / 6), toPt.y - headLen * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(toPt.x, toPt.y);
+    ctx.lineTo(toPt.x - headLen * Math.cos(angle + Math.PI / 6), toPt.y - headLen * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
+  } else if (markerType === "diamond") {
+    const dLen = 11;
+    const midX = toPt.x - (dLen * 0.5) * Math.cos(angle);
+    const midY = toPt.y - (dLen * 0.5) * Math.sin(angle);
+    const backX = toPt.x - dLen * Math.cos(angle);
+    const backY = toPt.y - dLen * Math.sin(angle);
+    const perpX = -Math.sin(angle) * 4.4;
+    const perpY = Math.cos(angle) * 4.4;
+    ctx.beginPath();
+    ctx.moveTo(toPt.x, toPt.y);
+    ctx.lineTo(midX + perpX, midY + perpY);
+    ctx.lineTo(backX, backY);
+    ctx.lineTo(midX - perpX, midY - perpY);
+    ctx.closePath();
+    ctx.fillStyle = isLightCanvasTheme() ? "#ffffff" : "#0f172a";
+    ctx.fill();
+    ctx.stroke();
+  } else if (markerType === "circle") {
+    const r = 4.2;
+    const cx = toPt.x - r * Math.cos(angle);
+    const cy = toPt.y - r * Math.sin(angle);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = isLightCanvasTheme() ? "#ffffff" : "#0f172a";
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    // "classic" filled triangle
+    ctx.beginPath();
+    ctx.moveTo(toPt.x, toPt.y);
+    ctx.lineTo(toPt.x - headLen * Math.cos(angle - Math.PI / 6.5), toPt.y - headLen * Math.sin(angle - Math.PI / 6.5));
+    ctx.lineTo(toPt.x - headLen * Math.cos(angle + Math.PI / 6.5), toPt.y - headLen * Math.sin(angle + Math.PI / 6.5));
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawEdgeArrowheads(ctx, e, geo, strokeColor) {
+  const markers = getEdgeArrowMarkers(e);
+  if (markers.end && markers.end !== "none") {
+    const prevPt = geo.samples[Math.max(0, geo.samples.length - 2)];
+    drawArrowhead(ctx, prevPt, geo.p3, strokeColor, markers.end);
+  }
+  if (markers.start && markers.start !== "none") {
+    const nextPt = geo.samples[Math.min(geo.samples.length - 1, 1)];
+    drawArrowhead(ctx, nextPt, geo.p0, strokeColor, markers.start);
+  }
 }
 
 let frameCounter = 0;
@@ -4665,16 +4824,18 @@ function renderLoop(timestamp) {
     ctx.stroke();
     if (e.anim === "ants") ctx.setLineDash([]);
 
-    const prevPt = geo.samples[Math.max(0, geo.samples.length - 2)];
-    drawArrowhead(ctx, prevPt, geo.p3, strokeColor);
+    drawEdgeArrowheads(ctx, e, geo, strokeColor);
 
     if (e.anim === "pulse") {
       const speedPxPerSec = 140;
       const spacing = geo.totalLen * 0.5;
+      const isTwoWay = (e.arrow || "one-way") === "two-way";
       for (let pIdx = 0; pIdx < 2; pIdx++) {
-        const headDist = (timeSec * speedPxPerSec + pIdx * spacing) % geo.totalLen;
-        const tail1 = getPointAtArcDistance(geo, headDist - 10);
-        const tail2 = getPointAtArcDistance(geo, headDist - 5);
+        const rawDist = (timeSec * speedPxPerSec + pIdx * spacing) % geo.totalLen;
+        const headDist = isTwoWay && pIdx === 1 ? geo.totalLen - rawDist : rawDist;
+        const dirSign = isTwoWay && pIdx === 1 ? 1 : -1;
+        const tail1 = getPointAtArcDistance(geo, headDist + dirSign * 10);
+        const tail2 = getPointAtArcDistance(geo, headDist + dirSign * 5);
         const head = getPointAtArcDistance(geo, headDist);
 
         ctx.fillStyle = lightCanvas ? "rgba(0, 85, 204, 0.16)" : "rgba(56, 189, 248, 0.16)";
