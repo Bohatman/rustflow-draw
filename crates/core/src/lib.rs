@@ -6,6 +6,7 @@ pub mod document;
 pub mod scene;
 pub mod selection;
 pub mod spatial;
+pub mod telemetry;
 
 pub use command::{Command, CommandHistory};
 pub use crdt::{CrdtOp, CrdtReplica, HlcTimestamp, ThemeTokens};
@@ -20,6 +21,7 @@ pub use selection::{
     SpacingIndicator,
 };
 pub use spatial::{RTree, SpatialEntry};
+pub use telemetry::{build_dogfood_architecture_scene, DiagnosticEvent, TelemetryCollector};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
