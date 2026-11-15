@@ -431,6 +431,51 @@
         text-align: center;
         border: 2px solid var(--accent);
       }
+      .toast-badge {
+        position: absolute;
+        left: 16px;
+        bottom: 16px;
+        background: var(--bg-panel);
+        border: 1px solid var(--accent);
+        color: var(--text-primary);
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+        pointer-events: none;
+        opacity: 0;
+        transform: translateY(6px);
+        transition: opacity 0.15s ease, transform 0.15s ease;
+        z-index: 45;
+      }
+      .toast-badge.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .shortcuts-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px 18px;
+        padding: 14px;
+        font-size: 12px;
+      }
+      .shortcut-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 0;
+        border-bottom: 1px solid var(--border-color);
+      }
+      .kbd {
+        font-family: monospace;
+        font-size: 11px;
+        background: var(--bg-subtle);
+        border: 1px solid var(--border-color);
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: var(--accent);
+      }
     </style>
   </head>
   <body>
@@ -444,8 +489,8 @@
           <div class="dropdown-menu">
             <div class="dropdown-entry" data-action="new-page"><span>New Page Tab</span><span class="dropdown-shortcut">Page+</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="export-drawio"><span>Export .drawio (XML)</span><span class="dropdown-shortcut">.drawio</span></div>
-            <div class="dropdown-entry" data-action="export-svg"><span>Export Animated SVG</span><span class="dropdown-shortcut">.svg</span></div>
+            <div class="dropdown-entry" data-action="export-drawio"><span>Save / Export .drawio</span><span class="dropdown-shortcut">Ctrl+S</span></div>
+            <div class="dropdown-entry" data-action="export-svg"><span>Export Animated SVG</span><span class="dropdown-shortcut">Ctrl+E</span></div>
             <div class="dropdown-entry" data-action="export-json"><span>Export Native JSON</span><span class="dropdown-shortcut">.json</span></div>
           </div>
         </div>
@@ -456,7 +501,14 @@
             <div class="dropdown-entry" data-action="undo"><span>Undo</span><span class="dropdown-shortcut">Ctrl+Z</span></div>
             <div class="dropdown-entry" data-action="redo"><span>Redo</span><span class="dropdown-shortcut">Ctrl+Y</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="duplicate"><span>Duplicate Selected</span><span class="dropdown-shortcut">Ctrl+D</span></div>
+            <div class="dropdown-entry" data-action="cut"><span>Cut</span><span class="dropdown-shortcut">Ctrl+X</span></div>
+            <div class="dropdown-entry" data-action="copy"><span>Copy</span><span class="dropdown-shortcut">Ctrl+C</span></div>
+            <div class="dropdown-entry" data-action="paste"><span>Paste</span><span class="dropdown-shortcut">Ctrl+V</span></div>
+            <div class="dropdown-entry" data-action="duplicate"><span>Duplicate</span><span class="dropdown-shortcut">Ctrl+D</span></div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-entry" data-action="select-all"><span>Select All</span><span class="dropdown-shortcut">Ctrl+A</span></div>
+            <div class="dropdown-entry" data-action="clear-selection"><span>Deselect All</span><span class="dropdown-shortcut">Esc</span></div>
+            <div class="dropdown-divider"></div>
             <div class="dropdown-entry" data-action="delete"><span>Delete Selected</span><span class="dropdown-shortcut">Del</span></div>
           </div>
         </div>
@@ -464,11 +516,12 @@
         <div class="menu-item" data-menu="view">
           View
           <div class="dropdown-menu">
-            <div class="dropdown-entry" data-action="zoom-in"><span>Zoom In</span><span class="dropdown-shortcut">+</span></div>
-            <div class="dropdown-entry" data-action="zoom-out"><span>Zoom Out</span><span class="dropdown-shortcut">-</span></div>
-            <div class="dropdown-entry" data-action="zoom-reset"><span>Reset View (100%)</span><span class="dropdown-shortcut">1:1</span></div>
+            <div class="dropdown-entry" data-action="fit-view"><span>Fit Diagram to Screen</span><span class="dropdown-shortcut">Ctrl+1</span></div>
+            <div class="dropdown-entry" data-action="zoom-in"><span>Zoom In</span><span class="dropdown-shortcut">Ctrl++</span></div>
+            <div class="dropdown-entry" data-action="zoom-out"><span>Zoom Out</span><span class="dropdown-shortcut">Ctrl+-</span></div>
+            <div class="dropdown-entry" data-action="zoom-reset"><span>Reset View (100%)</span><span class="dropdown-shortcut">Ctrl+0</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="toggle-grid"><span>Toggle Grid (Dots / Lines / Off)</span></div>
+            <div class="dropdown-entry" data-action="toggle-grid"><span>Toggle Grid (Dots / Lines / Off)</span><span class="dropdown-shortcut">Ctrl+G</span></div>
             <div class="dropdown-divider"></div>
             <div class="dropdown-entry" data-action="theme-dark"><span>Theme: Dark (Developer)</span></div>
             <div class="dropdown-entry" data-action="theme-light"><span>Theme: Light</span></div>
@@ -479,18 +532,19 @@
         <div class="menu-item" data-menu="arrange">
           Arrange
           <div class="dropdown-menu">
-            <div class="dropdown-entry" data-action="layout-hier"><span>Auto-Layout: Hierarchical</span></div>
+            <div class="dropdown-entry" data-action="layout-hier"><span>Auto-Layout: Hierarchical</span><span class="dropdown-shortcut">Ctrl+Shift+L</span></div>
             <div class="dropdown-entry" data-action="layout-grid"><span>Auto-Layout: Grid</span></div>
             <div class="dropdown-entry" data-action="layout-radial"><span>Auto-Layout: Radial Ring</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="bring-front"><span>Bring to Front</span></div>
-            <div class="dropdown-entry" data-action="send-back"><span>Send to Back</span></div>
+            <div class="dropdown-entry" data-action="bring-front"><span>Bring to Front</span><span class="dropdown-shortcut">Ctrl+]</span></div>
+            <div class="dropdown-entry" data-action="send-back"><span>Send to Back</span><span class="dropdown-shortcut">Ctrl+[</span></div>
           </div>
         </div>
 
         <div class="menu-item" data-menu="extras">
           Extras
           <div class="dropdown-menu">
+            <div class="dropdown-entry" data-action="shortcuts"><span>Keyboard Shortcuts...</span><span class="dropdown-shortcut">?</span></div>
             <div class="dropdown-entry" data-action="cmd-palette"><span>Command Palette...</span><span class="dropdown-shortcut">Ctrl+K</span></div>
             <div class="dropdown-divider"></div>
             <div class="dropdown-entry" data-action="stress-100"><span>Generate 100-Node Benchmark Graph</span></div>
@@ -499,7 +553,7 @@
       </div>
 
       <div style="font-size: 11px; color: var(--text-muted);">
-        Press <b>Ctrl+K</b> for Command Palette
+        <b>Shift+Drag</b> Box Select · <b>Ctrl+A</b> Select All · <b>Ctrl+C/V</b> Copy/Paste · <b>?</b> Shortcuts
       </div>
     </nav>
 
@@ -507,12 +561,17 @@
     <div class="quick-toolbar">
       <button id="btn-undo" title="Undo (Ctrl+Z)">↶ Undo</button>
       <button id="btn-redo" title="Redo (Ctrl+Y)">↷ Redo</button>
+      <div class="toolbar-sep"></div>
+      <button id="btn-copy" title="Copy Selected (Ctrl+C)">⎘ Copy</button>
+      <button id="btn-paste" title="Paste (Ctrl+V)">📋 Paste</button>
       <button id="btn-duplicate" title="Duplicate (Ctrl+D)">⧉ Duplicate</button>
+      <button id="btn-select-all" title="Select All (Ctrl+A)">▣ Select All</button>
       <button id="btn-delete" title="Delete Selected (Del)">✕ Delete</button>
       <div class="toolbar-sep"></div>
-      <button id="btn-zoom-out" title="Zoom Out">−</button>
+      <button id="btn-zoom-out" title="Zoom Out (Ctrl+-)">−</button>
       <span id="zoom-label" style="font-size:11px; min-width:44px; text-align:center; font-family:monospace;">100%</span>
-      <button id="btn-zoom-in" title="Zoom In">+</button>
+      <button id="btn-zoom-in" title="Zoom In (Ctrl++)">+</button>
+      <button id="btn-fit-view" title="Fit Diagram to Screen (Ctrl+1)">⊡ Fit</button>
       <div class="toolbar-sep"></div>
       <select id="select-edge-kind" title="Edge Routing Style">
         <option value="bezier">⤷ Bezier Curve</option>
@@ -526,8 +585,9 @@
         <option value="none">─ Static</option>
       </select>
       <div class="toolbar-sep"></div>
-      <button id="btn-layout-hier" title="Sugiyama Layered Auto-Layout">☍ Auto-Layout</button>
-      <button id="btn-cmd-palette" title="Command Palette (Ctrl+K)">⌘K Search</button>
+      <button id="btn-layout-hier" title="Sugiyama Layered Auto-Layout (Ctrl+Shift+L)">☍ Auto-Layout</button>
+      <button id="btn-shortcuts" title="Keyboard Shortcuts (?)">⌨ Shortcuts</button>
+      <button id="btn-cmd-palette" title="Command Palette (Ctrl+K)">⌘K</button>
     </div>
 
     <!-- Main 3-Column Workspace -->
@@ -542,6 +602,7 @@
       <main class="canvas-container">
         <canvas id="rustflow-canvas"></canvas>
         <input id="inline-editor" type="text" />
+        <div id="toast-badge" class="toast-badge"></div>
         <canvas id="minimap-canvas" class="minimap" width="180" height="115"></canvas>
       </main>
 
@@ -572,6 +633,37 @@
       </div>
     </div>
 
-    <script type="module" src="/src/app.js?v=3"></script>
+    <div class="cmd-overlay" id="shortcuts-overlay">
+      <div class="cmd-modal" style="width: 600px;">
+        <div class="format-header" style="padding: 10px 14px;">
+          <span>⌨ Keyboard Shortcuts</span>
+          <button id="btn-close-shortcuts" style="padding: 2px 8px;">Esc</button>
+        </div>
+        <div class="shortcuts-grid">
+          <div class="shortcut-row"><span>Select All</span><span class="kbd">Ctrl + A</span></div>
+          <div class="shortcut-row"><span>Copy Selection</span><span class="kbd">Ctrl + C</span></div>
+          <div class="shortcut-row"><span>Cut Selection</span><span class="kbd">Ctrl + X</span></div>
+          <div class="shortcut-row"><span>Paste Selection</span><span class="kbd">Ctrl + V</span></div>
+          <div class="shortcut-row"><span>Duplicate Selection</span><span class="kbd">Ctrl + D</span></div>
+          <div class="shortcut-row"><span>Delete Selection</span><span class="kbd">Del / Backspace</span></div>
+          <div class="shortcut-row"><span>Undo</span><span class="kbd">Ctrl + Z</span></div>
+          <div class="shortcut-row"><span>Redo</span><span class="kbd">Ctrl + Y / Ctrl+Shift+Z</span></div>
+          <div class="shortcut-row"><span>Multi-Select Toggle</span><span class="kbd">Shift + Click</span></div>
+          <div class="shortcut-row"><span>Rubber-Band Box Select</span><span class="kbd">Shift + Drag</span></div>
+          <div class="shortcut-row"><span>Edit Label Inline</span><span class="kbd">F2 / Enter / DblClick</span></div>
+          <div class="shortcut-row"><span>Nudge Selection (5px / 20px)</span><span class="kbd">Arrows / Shift+Arrows</span></div>
+          <div class="shortcut-row"><span>Zoom In / Out</span><span class="kbd">Ctrl + + / Ctrl + -</span></div>
+          <div class="shortcut-row"><span>Reset Zoom (100%)</span><span class="kbd">Ctrl + 0</span></div>
+          <div class="shortcut-row"><span>Fit Diagram to Screen</span><span class="kbd">Ctrl + 1</span></div>
+          <div class="shortcut-row"><span>Toggle Grid Style</span><span class="kbd">Ctrl + G</span></div>
+          <div class="shortcut-row"><span>Bring to Front / Send Back</span><span class="kbd">Ctrl + ] / Ctrl + [</span></div>
+          <div class="shortcut-row"><span>Auto-Layout Hierarchical</span><span class="kbd">Ctrl + Shift + L</span></div>
+          <div class="shortcut-row"><span>Save .drawio XML</span><span class="kbd">Ctrl + S</span></div>
+          <div class="shortcut-row"><span>Command Palette</span><span class="kbd">Ctrl + K</span></div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/app.js?v=4"></script>
   </body>
 </html>

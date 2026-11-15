@@ -1,12 +1,14 @@
 // High-Performance Draw.io + React Flow Web Engine
-// Fixes:
-// 1. Authentic Draw.io Vector Symbols & Shapes:
-//    - Queue / Kafka: True 3D Horizontal Cylinder Pipe (curved left cap + 3D right oval cap + subtle left rings, zero lines cutting through text)
-//    - Database Cylinder: True 3D Vertical Elliptical Cylinder with shaded top disc + dual storage rings + lower-body text alignment
-//    - Cloud: Multi-puff vector cloud silhouette
-//    - BPMN Gateways (XOR / Parallel), BPMN Timer, and UML Actor: Clean internal vector emblems with labels positioned below the symbol (never colliding with internal icons)
-//    - Server Rack, WAF Firewall, UML Class/Interface/Component/Package, Document, Sticky Note, AWS Lambda, S3, K8s Pod: Dedicated vector symbols + live mini-canvas previews in the left stencil palette
-// 2. 60-144 FPS Performance & Sub-Pixel Arc-Length Edge Animations
+// Features:
+// 1. Complete Keyboard Shortcut & Multi-Select System:
+//    - Ctrl+A (Select All), Ctrl+C (Copy), Ctrl+X (Cut), Ctrl+V (Paste with internal edge remapping), Ctrl+D (Duplicate)
+//    - Ctrl+Z (Undo), Ctrl+Y / Ctrl+Shift+Z (Redo), Del / Backspace (Delete selection), Esc (Deselect / Close)
+//    - Shift+Click (Toggle multi-select), Shift+Drag (Rubber-band Marquee Box Selection), Group Dragging & Group Styling
+//    - F2 / Enter (Inline label edit), Arrow Keys (Nudge 5px / Shift+Arrow 20px / Alt+Arrow 1px)
+//    - Ctrl+1 (Fit to Screen), Ctrl++ / Ctrl+- (Zoom), Ctrl+0 (Reset 100%), Ctrl+G (Toggle Grid), Ctrl+] / Ctrl+[ (Z-Order)
+//    - Ctrl+Shift+L (Auto-Layout), Ctrl+S (Save .drawio), Ctrl+E (Export SVG), Ctrl+K (Command Palette), ? (Shortcuts Modal)
+// 2. Authentic Draw.io Vector Symbols (3D Horizontal Queue Pipe, 3D Database Cylinder, Multi-Puff Cloud, BPMN/UML)
+// 3. 60-144 FPS Sub-Pixel Arc-Length Edge Animations & Zero-Reflow Interaction Loop
 
 const STENCILS = [
   // Flowchart
@@ -116,16 +118,20 @@ const state = {
   activePageId: 1,
   selectedNodeId: 1,
   selectedEdgeId: null,
-  activeFormatTab: "style", // "style" | "text" | "arrange"
-  gridStyle: "dots",        // "dots" | "lines" | "off"
+  selectedNodeIds: new Set([1]),
+  selectedEdgeIds: new Set(),
+  clipboard: { nodes: [], edges: [], pasteStep: 0 },
+  activeFormatTab: "style",
+  gridStyle: "dots",
   gridSize: 20,
   snapToGrid: false,
   hoveredPort: null,
   snapTargetPort: null,
-  draggingNode: null,
+  draggingNode: null,       // { leadNode, offsetX, offsetY, initialPositions: Map<id, {x,y}> }
   resizingNode: null,
   draggingEdgeBend: null,
   reconnectingEdge: null,
+  marqueeBox: null,         // { startX, startY, endX, endY } in world coords
   panning: null,
   connectingFrom: null,
   mouseWorld: { x: 0, y: 0 },
@@ -150,6 +156,41 @@ const minimapCtx = minimapCanvas.getContext("2d");
 const inlineEditor = document.getElementById("inline-editor");
 const statusBarEl = document.getElementById("status-bar");
 const zoomLabelEl = document.getElementById("zoom-label");
+const toastBadgeEl = document.getElementById("toast-badge");
+
+let toastTimer = null;
+function showToast(msg) {
+  if (!toastBadgeEl) return;
+  toastBadgeEl.textContent = msg;
+  toastBadgeEl.classList.add("show");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toastBadgeEl.classList.remove("show");
+  }, 1600);
+}
+
+// Sync primary selectedNodeId / selectedEdgeId with multi-selection sets
+function setSingleNodeSelection(nodeId) {
+  state.selectedNodeIds.clear();
+  state.selectedEdgeIds.clear();
+  if (nodeId != null) state.selectedNodeIds.add(nodeId);
+  state.selectedNodeId = nodeId ?? null;
+  state.selectedEdgeId = null;
+}
+
+function setSingleEdgeSelection(edgeId) {
+  state.selectedNodeIds.clear();
+  state.selectedEdgeIds.clear();
+  if (edgeId != null) state.selectedEdgeIds.add(edgeId);
+  state.selectedEdgeId = edgeId ?? null;
+  state.selectedNodeId = null;
+}
+
+function syncPrimarySelectionFromSets() {
+  state.selectedNodeId = state.selectedNodeIds.size === 1 ? [...state.selectedNodeIds][0] : null;
+  state.selectedEdgeId =
+    state.selectedNodeIds.size === 0 && state.selectedEdgeIds.size === 1 ? [...state.selectedEdgeIds][0] : null;
+}
 
 let canvasRect = { left: 0, top: 0, width: 800, height: 600 };
 let currentCursor = "default";
@@ -188,6 +229,18 @@ function invalidateNodeEdges(nodeId) {
   for (let i = 0; i < edges.length; i++) {
     const e = edges[i];
     if (e.source === nodeId || e.target === nodeId) {
+      e._ver = -1;
+    }
+  }
+  state.minimapDirty = true;
+  state.arrangeDirty = true;
+}
+
+function invalidateSelectedNodesEdges() {
+  const edges = page().edges;
+  for (let i = 0; i < edges.length; i++) {
+    const e = edges[i];
+    if (state.selectedNodeIds.has(e.source) || state.selectedNodeIds.has(e.target)) {
       e._ver = -1;
     }
   }
@@ -497,7 +550,7 @@ function computeSmartGuides(movingNode) {
   const nodes = page().nodes;
   for (let i = 0; i < nodes.length; i++) {
     const other = nodes[i];
-    if (other.id === movingNode.id) continue;
+    if (other.id === movingNode.id || state.selectedNodeIds.has(other.id)) continue;
     const checksX = [
       [movingNode.x, other.x],
       [movingNode.x + movingNode.w * 0.5, other.x + other.w * 0.5],
@@ -529,7 +582,7 @@ function computeSmartGuides(movingNode) {
 }
 
 // ============================================================================
-// 1. TOP DROPDOWN MENU BAR LOGIC
+// 1. TOP DROPDOWN MENU BAR & ACTIONS
 // ============================================================================
 const menuItems = document.querySelectorAll(".menu-item");
 menuItems.forEach((item) => {
@@ -579,6 +632,7 @@ function handleMenuAction(action) {
         JSON.stringify({ version: "1.0.0", nodes: p.nodes, edges: p.edges.map(({ _geo, _ver, ...r }) => r) }, null, 2),
         "application/json"
       );
+      showToast("Exported diagram.rfd.json");
       break;
     case "undo":
       undo();
@@ -586,11 +640,29 @@ function handleMenuAction(action) {
     case "redo":
       redo();
       break;
+    case "cut":
+      cutSelection();
+      break;
+    case "copy":
+      copySelection();
+      break;
+    case "paste":
+      pasteSelection();
+      break;
     case "duplicate":
       duplicateSelected();
       break;
+    case "select-all":
+      selectAll();
+      break;
+    case "clear-selection":
+      clearSelection();
+      break;
     case "delete":
       deleteSelected();
+      break;
+    case "fit-view":
+      fitToScreen();
       break;
     case "zoom-in":
       animateZoom(p.zoom * 1.25);
@@ -600,11 +672,13 @@ function handleMenuAction(action) {
       break;
     case "zoom-reset":
       animateViewTo(60, 50, 1.0);
+      showToast("Reset Zoom (100%)");
       break;
     case "toggle-grid":
       state.gridStyle = state.gridStyle === "dots" ? "lines" : state.gridStyle === "lines" ? "off" : "dots";
       cachedGridKey = "";
       renderFormatPanel();
+      showToast(`Grid: ${state.gridStyle.toUpperCase()}`);
       break;
     case "theme-dark":
     case "theme-light":
@@ -613,6 +687,7 @@ function handleMenuAction(action) {
       cachedGridKey = "";
       document.documentElement.setAttribute("data-theme", state.theme);
       renderFormatPanel();
+      showToast(`Theme: ${state.theme}`);
       break;
     case "layout-hier":
       runHierarchicalLayout();
@@ -628,6 +703,9 @@ function handleMenuAction(action) {
       break;
     case "send-back":
       sendToBack();
+      break;
+    case "shortcuts":
+      openShortcutsModal();
       break;
     case "cmd-palette":
       openCommandPalette();
@@ -669,6 +747,31 @@ function animateViewTo(targetPanX, targetPanY, targetZoom) {
     targetPanY,
     targetZoom,
   };
+}
+
+function fitToScreen() {
+  const p = page();
+  if (!p.nodes.length) {
+    animateViewTo(60, 50, 1.0);
+    return;
+  }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of p.nodes) {
+    if (n.x < minX) minX = n.x;
+    if (n.y < minY) minY = n.y;
+    if (n.x + n.w > maxX) maxX = n.x + n.w;
+    if (n.y + n.h > maxY) maxY = n.y + n.h + 24;
+  }
+  const contentW = Math.max(100, maxX - minX);
+  const contentH = Math.max(100, maxY - minY);
+  const pad = 70;
+  const zoomX = (canvas.width - pad * 2) / contentW;
+  const zoomY = (canvas.height - pad * 2) / contentH;
+  const targetZoom = Math.min(2.0, Math.max(0.2, Math.min(zoomX, zoomY)));
+  const targetPanX = (canvas.width - contentW * targetZoom) * 0.5 - minX * targetZoom;
+  const targetPanY = (canvas.height - contentH * targetZoom) * 0.5 - minY * targetZoom;
+  animateViewTo(targetPanX, targetPanY, targetZoom);
+  showToast("Fit Diagram to Screen");
 }
 
 function animateNodesToTargets(targetsMap) {
@@ -737,6 +840,7 @@ const SHAPE_OPTIONS = [
 
 function renderFormatPanel() {
   const p = page();
+  const totalSelected = state.selectedNodeIds.size + state.selectedEdgeIds.size;
   const node = nodeMap.get(state.selectedNodeId);
   const edge = p.edges.find((e) => e.id === state.selectedEdgeId);
 
@@ -744,6 +848,49 @@ function renderFormatPanel() {
     t.classList.toggle("active", t.getAttribute("data-tab") === state.activeFormatTab);
   });
 
+  // CASE A: Multiple items selected (e.g. Ctrl+A or Shift+Click / Box Select)
+  if (totalSelected > 1) {
+    formatBadgeEl.textContent = `${state.selectedNodeIds.size}N · ${state.selectedEdgeIds.size}E`;
+    formatTabsEl.style.display = "none";
+    formatBodyEl.innerHTML = `
+      <div class="format-section">
+        <label>Batch Style Presets (${state.selectedNodeIds.size} Nodes)</label>
+        <div class="swatch-grid" id="multi-swatches"></div>
+      </div>
+      <div class="format-section">
+        <label>Selection Actions</label>
+        <div class="format-row">
+          <button id="btn-multi-copy">⎘ Copy (Ctrl+C)</button>
+          <button id="btn-multi-dup">⧉ Duplicate (Ctrl+D)</button>
+        </div>
+        <button id="btn-multi-del" class="danger" style="width:100%; margin-top:4px;">✕ Delete All Selected (Del)</button>
+      </div>
+    `;
+    const swatchContainer = document.getElementById("multi-swatches");
+    STYLE_SWATCHES.forEach((sw) => {
+      const el = document.createElement("div");
+      el.className = "swatch";
+      el.style.background = sw.fill;
+      el.style.borderColor = sw.stroke;
+      el.onclick = () => {
+        saveSnapshot();
+        for (const nid of state.selectedNodeIds) {
+          const n = nodeMap.get(nid);
+          if (n) {
+            n.fill = sw.fill;
+            n.stroke = sw.stroke;
+          }
+        }
+      };
+      swatchContainer.appendChild(el);
+    });
+    document.getElementById("btn-multi-copy").onclick = copySelection;
+    document.getElementById("btn-multi-dup").onclick = duplicateSelected;
+    document.getElementById("btn-multi-del").onclick = deleteSelected;
+    return;
+  }
+
+  // CASE B: Nothing selected -> Diagram Inspector
   if (!node && !edge) {
     formatBadgeEl.textContent = "Diagram";
     formatTabsEl.style.display = "none";
@@ -780,9 +927,11 @@ function renderFormatPanel() {
         </select>
       </div>
       <div class="format-section" style="border-bottom:none;">
-        <label>Selection Hint</label>
-        <p style="font-size:11px; color:var(--text-muted); line-height:1.5;">
-          Click any <b>Shape</b> or <b>Edge</b> on the canvas to inspect and customize its <b>Style</b>, <b>Text</b>, and <b>Arrangement</b>.
+        <label>Quick Shortcuts</label>
+        <p style="font-size:11px; color:var(--text-muted); line-height:1.6;">
+          <b>Ctrl+A</b> Select All · <b>Ctrl+C/V</b> Copy/Paste<br/>
+          <b>Shift+Drag</b> Marquee Box Select<br/>
+          <b>Ctrl+D</b> Duplicate · <b>Ctrl+Z/Y</b> Undo/Redo
         </p>
       </div>
     `;
@@ -811,6 +960,7 @@ function renderFormatPanel() {
 
   formatTabsEl.style.display = "grid";
 
+  // CASE C: Single Node Selected
   if (node) {
     formatBadgeEl.textContent = `Node #${node.id}`;
     if (state.activeFormatTab === "style") {
@@ -898,8 +1048,8 @@ function renderFormatPanel() {
           </div>
         </div>
         <div class="format-section" style="border-bottom:none;">
-          <button id="btn-node-dup" style="width:100%">⧉ Duplicate Node</button>
-          <button id="btn-node-del" class="danger" style="width:100%; margin-top:4px;">✕ Delete Node</button>
+          <button id="btn-node-dup" style="width:100%">⧉ Duplicate Node (Ctrl+D)</button>
+          <button id="btn-node-del" class="danger" style="width:100%; margin-top:4px;">✕ Delete Node (Del)</button>
         </div>
       `;
       for (const [id, key] of [
@@ -921,6 +1071,7 @@ function renderFormatPanel() {
     return;
   }
 
+  // CASE D: Single Edge Selected
   if (edge) {
     formatBadgeEl.textContent = `Edge #${edge.id}`;
     if (state.activeFormatTab === "style") {
@@ -1047,7 +1198,7 @@ function syncArrangeInputsIfDirty() {
 }
 
 // ============================================================================
-// POINTER & INTERACTION HANDLERS
+// POINTER & INTERACTION HANDLERS (Supports Multi-Select, Group Drag & Shift+Drag Marquee)
 // ============================================================================
 canvas.addEventListener("mousedown", (e) => {
   inlineEditor.style.display = "none";
@@ -1061,6 +1212,7 @@ canvas.addEventListener("mousedown", (e) => {
   const p = page();
   const handleHitRadius = 13 / Math.max(0.4, p.zoom);
 
+  // 1. Selected Edge Bend & Endpoint Reconnect Handles
   const selectedEdge = p.edges.find((ed) => ed.id === state.selectedEdgeId);
   if (selectedEdge) {
     const geo = getEdgeGeometry(selectedEdge);
@@ -1083,6 +1235,7 @@ canvas.addEventListener("mousedown", (e) => {
     }
   }
 
+  // 2. Selected Node Resize Handle & Quick-Add Arrows
   const selectedNode = nodeMap.get(state.selectedNodeId);
   if (selectedNode) {
     if (Math.hypot(wpt.x - (selectedNode.x + selectedNode.w), wpt.y - (selectedNode.y + selectedNode.h)) <= handleHitRadius) {
@@ -1115,32 +1268,37 @@ canvas.addEventListener("mousedown", (e) => {
           bend: null,
         });
         invalidateGeometry();
-        state.selectedNodeId = newNode.id;
-        state.selectedEdgeId = null;
+        setSingleNodeSelection(newNode.id);
         renderFormatPanel();
         return;
       }
     }
   }
 
+  // 3. Port Handle Click (Drag-to-Connect)
   const portHitRadius = 15 / Math.max(0.4, p.zoom);
   for (let i = 0; i < p.nodes.length; i++) {
     const n = p.nodes[i];
     for (const port of getNodePorts(n)) {
       if (Math.hypot(wpt.x - port.x, wpt.y - port.y) <= portHitRadius) {
         state.connectingFrom = { node: n, port };
-        state.selectedNodeId = n.id;
-        state.selectedEdgeId = null;
+        setSingleNodeSelection(n.id);
         renderFormatPanel();
         return;
       }
     }
   }
 
+  // 4. Edge Hit-Test
   const hitEdge = hitTestEdge(wpt);
   if (hitEdge) {
-    state.selectedEdgeId = hitEdge.id;
-    state.selectedNodeId = null;
+    if (e.shiftKey) {
+      if (state.selectedEdgeIds.has(hitEdge.id)) state.selectedEdgeIds.delete(hitEdge.id);
+      else state.selectedEdgeIds.add(hitEdge.id);
+      syncPrimarySelectionFromSets();
+    } else {
+      setSingleEdgeSelection(hitEdge.id);
+    }
     renderFormatPanel();
     const geo = getEdgeGeometry(hitEdge);
     if (geo && Math.hypot(wpt.x - geo.midPoint.x, wpt.y - geo.midPoint.y) <= handleHitRadius * 1.3) {
@@ -1150,6 +1308,7 @@ canvas.addEventListener("mousedown", (e) => {
     return;
   }
 
+  // 5. Node Body Hit-Test
   let hit = null;
   for (let i = p.nodes.length - 1; i >= 0; i--) {
     const n = p.nodes[i];
@@ -1160,27 +1319,96 @@ canvas.addEventListener("mousedown", (e) => {
   }
   if (hit) {
     saveSnapshot();
-    const changed = state.selectedNodeId !== hit.id || state.selectedEdgeId !== null;
-    state.selectedNodeId = hit.id;
-    state.selectedEdgeId = null;
-    state.draggingNode = { node: hit, offsetX: wpt.x - hit.x, offsetY: wpt.y - hit.y };
-    if (changed) renderFormatPanel();
+    if (e.shiftKey) {
+      if (state.selectedNodeIds.has(hit.id)) state.selectedNodeIds.delete(hit.id);
+      else state.selectedNodeIds.add(hit.id);
+      syncPrimarySelectionFromSets();
+      renderFormatPanel();
+    } else if (!state.selectedNodeIds.has(hit.id)) {
+      setSingleNodeSelection(hit.id);
+      renderFormatPanel();
+    }
+
+    const initialPositions = new Map();
+    for (const nid of state.selectedNodeIds) {
+      const n = nodeMap.get(nid);
+      if (n) initialPositions.set(nid, { x: n.x, y: n.y });
+    }
+    state.draggingNode = {
+      leadNode: hit,
+      offsetX: wpt.x - hit.x,
+      offsetY: wpt.y - hit.y,
+      initialPositions,
+    };
   } else {
-    const changed = state.selectedNodeId !== null || state.selectedEdgeId !== null;
-    state.selectedNodeId = null;
-    state.selectedEdgeId = null;
+    // Shift + Drag on empty canvas -> Rubber-Band Marquee Box Selection!
+    if (e.shiftKey) {
+      state.marqueeBox = { startX: wpt.x, startY: wpt.y, endX: wpt.x, endY: wpt.y };
+      return;
+    }
+    const hadSelection = state.selectedNodeIds.size > 0 || state.selectedEdgeIds.size > 0;
+    setSingleNodeSelection(null);
     state.panning = { startX: sx - p.pan.x, startY: sy - p.pan.y };
-    if (changed) renderFormatPanel();
+    if (hadSelection) renderFormatPanel();
   }
 });
+
+function openInlineEditorForSelection() {
+  const p = page();
+  const edge = p.edges.find((ed) => ed.id === state.selectedEdgeId);
+  if (edge) {
+    const geo = getEdgeGeometry(edge);
+    if (!geo) return;
+    const spt = worldToScreen(geo.midPoint.x - 60, geo.midPoint.y - 14);
+    inlineEditor.style.display = "block";
+    inlineEditor.style.left = `${spt.x}px`;
+    inlineEditor.style.top = `${spt.y}px`;
+    inlineEditor.style.width = `120px`;
+    inlineEditor.value = edge.label || "";
+    inlineEditor.focus();
+    inlineEditor.select();
+    inlineEditor.onkeydown = (ev) => {
+      if (ev.key === "Enter") {
+        saveSnapshot();
+        edge.label = inlineEditor.value;
+        edge._ver = -1;
+        inlineEditor.style.display = "none";
+        renderFormatPanel();
+      } else if (ev.key === "Escape") {
+        inlineEditor.style.display = "none";
+      }
+    };
+    return;
+  }
+
+  const node = nodeMap.get(state.selectedNodeId);
+  if (!node) return;
+  const spt = worldToScreen(node.x, node.y);
+  inlineEditor.style.display = "block";
+  inlineEditor.style.left = `${spt.x}px`;
+  inlineEditor.style.top = `${spt.y}px`;
+  inlineEditor.style.width = `${node.w * p.zoom}px`;
+  inlineEditor.value = node.title;
+  inlineEditor.focus();
+  inlineEditor.select();
+  inlineEditor.onkeydown = (ev) => {
+    if (ev.key === "Enter") {
+      saveSnapshot();
+      node.title = inlineEditor.value;
+      inlineEditor.style.display = "none";
+      renderFormatPanel();
+    } else if (ev.key === "Escape") {
+      inlineEditor.style.display = "none";
+    }
+  };
+}
 
 canvas.addEventListener("dblclick", (e) => {
   const wpt = screenToWorld(e.clientX - canvasRect.left, e.clientY - canvasRect.top);
 
   const hitEdge = hitTestEdge(wpt);
   if (hitEdge) {
-    state.selectedEdgeId = hitEdge.id;
-    state.selectedNodeId = null;
+    setSingleEdgeSelection(hitEdge.id);
     const geo = getEdgeGeometry(hitEdge);
     if (geo && hitEdge.bend && Math.hypot(wpt.x - geo.midPoint.x, wpt.y - geo.midPoint.y) <= 16) {
       saveSnapshot();
@@ -1189,50 +1417,16 @@ canvas.addEventListener("dblclick", (e) => {
       renderFormatPanel();
       return;
     }
-    if (geo) {
-      const spt = worldToScreen(geo.midPoint.x - 60, geo.midPoint.y - 14);
-      inlineEditor.style.display = "block";
-      inlineEditor.style.left = `${spt.x}px`;
-      inlineEditor.style.top = `${spt.y}px`;
-      inlineEditor.style.width = `120px`;
-      inlineEditor.value = hitEdge.label || "";
-      inlineEditor.focus();
-      inlineEditor.onkeydown = (ev) => {
-        if (ev.key === "Enter") {
-          saveSnapshot();
-          hitEdge.label = inlineEditor.value;
-          hitEdge._ver = -1;
-          inlineEditor.style.display = "none";
-          renderFormatPanel();
-        } else if (ev.key === "Escape") {
-          inlineEditor.style.display = "none";
-        }
-      };
-    }
     renderFormatPanel();
+    openInlineEditorForSelection();
     return;
   }
 
   const hit = page().nodes.find((n) => wpt.x >= n.x && wpt.x <= n.x + n.w && wpt.y >= n.y && wpt.y <= n.y + n.h);
   if (!hit) return;
-  state.selectedNodeId = hit.id;
-  const spt = worldToScreen(hit.x, hit.y);
-  inlineEditor.style.display = "block";
-  inlineEditor.style.left = `${spt.x}px`;
-  inlineEditor.style.top = `${spt.y}px`;
-  inlineEditor.style.width = `${hit.w * page().zoom}px`;
-  inlineEditor.value = hit.title;
-  inlineEditor.focus();
-  inlineEditor.onkeydown = (ev) => {
-    if (ev.key === "Enter") {
-      saveSnapshot();
-      hit.title = inlineEditor.value;
-      inlineEditor.style.display = "none";
-      renderFormatPanel();
-    } else if (ev.key === "Escape") {
-      inlineEditor.style.display = "none";
-    }
-  };
+  setSingleNodeSelection(hit.id);
+  renderFormatPanel();
+  openInlineEditorForSelection();
 });
 
 window.addEventListener(
@@ -1245,6 +1439,31 @@ window.addEventListener(
     const wy = (sy - p.pan.y) / p.zoom;
     state.mouseWorld.x = wx;
     state.mouseWorld.y = wy;
+
+    if (state.marqueeBox) {
+      state.marqueeBox.endX = wx;
+      state.marqueeBox.endY = wy;
+      const minX = Math.min(state.marqueeBox.startX, wx);
+      const maxX = Math.max(state.marqueeBox.startX, wx);
+      const minY = Math.min(state.marqueeBox.startY, wy);
+      const maxY = Math.max(state.marqueeBox.startY, wy);
+
+      state.selectedNodeIds.clear();
+      state.selectedEdgeIds.clear();
+      for (const n of p.nodes) {
+        if (n.x + n.w >= minX && n.x <= maxX && n.y + n.h >= minY && n.y <= maxY) {
+          state.selectedNodeIds.add(n.id);
+        }
+      }
+      for (const ed of p.edges) {
+        if (state.selectedNodeIds.has(ed.source) && state.selectedNodeIds.has(ed.target)) {
+          state.selectedEdgeIds.add(ed.id);
+        }
+      }
+      syncPrimarySelectionFromSets();
+      setCanvasCursor("crosshair");
+      return;
+    }
 
     if (state.connectingFrom) {
       state.snapTargetPort = findSnapTargetPort(state.mouseWorld, state.connectingFrom.node.id);
@@ -1285,14 +1504,27 @@ window.addEventListener(
       return;
     }
 
+    // Group Dragging (Moves all selected nodes smoothly together!)
     if (state.draggingNode) {
-      const { node, offsetX, offsetY } = state.draggingNode;
+      const { leadNode, offsetX, offsetY, initialPositions } = state.draggingNode;
+      const leadStart = initialPositions.get(leadNode.id) || { x: leadNode.x, y: leadNode.y };
       const rawX = wx - offsetX;
       const rawY = wy - offsetY;
-      node.x = state.snapToGrid ? Math.round(rawX / state.gridSize) * state.gridSize : rawX;
-      node.y = state.snapToGrid ? Math.round(rawY / state.gridSize) * state.gridSize : rawY;
-      state.smartGuides = computeSmartGuides(node);
-      invalidateNodeEdges(node.id);
+      leadNode.x = state.snapToGrid ? Math.round(rawX / state.gridSize) * state.gridSize : rawX;
+      leadNode.y = state.snapToGrid ? Math.round(rawY / state.gridSize) * state.gridSize : rawY;
+      state.smartGuides = computeSmartGuides(leadNode);
+
+      const dx = leadNode.x - leadStart.x;
+      const dy = leadNode.y - leadStart.y;
+      for (const [nid, initPos] of initialPositions.entries()) {
+        if (nid === leadNode.id) continue;
+        const other = nodeMap.get(nid);
+        if (other) {
+          other.x = initPos.x + dx;
+          other.y = initPos.y + dy;
+        }
+      }
+      invalidateSelectedNodesEdges();
       setCanvasCursor("grabbing");
       return;
     }
@@ -1334,6 +1566,11 @@ window.addEventListener("mouseup", (e) => {
   state.mouseWorld = screenToWorld(e.clientX - canvasRect.left, e.clientY - canvasRect.top);
   const p = page();
 
+  if (state.marqueeBox) {
+    state.marqueeBox = null;
+    renderFormatPanel();
+  }
+
   if (state.connectingFrom) {
     const srcNode = state.connectingFrom.node;
     const srcPort = state.connectingFrom.port;
@@ -1355,8 +1592,7 @@ window.addEventListener("mouseup", (e) => {
       };
       p.edges.push(newEdge);
       invalidateGeometry();
-      state.selectedEdgeId = newEdge.id;
-      state.selectedNodeId = null;
+      setSingleEdgeSelection(newEdge.id);
       renderFormatPanel();
     }
   }
@@ -1379,10 +1615,14 @@ window.addEventListener("mouseup", (e) => {
   }
 
   if (state.draggingNode) {
-    const n = state.draggingNode.node;
-    n.x = Math.round(n.x);
-    n.y = Math.round(n.y);
-    invalidateNodeEdges(n.id);
+    for (const nid of state.selectedNodeIds) {
+      const n = nodeMap.get(nid);
+      if (n) {
+        n.x = Math.round(n.x);
+        n.y = Math.round(n.y);
+      }
+    }
+    invalidateSelectedNodesEdges();
   }
   if (state.resizingNode) {
     const n = state.resizingNode.node;
@@ -1433,13 +1673,13 @@ function addStencilToCanvas(item) {
   };
   p.nodes.push(newNode);
   invalidateGeometry();
-  state.selectedNodeId = newNode.id;
-  state.selectedEdgeId = null;
+  setSingleNodeSelection(newNode.id);
   renderFormatPanel();
+  showToast(`Added ${item.label}`);
 }
 
 // ============================================================================
-// AUTHENTIC DRAW.IO VECTOR SHAPE RENDERER (Used on Main Canvas & Palette Icons)
+// AUTHENTIC DRAW.IO VECTOR SHAPE RENDERER
 // ============================================================================
 function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
   const { x, y, w, h, shape } = n;
@@ -1448,7 +1688,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
 
   ctx.beginPath();
 
-  // 1. Decision Diamond & BPMN Gateways (XOR / Parallel)
   if (shape === "diamond" || shape === "gateway_xor" || shape === "gateway_parallel") {
     const cx = x + w * 0.5;
     const cy = y + h * 0.5;
@@ -1461,7 +1700,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.stroke();
 
     if (shape === "gateway_xor" || shape === "gateway_parallel") {
-      // Inner BPMN diamond rim
       const inset = Math.min(w, h) * 0.08;
       ctx.beginPath();
       ctx.moveTo(cx, y + inset);
@@ -1471,7 +1709,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       ctx.closePath();
       ctx.stroke();
 
-      // Bold centered gateway marker (text is rendered below the diamond, never colliding!)
       ctx.save();
       ctx.lineWidth = isMiniPreview ? 1.6 : 2.6;
       const s = Math.min(w, h) * 0.19;
@@ -1490,15 +1727,11 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       ctx.stroke();
       ctx.restore();
     }
-  }
-  // 2. Terminator / Rounded Pill
-  else if (shape === "rounded") {
+  } else if (shape === "rounded") {
     ctx.roundRect(x, y, w, h, Math.min(w, h) * 0.5);
     ctx.fill();
     ctx.stroke();
-  }
-  // 3. Circle & BPMN Timer Event
-  else if (shape === "circle" || shape === "timer") {
+  } else if (shape === "circle" || shape === "timer") {
     const r = Math.min(w, h) * 0.5;
     const cx = x + w * 0.5;
     const cy = y + h * 0.5;
@@ -1507,7 +1740,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.stroke();
 
     if (shape === "timer") {
-      // BPMN double ring + 12 clock ticks + hands (label sits below circle)
       ctx.beginPath();
       ctx.arc(cx, cy, r * 0.82, 0, Math.PI * 2);
       for (let tick = 0; tick < 12; tick++) {
@@ -1523,14 +1755,11 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       ctx.lineTo(cx + r * 0.36, cy + r * 0.12);
       ctx.stroke();
     }
-  }
-  // 4. True 3D Vertical Database Cylinder ( & AWS S3 Bucket )
-  else if (shape === "cylinder" || shape === "aws_s3") {
+  } else if (shape === "cylinder" || shape === "aws_s3") {
     const ry = Math.min(14, h * 0.16);
     const rx = w * 0.5;
     const cx = x + rx;
 
-    // Cylinder outer silhouette using exact elliptical arcs
     ctx.ellipse(cx, y + ry, rx, ry, 0, Math.PI, Math.PI * 2, false);
     ctx.lineTo(x + w, y + h - ry);
     ctx.ellipse(cx, y + h - ry, rx, ry, 0, 0, Math.PI, false);
@@ -1538,30 +1767,23 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.fill();
     ctx.stroke();
 
-    // Shaded top 3D disc lid
     ctx.beginPath();
     ctx.ellipse(cx, y + ry, rx, ry, 0, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
     ctx.fill();
     ctx.stroke();
 
-    // Second database platter ring
     if (!isMiniPreview) {
       ctx.beginPath();
       ctx.ellipse(cx, y + ry + 8, rx, ry * 0.88, 0, 0.08, Math.PI - 0.08);
       ctx.stroke();
     }
     ctx.fillStyle = fillCol;
-  }
-  // 5. True 3D Horizontal Cylinder Pipe (Kafka / FIFO Message Queue)
-  //    Curved left cap + straight top/bottom + 3D right oval cap,
-  //    with wide open center body so text never touches any seam lines!
-  else if (shape === "queue") {
+  } else if (shape === "queue") {
     const rx = Math.min(13, w * 0.085);
     const ry = h * 0.5;
     const cy = y + ry;
 
-    // Outer 3D horizontal tube silhouette
     ctx.ellipse(x + rx, cy, rx, ry, 0, Math.PI * 0.5, Math.PI * 1.5, false);
     ctx.lineTo(x + w - rx, y);
     ctx.ellipse(x + w - rx, cy, rx, ry, 0, -Math.PI * 0.5, Math.PI * 0.5, false);
@@ -1569,14 +1791,12 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.fill();
     ctx.stroke();
 
-    // Right-end 3D oval cap with recessed inner shading
     ctx.beginPath();
     ctx.ellipse(x + w - rx, cy, rx, ry, 0, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
     ctx.fill();
     ctx.stroke();
 
-    // Inner pipe opening on right cap + single left rim seam
     if (!isMiniPreview) {
       ctx.beginPath();
       ctx.ellipse(x + w - rx, cy, rx * 0.45, ry * 0.48, 0, 0, Math.PI * 2);
@@ -1587,9 +1807,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       ctx.stroke();
     }
     ctx.fillStyle = fillCol;
-  }
-  // 6. Data I/O Parallelogram
-  else if (shape === "parallelogram") {
+  } else if (shape === "parallelogram") {
     const skew = Math.min(20, w * 0.16);
     ctx.moveTo(x + skew, y);
     ctx.lineTo(x + w, y);
@@ -1598,9 +1816,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  }
-  // 7. Prep Hexagon / AWS Lambda / Kubernetes Pod
-  else if (shape === "hexagon" || shape === "aws_lambda" || shape === "k8s_pod") {
+  } else if (shape === "hexagon" || shape === "aws_lambda" || shape === "k8s_pod") {
     const cut = Math.min(20, w * 0.14);
     ctx.moveTo(x + cut, y);
     ctx.lineTo(x + w - cut, y);
@@ -1613,7 +1829,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.stroke();
 
     if (!isMiniPreview && (shape === "aws_lambda" || shape === "k8s_pod")) {
-      // Draw left-side emblem badge
       const bx = x + 26;
       const by = y + h * 0.5;
       ctx.beginPath();
@@ -1627,9 +1842,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       ctx.fillText(shape === "aws_lambda" ? "λ" : "☸", bx, by + 4.5);
       ctx.fillStyle = fillCol;
     }
-  }
-  // 8. Wavy Bottom Document
-  else if (shape === "document") {
+  } else if (shape === "document") {
     const wave = Math.min(12, h * 0.15);
     ctx.moveTo(x, y);
     ctx.lineTo(x + w, y);
@@ -1645,9 +1858,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  }
-  // 9. Sticky Note with Shaded Folded Corner
-  else if (shape === "note") {
+  } else if (shape === "note") {
     const fold = Math.min(18, w * 0.18, h * 0.22);
     ctx.moveTo(x, y);
     ctx.lineTo(x + w - fold, y);
@@ -1667,9 +1878,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = fillCol;
-  }
-  // 10. Multi-Puff Vector Cloud (True Cloud Shape!)
-  else if (shape === "cloud") {
+  } else if (shape === "cloud") {
     const l = x + w * 0.06;
     const r = x + w * 0.94;
     const t = y + h * 0.12;
@@ -1685,9 +1894,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  }
-  // 11. UML Stickman Actor (Scales proportionally; text sits below figure!)
-  else if (shape === "actor") {
+  } else if (shape === "actor") {
     const cx = x + w * 0.5;
     const headR = Math.min(w, h) * 0.15;
     const headY = y + headR + 4;
@@ -1711,9 +1918,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.moveTo(cx, hipY);
     ctx.lineTo(cx + legSpan, footY);
     ctx.stroke();
-  }
-  // 12. UML Package (Folder Tab + Body)
-  else if (shape === "uml_package") {
+  } else if (shape === "uml_package") {
     const tabW = Math.min(76, w * 0.45);
     const tabH = Math.min(18, h * 0.22);
     ctx.roundRect(x, y, tabW, tabH, [5, 5, 0, 0]);
@@ -1724,9 +1929,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.roundRect(x, y + tabH, w, h - tabH, [0, 8, 8, 8]);
     ctx.fill();
     ctx.stroke();
-  }
-  // 13. UML Component (Card + Standard Top-Right Component Symbol)
-  else if (shape === "uml_component") {
+  } else if (shape === "uml_component") {
     ctx.roundRect(x, y, w, h, 8);
     ctx.fill();
     ctx.stroke();
@@ -1743,9 +1946,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       ctx.fillRect(ix - 4, iy + 11, 8, 4);
       ctx.strokeRect(ix - 4, iy + 11, 8, 4);
     }
-  }
-  // 14. UML Class & UML Interface (Clean Header Compartment + Body Compartment)
-  else if (shape === "uml_class" || shape === "uml_interface") {
+  } else if (shape === "uml_class" || shape === "uml_interface") {
     const headerH = isMiniPreview ? h * 0.38 : 34;
     ctx.roundRect(x, y, w, h, 8);
     ctx.fill();
@@ -1755,9 +1956,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.moveTo(x, y + headerH);
     ctx.lineTo(x + w, y + headerH);
     ctx.stroke();
-  }
-  // 15. Security Auth Shield
-  else if (shape === "shield") {
+  } else if (shape === "shield") {
     const cx = x + w * 0.5;
     ctx.moveTo(cx, y);
     ctx.lineTo(x + w, y + h * 0.18);
@@ -1766,15 +1965,12 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  }
-  // 16. WAF Brick Firewall (Top Masonry Brick Wall Header + Clean Label Body)
-  else if (shape === "firewall") {
+  } else if (shape === "firewall") {
     const headerH = isMiniPreview ? h * 0.45 : 24;
     ctx.roundRect(x, y, w, h, 8);
     ctx.fill();
     ctx.stroke();
 
-    // Shaded brick header band
     ctx.save();
     ctx.beginPath();
     ctx.roundRect(x, y, w, headerH, [8, 8, 0, 0]);
@@ -1788,20 +1984,16 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.lineTo(x + w, midY);
     ctx.moveTo(x, y + headerH);
     ctx.lineTo(x + w, y + headerH);
-    // Row 1 bricks
     for (const f of [0.25, 0.5, 0.75]) {
       ctx.moveTo(x + w * f, y);
       ctx.lineTo(x + w * f, midY);
     }
-    // Row 2 staggered bricks
     for (const f of [0.125, 0.375, 0.625, 0.875]) {
       ctx.moveTo(x + w * f, midY);
       ctx.lineTo(x + w * f, y + headerH);
     }
     ctx.stroke();
-  }
-  // 17. Server Rack (Top Rack Unit Header with LEDs + Clean Label Body)
-  else if (shape === "server") {
+  } else if (shape === "server") {
     const headerH = isMiniPreview ? h * 0.35 : 22;
     ctx.roundRect(x, y, w, h, 8);
     ctx.fill();
@@ -1811,7 +2003,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.moveTo(x, y + headerH);
     ctx.lineTo(x + w, y + headerH);
     if (!isMiniPreview) {
-      // Rack vent slots on top right
       for (let i = 0; i < 4; i++) {
         const vx = x + w - 14 - i * 6;
         ctx.moveTo(vx, y + 6);
@@ -1830,9 +2021,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       }
       ctx.fillStyle = fillCol;
     }
-  }
-  // 18. Browser Window Wireframe
-  else if (shape === "browser") {
+  } else if (shape === "browser") {
     const headerH = isMiniPreview ? h * 0.3 : 26;
     ctx.roundRect(x, y, w, h, 10);
     ctx.fill();
@@ -1851,9 +2040,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       }
       ctx.fillStyle = fillCol;
     }
-  }
-  // 19. Mobile Screen Wireframe
-  else if (shape === "mobile") {
+  } else if (shape === "mobile") {
     ctx.roundRect(x, y, w, h, isMiniPreview ? 6 : 18);
     ctx.fill();
     ctx.stroke();
@@ -1863,21 +2050,17 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.moveTo(x + w * 0.3, y + h - (isMiniPreview ? 4 : 10));
     ctx.lineTo(x + w * 0.7, y + h - (isMiniPreview ? 4 : 10));
     ctx.stroke();
-  }
-  // 20. Standard React Flow Process Card
-  else {
+  } else {
     ctx.roundRect(x, y, w, h, isMiniPreview ? 4 : 10);
     ctx.fill();
     ctx.stroke();
   }
 }
 
-// Compute Clean Non-Overlapping Text Coordinates for Every Shape
 function getNodeTextPlacement(n) {
   const { x, y, w, h, shape } = n;
   const cx = x + w * 0.5;
 
-  // Shapes with full-interior symbols place their label cleanly below the symbol
   if (shape === "actor" || shape === "gateway_xor" || shape === "gateway_parallel" || shape === "timer") {
     return {
       cx,
@@ -1886,7 +2069,6 @@ function getNodeTextPlacement(n) {
       external: true,
     };
   }
-  // Shapes with top header compartments or 3D top lids shift text into the lower body
   if (shape === "cylinder" || shape === "aws_s3") {
     const bodyCenterY = y + 20 + (h - 20) * 0.5;
     return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 13, external: false };
@@ -1932,7 +2114,6 @@ function getNodeTextPlacement(n) {
   };
 }
 
-// Render Left Stencil Palette with Live Mini Vector Canvas Previews
 function renderPalette(filter = "") {
   const container = document.getElementById("palette-list");
   container.innerHTML = "";
@@ -1998,12 +2179,12 @@ function addNewPage() {
     redoStack: [],
   });
   state.activePageId = id;
-  state.selectedNodeId = null;
-  state.selectedEdgeId = null;
+  setSingleNodeSelection(null);
   invalidateGeometry();
   renderPageTabs();
   renderFormatPanel();
   updateZoomLabel();
+  showToast(`Created Page-${id}`);
 }
 
 function renderPageTabs() {
@@ -2015,8 +2196,7 @@ function renderPageTabs() {
     tab.textContent = p.name;
     tab.onclick = () => {
       state.activePageId = p.id;
-      state.selectedNodeId = p.nodes[0]?.id || null;
-      state.selectedEdgeId = null;
+      setSingleNodeSelection(p.nodes[0]?.id || null);
       invalidateGeometry();
       renderPageTabs();
       renderFormatPanel();
@@ -2031,73 +2211,195 @@ function renderPageTabs() {
 }
 renderPageTabs();
 
+// ============================================================================
+// CLIPBOARD, MULTI-SELECTION & EDIT OPERATIONS
+// ============================================================================
+function selectAll() {
+  const p = page();
+  state.selectedNodeIds.clear();
+  state.selectedEdgeIds.clear();
+  for (const n of p.nodes) state.selectedNodeIds.add(n.id);
+  for (const e of p.edges) state.selectedEdgeIds.add(e.id);
+  syncPrimarySelectionFromSets();
+  state.minimapDirty = true;
+  renderFormatPanel();
+  showToast(`Selected All (${p.nodes.length} nodes, ${p.edges.length} edges)`);
+}
+
+function clearSelection() {
+  setSingleNodeSelection(null);
+  state.minimapDirty = true;
+  renderFormatPanel();
+}
+
+function copySelection() {
+  const p = page();
+  const nodesToCopy = p.nodes.filter((n) => state.selectedNodeIds.has(n.id));
+  const edgesToCopy = p.edges.filter(
+    (e) =>
+      state.selectedEdgeIds.has(e.id) ||
+      (state.selectedNodeIds.has(e.source) && state.selectedNodeIds.has(e.target))
+  );
+  if (!nodesToCopy.length && !edgesToCopy.length) {
+    showToast("Nothing selected to copy");
+    return;
+  }
+  state.clipboard = {
+    nodes: nodesToCopy.map((n) => ({ ...n })),
+    edges: edgesToCopy.map(({ _geo, _ver, ...rest }) => ({ ...rest, bend: rest.bend ? { ...rest.bend } : null })),
+    pasteStep: 0,
+  };
+  showToast(`Copied ${nodesToCopy.length} node(s)${edgesToCopy.length ? ` & ${edgesToCopy.length} edge(s)` : ""}`);
+}
+
+function cutSelection() {
+  if (!state.selectedNodeIds.size && !state.selectedEdgeIds.size) {
+    showToast("Nothing selected to cut");
+    return;
+  }
+  copySelection();
+  deleteSelected(false);
+  showToast(`Cut selection to clipboard`);
+}
+
+function pasteSelection() {
+  const { nodes: clipNodes, edges: clipEdges } = state.clipboard;
+  if (!clipNodes.length && !clipEdges.length) {
+    showToast("Clipboard is empty");
+    return;
+  }
+  const p = page();
+  saveSnapshot();
+  state.clipboard.pasteStep++;
+  const offset = 28 * state.clipboard.pasteStep;
+
+  const idMap = new Map();
+  state.selectedNodeIds.clear();
+  state.selectedEdgeIds.clear();
+
+  for (const cn of clipNodes) {
+    const newId = ++state.nextId;
+    idMap.set(cn.id, newId);
+    const cloned = {
+      ...cn,
+      id: newId,
+      x: cn.x + offset,
+      y: cn.y + offset,
+      z: p.nodes.length + 1,
+    };
+    p.nodes.push(cloned);
+    state.selectedNodeIds.add(newId);
+  }
+
+  for (const ce of clipEdges) {
+    const newSrc = idMap.get(ce.source) ?? ce.source;
+    const newDst = idMap.get(ce.target) ?? ce.target;
+    if (p.nodes.some((n) => n.id === newSrc) && p.nodes.some((n) => n.id === newDst)) {
+      const newEdgeId = ++state.nextId;
+      p.edges.push({
+        ...ce,
+        id: newEdgeId,
+        source: newSrc,
+        target: newDst,
+        bend: ce.bend ? { x: ce.bend.x + offset, y: ce.bend.y + offset } : null,
+      });
+      state.selectedEdgeIds.add(newEdgeId);
+    }
+  }
+
+  syncPrimarySelectionFromSets();
+  invalidateGeometry();
+  renderFormatPanel();
+  showToast(`Pasted ${clipNodes.length} node(s)`);
+}
+
+function duplicateSelected() {
+  if (!state.selectedNodeIds.size && !state.selectedEdgeIds.size) {
+    showToast("Nothing selected to duplicate");
+    return;
+  }
+  copySelection();
+  pasteSelection();
+}
+
+function deleteSelected(withToast = true) {
+  const p = page();
+  const delNodes = state.selectedNodeIds.size;
+  const delEdges = state.selectedEdgeIds.size;
+  if (!delNodes && !delEdges) return;
+
+  saveSnapshot();
+  if (delNodes > 0) {
+    p.nodes = p.nodes.filter((n) => !state.selectedNodeIds.has(n.id));
+    p.edges = p.edges.filter(
+      (e) =>
+        !state.selectedEdgeIds.has(e.id) &&
+        !state.selectedNodeIds.has(e.source) &&
+        !state.selectedNodeIds.has(e.target)
+    );
+  } else {
+    p.edges = p.edges.filter((e) => !state.selectedEdgeIds.has(e.id));
+  }
+  setSingleNodeSelection(null);
+  invalidateGeometry();
+  renderFormatPanel();
+  if (withToast) showToast(`Deleted ${delNodes ? `${delNodes} node(s)` : `${delEdges} edge(s)`}`);
+}
+
 function bringToFront() {
   const p = page();
-  const n = nodeMap.get(state.selectedNodeId);
-  if (!n) return;
-  n.z = Math.max(0, ...p.nodes.map((x) => x.z || 0)) + 1;
+  if (!state.selectedNodeIds.size) return;
+  let maxZ = Math.max(0, ...p.nodes.map((x) => x.z || 0));
+  for (const nid of state.selectedNodeIds) {
+    const n = nodeMap.get(nid);
+    if (n) n.z = ++maxZ;
+  }
   p.nodes.sort((a, b) => (a.z || 0) - (b.z || 0));
+  showToast("Brought to Front");
 }
 
 function sendToBack() {
   const p = page();
-  const n = nodeMap.get(state.selectedNodeId);
-  if (!n) return;
-  n.z = Math.min(0, ...p.nodes.map((x) => x.z || 0)) - 1;
+  if (!state.selectedNodeIds.size) return;
+  let minZ = Math.min(0, ...p.nodes.map((x) => x.z || 0));
+  for (const nid of state.selectedNodeIds) {
+    const n = nodeMap.get(nid);
+    if (n) n.z = --minZ;
+  }
   p.nodes.sort((a, b) => (a.z || 0) - (b.z || 0));
+  showToast("Sent to Back");
 }
 
 function undo() {
   const p = page();
-  if (!p.undoStack.length) return;
+  if (!p.undoStack.length) {
+    showToast("Nothing to Undo");
+    return;
+  }
   p.redoStack.push(JSON.stringify({ nodes: p.nodes, edges: p.edges.map(({ _geo, _ver, ...r }) => r) }));
   const prev = JSON.parse(p.undoStack.pop());
   p.nodes = prev.nodes;
   p.edges = prev.edges;
+  setSingleNodeSelection(p.nodes[0]?.id || null);
   invalidateGeometry();
   renderFormatPanel();
+  showToast("Undo");
 }
 
 function redo() {
   const p = page();
-  if (!p.redoStack.length) return;
+  if (!p.redoStack.length) {
+    showToast("Nothing to Redo");
+    return;
+  }
   p.undoStack.push(JSON.stringify({ nodes: p.nodes, edges: p.edges.map(({ _geo, _ver, ...r }) => r) }));
   const next = JSON.parse(p.redoStack.pop());
   p.nodes = next.nodes;
   p.edges = next.edges;
+  setSingleNodeSelection(p.nodes[0]?.id || null);
   invalidateGeometry();
   renderFormatPanel();
-}
-
-function duplicateSelected() {
-  const p = page();
-  const n = nodeMap.get(state.selectedNodeId);
-  if (!n) return;
-  saveSnapshot();
-  const copy = { ...n, id: ++state.nextId, x: n.x + 30, y: n.y + 30 };
-  p.nodes.push(copy);
-  invalidateGeometry();
-  state.selectedNodeId = copy.id;
-  renderFormatPanel();
-}
-
-function deleteSelected() {
-  const p = page();
-  if (state.selectedEdgeId) {
-    saveSnapshot();
-    p.edges = p.edges.filter((e) => e.id !== state.selectedEdgeId);
-    state.selectedEdgeId = null;
-    invalidateGeometry();
-    renderFormatPanel();
-    return;
-  }
-  if (!state.selectedNodeId) return;
-  saveSnapshot();
-  p.nodes = p.nodes.filter((n) => n.id !== state.selectedNodeId);
-  p.edges = p.edges.filter((e) => e.source !== state.selectedNodeId && e.target !== state.selectedNodeId);
-  state.selectedNodeId = null;
-  invalidateGeometry();
-  renderFormatPanel();
+  showToast("Redo");
 }
 
 function runHierarchicalLayout() {
@@ -2129,6 +2431,7 @@ function runHierarchicalLayout() {
   });
   p.edges.forEach((e) => (e.bend = null));
   animateNodesToTargets(targets);
+  showToast("Auto-Layout: Hierarchical");
 }
 
 function runGridLayout() {
@@ -2146,6 +2449,7 @@ function runGridLayout() {
   });
   p.edges.forEach((e) => (e.bend = null));
   animateNodesToTargets(targets);
+  showToast("Auto-Layout: Grid");
 }
 
 function runRadialLayout() {
@@ -2164,6 +2468,7 @@ function runRadialLayout() {
   });
   p.edges.forEach((e) => (e.bend = null));
   animateNodesToTargets(targets);
+  showToast("Auto-Layout: Radial");
 }
 
 function generateStressGraph(count) {
@@ -2204,34 +2509,42 @@ function generateStressGraph(count) {
       });
     }
   }
+  setSingleNodeSelection(1);
   invalidateGeometry();
   renderFormatPanel();
+  showToast(`Generated ${count}-Node Graph`);
 }
 
 document.getElementById("btn-undo").onclick = undo;
 document.getElementById("btn-redo").onclick = redo;
+document.getElementById("btn-copy").onclick = copySelection;
+document.getElementById("btn-paste").onclick = pasteSelection;
 document.getElementById("btn-duplicate").onclick = duplicateSelected;
-document.getElementById("btn-delete").onclick = deleteSelected;
+document.getElementById("btn-select-all").onclick = selectAll;
+document.getElementById("btn-delete").onclick = () => deleteSelected(true);
 document.getElementById("btn-zoom-in").onclick = () => animateZoom(page().zoom * 1.25);
 document.getElementById("btn-zoom-out").onclick = () => animateZoom(page().zoom / 1.25);
+document.getElementById("btn-fit-view").onclick = fitToScreen;
 document.getElementById("btn-layout-hier").onclick = runHierarchicalLayout;
 
 document.getElementById("select-edge-anim").onchange = (e) => {
   state.edgeAnimPreset = e.target.value;
-  const selEdge = page().edges.find((ed) => ed.id === state.selectedEdgeId);
-  if (selEdge) {
-    selEdge.anim = state.edgeAnimPreset;
-    renderFormatPanel();
+  for (const eid of state.selectedEdgeIds) {
+    const ed = page().edges.find((x) => x.id === eid);
+    if (ed) ed.anim = state.edgeAnimPreset;
   }
+  renderFormatPanel();
 };
 document.getElementById("select-edge-kind").onchange = (e) => {
   state.edgeKindPreset = e.target.value;
-  const selEdge = page().edges.find((ed) => ed.id === state.selectedEdgeId);
-  if (selEdge) {
-    selEdge.kind = state.edgeKindPreset;
-    selEdge._ver = -1;
-    renderFormatPanel();
+  for (const eid of state.selectedEdgeIds) {
+    const ed = page().edges.find((x) => x.id === eid);
+    if (ed) {
+      ed.kind = state.edgeKindPreset;
+      ed._ver = -1;
+    }
   }
+  renderFormatPanel();
 };
 
 function downloadFile(filename, content, mime) {
@@ -2253,6 +2566,7 @@ function exportDrawioXml() {
   }
   xml += `      </root>\n    </mxGraphModel>\n  </diagram>\n</mxfile>`;
   downloadFile("diagram.drawio", xml, "application/xml");
+  showToast("Saved diagram.drawio");
 }
 
 function exportAnimatedSvg() {
@@ -2270,22 +2584,47 @@ function exportAnimatedSvg() {
   }
   svg += `</svg>`;
   downloadFile("diagram-animated.svg", svg, "image/svg+xml");
+  showToast("Exported diagram-animated.svg");
 }
 
-// Command Palette (Ctrl+K)
+// ============================================================================
+// COMMAND PALETTE (Ctrl+K) & SHORTCUTS MODAL (?)
+// ============================================================================
 const cmdOverlay = document.getElementById("cmd-overlay");
 const cmdInput = document.getElementById("cmd-input");
 const cmdList = document.getElementById("cmd-list");
+const shortcutsOverlay = document.getElementById("shortcuts-overlay");
+
+function openShortcutsModal() {
+  shortcutsOverlay.classList.add("open");
+}
+
+function closeShortcutsModal() {
+  shortcutsOverlay.classList.remove("open");
+}
+
+document.getElementById("btn-shortcuts").onclick = openShortcutsModal;
+document.getElementById("btn-close-shortcuts").onclick = closeShortcutsModal;
+shortcutsOverlay.addEventListener("click", (e) => {
+  if (e.target === shortcutsOverlay) closeShortcutsModal();
+});
 
 const COMMANDS = [
-  { label: "Auto-Layout: Sugiyama Hierarchical", shortcut: "Arrange", run: runHierarchicalLayout },
+  { label: "Select All Nodes & Edges", shortcut: "Ctrl+A", run: selectAll },
+  { label: "Copy Selection", shortcut: "Ctrl+C", run: copySelection },
+  { label: "Cut Selection", shortcut: "Ctrl+X", run: cutSelection },
+  { label: "Paste Selection", shortcut: "Ctrl+V", run: pasteSelection },
+  { label: "Duplicate Selection", shortcut: "Ctrl+D", run: duplicateSelected },
+  { label: "Fit Diagram to Screen", shortcut: "Ctrl+1", run: fitToScreen },
+  { label: "Auto-Layout: Sugiyama Hierarchical", shortcut: "Ctrl+Shift+L", run: runHierarchicalLayout },
   { label: "Auto-Layout: Uniform Grid", shortcut: "Arrange", run: runGridLayout },
   { label: "Auto-Layout: Radial Ring", shortcut: "Arrange", run: runRadialLayout },
   { label: "Theme: Dark Mode", shortcut: "View", run: () => handleMenuAction("theme-dark") },
   { label: "Theme: Light Mode", shortcut: "View", run: () => handleMenuAction("theme-light") },
   { label: "Theme: High Contrast", shortcut: "View", run: () => handleMenuAction("theme-contrast") },
-  { label: "Export: Download .drawio XML", shortcut: "File", run: exportDrawioXml },
-  { label: "Export: Download Animated SVG", shortcut: "File", run: exportAnimatedSvg },
+  { label: "Export: Save .drawio XML", shortcut: "Ctrl+S", run: exportDrawioXml },
+  { label: "Export: Animated SVG", shortcut: "Ctrl+E", run: exportAnimatedSvg },
+  { label: "Keyboard Shortcuts Cheat-Sheet", shortcut: "?", run: openShortcutsModal },
   { label: "Benchmark: Generate 100-Node Graph", shortcut: "Extras", run: () => generateStressGraph(100) },
   ...STENCILS.map((s) => ({ label: `Add ${s.label}`, shortcut: s.category, run: () => addStencilToCanvas(s) })),
 ];
@@ -2323,41 +2662,132 @@ cmdOverlay.addEventListener("click", (e) => {
   if (e.target === cmdOverlay) closeCommandPalette();
 });
 
+// ============================================================================
+// GLOBAL KEYBOARD SHORTCUT DISPATCHER
+// ============================================================================
 window.addEventListener("keydown", (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+  const mod = e.ctrlKey || e.metaKey;
+  const key = e.key.toLowerCase();
+
+  // Command Palette (Ctrl+K) works anywhere
+  if (mod && key === "k") {
     e.preventDefault();
     if (cmdOverlay.classList.contains("open")) closeCommandPalette();
     else openCommandPalette();
     return;
   }
+
+  // Escape closes modals, inline editor, menus, or clears selection
   if (e.key === "Escape") {
     closeCommandPalette();
+    closeShortcutsModal();
     inlineEditor.style.display = "none";
     menuItems.forEach((m) => m.classList.remove("open"));
+    clearSelection();
     return;
   }
-  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+
+  // Do not intercept typing when inside an input or select element
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") {
+    return;
+  }
+
+  // Help / Shortcuts Modal (? or F1)
+  if (e.key === "?" || e.key === "F1") {
     e.preventDefault();
-    undo();
-  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
+    if (shortcutsOverlay.classList.contains("open")) closeShortcutsModal();
+    else openShortcutsModal();
+    return;
+  }
+
+  // Inline Label Edit (F2 or Enter when 1 item selected)
+  if (e.key === "F2" || (e.key === "Enter" && !mod)) {
+    if (state.selectedNodeId || state.selectedEdgeId) {
+      e.preventDefault();
+      openInlineEditorForSelection();
+      return;
+    }
+  }
+
+  // Modifier Shortcuts (Ctrl / Cmd + ...)
+  if (mod) {
+    if (key === "a") {
+      e.preventDefault();
+      selectAll();
+    } else if (key === "c") {
+      e.preventDefault();
+      copySelection();
+    } else if (key === "x") {
+      e.preventDefault();
+      cutSelection();
+    } else if (key === "v") {
+      e.preventDefault();
+      pasteSelection();
+    } else if (key === "d") {
+      e.preventDefault();
+      duplicateSelected();
+    } else if (key === "z") {
+      e.preventDefault();
+      if (e.shiftKey) redo();
+      else undo();
+    } else if (key === "y") {
+      e.preventDefault();
+      redo();
+    } else if (key === "s") {
+      e.preventDefault();
+      exportDrawioXml();
+    } else if (key === "e") {
+      e.preventDefault();
+      exportAnimatedSvg();
+    } else if (key === "g") {
+      e.preventDefault();
+      handleMenuAction("toggle-grid");
+    } else if (key === "l" && e.shiftKey) {
+      e.preventDefault();
+      runHierarchicalLayout();
+    } else if (e.key === "=" || e.key === "+") {
+      e.preventDefault();
+      animateZoom(page().zoom * 1.25);
+    } else if (e.key === "-") {
+      e.preventDefault();
+      animateZoom(page().zoom / 1.25);
+    } else if (e.key === "0") {
+      e.preventDefault();
+      handleMenuAction("zoom-reset");
+    } else if (e.key === "1") {
+      e.preventDefault();
+      fitToScreen();
+    } else if (e.key === "]") {
+      e.preventDefault();
+      bringToFront();
+    } else if (e.key === "[") {
+      e.preventDefault();
+      sendToBack();
+    }
+    return;
+  }
+
+  // Delete / Backspace
+  if (e.key === "Delete" || e.key === "Backspace") {
     e.preventDefault();
-    redo();
-  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
+    deleteSelected(true);
+    return;
+  }
+
+  // Arrow Key Nudge (5px normal, 20px with Shift, 1px with Alt) for ALL selected nodes
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+    if (!state.selectedNodeIds.size) return;
     e.preventDefault();
-    duplicateSelected();
-  } else if (e.key === "Delete" || e.key === "Backspace") {
-    deleteSelected();
-  } else if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-    const n = nodeMap.get(state.selectedNodeId);
-    if (!n) return;
-    e.preventDefault();
-    const step = e.shiftKey ? 20 : 5;
-    if (e.key === "ArrowUp") n.y -= step;
-    if (e.key === "ArrowDown") n.y += step;
-    if (e.key === "ArrowLeft") n.x -= step;
-    if (e.key === "ArrowRight") n.x += step;
-    invalidateNodeEdges(n.id);
+    const step = e.shiftKey ? 20 : e.altKey ? 1 : 5;
+    for (const nid of state.selectedNodeIds) {
+      const n = nodeMap.get(nid);
+      if (!n) continue;
+      if (e.key === "ArrowUp") n.y -= step;
+      if (e.key === "ArrowDown") n.y += step;
+      if (e.key === "ArrowLeft") n.x -= step;
+      if (e.key === "ArrowRight") n.x += step;
+    }
+    invalidateSelectedNodesEdges();
   }
 });
 
@@ -2514,7 +2944,7 @@ function renderLoop(timestamp) {
       continue;
     }
 
-    const isSelected = e.id === state.selectedEdgeId;
+    const isSelected = state.selectedEdgeIds.has(e.id) || e.id === state.selectedEdgeId;
     const strokeColor = isSelected ? "#38bdf8" : e.color || "#818cf8";
 
     ctx.beginPath();
@@ -2585,7 +3015,7 @@ function renderLoop(timestamp) {
       ctx.fillText(e.label, geo.midPoint.x, geo.midPoint.y + 4);
     }
 
-    if (isSelected) {
+    if (e.id === state.selectedEdgeId) {
       ctx.strokeStyle = "rgba(251, 191, 36, 0.45)";
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
@@ -2656,7 +3086,7 @@ function renderLoop(timestamp) {
     }
     visibleNodes.push(n);
 
-    const selected = n.id === state.selectedNodeId;
+    const selected = state.selectedNodeIds.has(n.id);
     if (selected) {
       ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
       ctx.lineWidth = 5;
@@ -2708,8 +3138,9 @@ function renderLoop(timestamp) {
     ctx.fillText(n.body, pos.cx, pos.bodyY);
   }
 
+  // Single-Selected Node Resize & Quick-Connect Overlay
   const selectedNode = nodeMap.get(state.selectedNodeId);
-  if (selectedNode) {
+  if (selectedNode && state.selectedNodeIds.size === 1) {
     ctx.fillStyle = "#38bdf8";
     ctx.fillRect(selectedNode.x + selectedNode.w - 5, selectedNode.y + selectedNode.h - 5, 10, 10);
 
@@ -2727,6 +3158,21 @@ function renderLoop(timestamp) {
     }
   }
 
+  // Rubber-Band Marquee Selection Box
+  if (state.marqueeBox) {
+    const mx = Math.min(state.marqueeBox.startX, state.marqueeBox.endX);
+    const my = Math.min(state.marqueeBox.startY, state.marqueeBox.endY);
+    const mw = Math.abs(state.marqueeBox.endX - state.marqueeBox.startX);
+    const mh = Math.abs(state.marqueeBox.endY - state.marqueeBox.startY);
+    ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 1.5 / p.zoom;
+    ctx.setLineDash([5 / p.zoom, 3 / p.zoom]);
+    ctx.fillRect(mx, my, mw, mh);
+    ctx.strokeRect(mx, my, mw, mh);
+    ctx.setLineDash([]);
+  }
+
   ctx.restore();
 
   frameCounter++;
@@ -2739,7 +3185,7 @@ function renderLoop(timestamp) {
     minimapCtx.scale(scale, scale);
     for (let i = 0; i < p.nodes.length; i++) {
       const n = p.nodes[i];
-      minimapCtx.fillStyle = n.id === state.selectedNodeId ? "#38bdf8" : "#64748b";
+      minimapCtx.fillStyle = state.selectedNodeIds.has(n.id) ? "#38bdf8" : "#64748b";
       minimapCtx.fillRect(n.x, n.y, n.w, n.h);
     }
     minimapCtx.strokeStyle = "#818cf8";
@@ -2753,7 +3199,7 @@ function renderLoop(timestamp) {
   }
 
   if (frameCounter % 12 === 0) {
-    statusBarEl.textContent = `FPS: ${state.fps} | Zoom: ${Math.round(p.zoom * 100)}% | Nodes: ${p.nodes.length} | Edges: ${p.edges.length}`;
+    statusBarEl.textContent = `FPS: ${state.fps} | Zoom: ${Math.round(p.zoom * 100)}% | Selected: ${state.selectedNodeIds.size + state.selectedEdgeIds.size} | Nodes: ${p.nodes.length} | Edges: ${p.edges.length}`;
   }
 
   requestAnimationFrame(renderLoop);
