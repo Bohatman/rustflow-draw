@@ -43,10 +43,65 @@ const STENCILS = [
   { id: "network.firewall", label: "WAF Firewall", category: "Network & Infra", w: 180, h: 74, shape: "firewall" },
   { id: "network.shield", label: "Auth Shield", category: "Network & Infra", w: 126, h: 94, shape: "shield" },
 
-  // Wireframes
+  // Wireframes & Media
+  { id: "wireframe.image", label: "Image / Media", category: "Wireframes", w: 170, h: 98, shape: "image_card" },
   { id: "wireframe.browser", label: "Browser UI", category: "Wireframes", w: 220, h: 132, shape: "browser" },
   { id: "wireframe.mobile", label: "Mobile UI", category: "Wireframes", w: 118, h: 180, shape: "mobile" },
 ];
+
+const ENTITY_ICONS = [
+  ["none", "None"],
+  ["globe", "Web / API"],
+  ["cpu", "CPU / Core"],
+  ["database", "Database"],
+  ["server", "Server"],
+  ["cloud", "Cloud"],
+  ["aws_lambda", "Lambda"],
+  ["aws_s3", "Storage"],
+  ["k8s_pod", "K8s Pod"],
+  ["firewall", "Shield"],
+  ["lock", "Auth Lock"],
+  ["user", "User"],
+  ["code", "Code"],
+  ["terminal", "Terminal"],
+  ["gear", "Config"],
+  ["rocket", "Deploy"],
+];
+
+// Built-in Macintosh System 8.5 Sample Graphic SVG Data URI for Image Entities
+const DEFAULT_SAMPLE_IMAGE_DATA_URL =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 90">
+      <rect width="160" height="90" fill="#e8f4fc"/>
+      <rect y="62" width="160" height="28" fill="#61bb46"/>
+      <circle cx="128" cy="24" r="11" fill="#fdb827" stroke="#000" stroke-width="1.5"/>
+      <path d="M12 62 L52 24 L88 62 Z" fill="#8080a4" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M58 62 L98 30 L138 62 Z" fill="#a3a3c2" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>
+      <line x1="0" y1="62" x2="160" y2="62" stroke="#000" stroke-width="1.5"/>
+    </svg>`
+  );
+
+// Fast in-memory HTMLImageElement cache for zero-overhead 60 FPS Canvas image rendering
+const imageCache = new Map();
+function getOrLoadImage(url) {
+  if (!url) return null;
+  let entry = imageCache.get(url);
+  if (entry) return entry.loaded ? entry.img : null;
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  entry = { img, loaded: false, error: false };
+  imageCache.set(url, entry);
+  img.onload = () => {
+    entry.loaded = true;
+    state.minimapDirty = true;
+  };
+  img.onerror = () => {
+    entry.error = true;
+  };
+  img.src = url;
+  return null;
+}
 
 const STYLE_SWATCHES = [
   // Apple 90s 6-Color Rainbow & Macintosh Platinum Swatches
@@ -73,19 +128,19 @@ function createDogfoodPages() {
       pan: { x: 50, y: 40 },
       zoom: 1.0,
       nodes: [
-        { id: 1, title: "crates/core", body: "R-Tree + Scene + CRDT", x: 70, y: 155, w: 180, h: 86, fill: "#ffffff", stroke: "#000080", shape: "uml_package", z: 1 },
-        { id: 2, title: "crates/renderer", body: "wgpu WGSL + Bezier", x: 355, y: 45, w: 185, h: 78, fill: "#e8f6fc", stroke: "#0077b5", shape: "uml_component", z: 2 },
-        { id: 3, title: "crates/layout", body: "Sugiyama + Force + Spring", x: 355, y: 160, w: 185, h: 78, fill: "#f2faef", stroke: "#2d8a1e", shape: "hexagon", z: 3 },
-        { id: 4, title: "crates/io-formats", body: ".drawio XML + SVG + PDF", x: 355, y: 280, w: 185, h: 82, fill: "#fff9e6", stroke: "#c47f00", shape: "document", z: 4 },
-        { id: 5, title: "crates/ui-bridge", body: "WASM & Tauri v2 Shell", x: 650, y: 155, w: 205, h: 108, fill: "#f5edf7", stroke: "#7a267b", shape: "browser", z: 5 },
+        { id: 1, title: "crates/core", body: "R-Tree + Scene + CRDT", x: 70, y: 155, w: 185, h: 86, fill: "#ffffff", stroke: "#000080", shape: "uml_package", icon: "cpu", iconPos: "left", imgUrl: "", z: 1 },
+        { id: 2, title: "crates/renderer", body: "wgpu WGSL + Bezier", x: 355, y: 45, w: 185, h: 78, fill: "#e8f6fc", stroke: "#0077b5", shape: "uml_component", icon: "uml_component", iconPos: "left", imgUrl: "", z: 2 },
+        { id: 3, title: "crates/layout", body: "Sugiyama + Force + Spring", x: 355, y: 160, w: 185, h: 78, fill: "#f2faef", stroke: "#2d8a1e", shape: "hexagon", icon: "gear", iconPos: "left", imgUrl: "", z: 3 },
+        { id: 4, title: "crates/io-formats", body: ".drawio XML + SVG + PDF", x: 355, y: 280, w: 185, h: 82, fill: "#fff9e6", stroke: "#c47f00", shape: "document", icon: "code", iconPos: "left", imgUrl: "", z: 4 },
+        { id: 5, title: "crates/ui-bridge", body: "WASM & Tauri v2 Shell", x: 650, y: 155, w: 205, h: 108, fill: "#f5edf7", stroke: "#7a267b", shape: "browser", icon: "globe", iconPos: "left", imgUrl: "", z: 5 },
       ],
       edges: [
-        { id: 101, source: 1, sourcePort: "right", target: 2, targetPort: "left", label: "Frustum Query", anim: "pulse", kind: "bezier", color: "#0077b5", width: 1.8, bend: null },
-        { id: 102, source: 1, sourcePort: "right", target: 3, targetPort: "left", label: "Graph Moves", anim: "ants", kind: "bezier", color: "#2d8a1e", width: 1.8, bend: null },
-        { id: 103, source: 1, sourcePort: "right", target: 4, targetPort: "left", label: "AST Round-Trip", anim: "pulse", kind: "bezier", color: "#c47f00", width: 1.8, bend: null },
-        { id: 104, source: 2, sourcePort: "right", target: 5, targetPort: "left", label: "Frame Buffers", anim: "pulse", kind: "bezier", color: "#0077b5", width: 1.8, bend: null },
-        { id: 105, source: 3, sourcePort: "right", target: 5, targetPort: "left", label: "Transitions", anim: "ants", kind: "bezier", color: "#2d8a1e", width: 1.8, bend: null },
-        { id: 106, source: 4, sourcePort: "right", target: 5, targetPort: "left", label: "Exporters", anim: "ants", kind: "bezier", color: "#7a267b", width: 1.8, bend: null },
+        { id: 101, source: 1, sourcePort: "right", target: 2, targetPort: "left", label: "", anim: "pulse", kind: "bezier", color: "#0077b5", width: 1.8, bend: null },
+        { id: 102, source: 1, sourcePort: "right", target: 3, targetPort: "left", label: "", anim: "ants", kind: "bezier", color: "#2d8a1e", width: 1.8, bend: null },
+        { id: 103, source: 1, sourcePort: "right", target: 4, targetPort: "left", label: "", anim: "pulse", kind: "bezier", color: "#c47f00", width: 1.8, bend: null },
+        { id: 104, source: 2, sourcePort: "right", target: 5, targetPort: "left", label: "", anim: "pulse", kind: "bezier", color: "#0077b5", width: 1.8, bend: null },
+        { id: 105, source: 3, sourcePort: "right", target: 5, targetPort: "left", label: "", anim: "ants", kind: "bezier", color: "#2d8a1e", width: 1.8, bend: null },
+        { id: 106, source: 4, sourcePort: "right", target: 5, targetPort: "left", label: "", anim: "ants", kind: "bezier", color: "#7a267b", width: 1.8, bend: null },
       ],
       undoStack: [],
       redoStack: [],
@@ -96,17 +151,17 @@ function createDogfoodPages() {
       pan: { x: 60, y: 50 },
       zoom: 1.0,
       nodes: [
-        { id: 10, title: "Client User", body: "HTTPS", x: 75, y: 132, w: 72, h: 76, fill: "#ffffff", stroke: "#000080", shape: "actor", z: 1 },
-        { id: 11, title: "WAF Firewall", body: "Rate Limiter", x: 235, y: 133, w: 180, h: 74, fill: "#fdecee", stroke: "#c92027", shape: "firewall", z: 2 },
-        { id: 12, title: "Auth Check", body: "XOR", x: 495, y: 130, w: 80, h: 80, fill: "#fff9e6", stroke: "#c47f00", shape: "gateway_xor", z: 3 },
-        { id: 13, title: "Kafka Stream", body: "events-topic", x: 660, y: 80, w: 180, h: 72, fill: "#f2faef", stroke: "#2d8a1e", shape: "queue", z: 4 },
-        { id: 14, title: "Postgres DB", body: "pgvector", x: 680, y: 210, w: 136, h: 92, fill: "#e8f6fc", stroke: "#0077b5", shape: "cylinder", z: 5 },
+        { id: 10, title: "Client User", body: "HTTPS", x: 75, y: 132, w: 72, h: 76, fill: "#ffffff", stroke: "#000080", shape: "actor", icon: "none", iconPos: "left", imgUrl: "", z: 1 },
+        { id: 11, title: "WAF Firewall", body: "Rate Limiter", x: 235, y: 133, w: 180, h: 74, fill: "#fdecee", stroke: "#c92027", shape: "firewall", icon: "firewall", iconPos: "left", imgUrl: "", z: 2 },
+        { id: 12, title: "Auth Check", body: "XOR", x: 495, y: 130, w: 80, h: 80, fill: "#fff9e6", stroke: "#c47f00", shape: "gateway_xor", icon: "none", iconPos: "left", imgUrl: "", z: 3 },
+        { id: 13, title: "Kafka Stream", body: "events-topic", x: 660, y: 80, w: 180, h: 72, fill: "#f2faef", stroke: "#2d8a1e", shape: "queue", icon: "none", iconPos: "left", imgUrl: "", z: 4 },
+        { id: 14, title: "Postgres DB", body: "pgvector", x: 680, y: 210, w: 136, h: 92, fill: "#e8f6fc", stroke: "#0077b5", shape: "cylinder", icon: "database", iconPos: "left", imgUrl: "", z: 5 },
       ],
       edges: [
-        { id: 201, source: 10, sourcePort: "right", target: 11, targetPort: "left", label: "Request", anim: "pulse", kind: "bezier", color: "#000080", width: 1.8, bend: null },
-        { id: 202, source: 11, sourcePort: "right", target: 12, targetPort: "left", label: "Verify", anim: "ants", kind: "bezier", color: "#c47f00", width: 1.8, bend: null },
-        { id: 203, source: 12, sourcePort: "right", target: 13, targetPort: "left", label: "Publish", anim: "pulse", kind: "bezier", color: "#2d8a1e", width: 1.8, bend: null },
-        { id: 204, source: 12, sourcePort: "bottom", target: 14, targetPort: "left", label: "Persist", anim: "pulse", kind: "smoothstep", color: "#0077b5", width: 1.8, bend: null },
+        { id: 201, source: 10, sourcePort: "right", target: 11, targetPort: "left", label: "", anim: "pulse", kind: "bezier", color: "#000080", width: 1.8, bend: null },
+        { id: 202, source: 11, sourcePort: "right", target: 12, targetPort: "left", label: "", anim: "ants", kind: "bezier", color: "#c47f00", width: 1.8, bend: null },
+        { id: 203, source: 12, sourcePort: "right", target: 13, targetPort: "left", label: "", anim: "pulse", kind: "bezier", color: "#2d8a1e", width: 1.8, bend: null },
+        { id: 204, source: 12, sourcePort: "bottom", target: 14, targetPort: "left", label: "", anim: "pulse", kind: "smoothstep", color: "#0077b5", width: 1.8, bend: null },
       ],
       undoStack: [],
       redoStack: [],
@@ -834,6 +889,7 @@ formatTabsEl.querySelectorAll(".format-tab").forEach((tab) => {
 
 const SHAPE_OPTIONS = [
   ["card", "Process Card"],
+  ["image_card", "Image / Media Card"],
   ["rounded", "Start / End Pill"],
   ["diamond", "Decision Diamond"],
   ["cylinder", "Database Cylinder"],
@@ -861,6 +917,22 @@ const SHAPE_OPTIONS = [
   ["browser", "Browser UI"],
   ["mobile", "Mobile UI"],
 ];
+
+function getEffectiveNodeIcon(n) {
+  if (n.icon && n.icon !== "none") return n.icon;
+  if (n.icon === "none") return null;
+  if (
+    n.shape === "aws_lambda" ||
+    n.shape === "aws_s3" ||
+    n.shape === "k8s_pod" ||
+    n.shape === "server" ||
+    n.shape === "firewall" ||
+    n.shape === "uml_component"
+  ) {
+    return n.shape;
+  }
+  return null;
+}
 
 function renderFormatPanel() {
   const p = page();
@@ -987,16 +1059,44 @@ function renderFormatPanel() {
   if (node) {
     formatBadgeEl.textContent = `Node #${node.id}`;
     if (state.activeFormatTab === "style") {
+      const currentIcon = getEffectiveNodeIcon(node) || "none";
+      const currentPos = node.iconPos || "left";
       formatBodyEl.innerHTML = `
         <div class="format-section">
           <label>Minimalist Style Presets</label>
           <div class="swatch-grid" id="node-swatches"></div>
         </div>
         <div class="format-section">
-          <label>Symbol</label>
+          <label>Symbol Shape</label>
           <select id="insp-shape">
             ${SHAPE_OPTIONS.map(([val, lbl]) => `<option value="${val}" ${node.shape === val ? "selected" : ""}>${lbl}</option>`).join("")}
           </select>
+        </div>
+        <div class="format-section">
+          <label>Entity Icon &amp; Image</label>
+          <div class="icon-picker-grid" id="node-icon-grid"></div>
+          <div class="format-row" style="margin-top:4px;">
+            <button id="btn-node-upload-img" style="width:100%;">Upload Image...</button>
+            <button id="btn-node-sample-img" style="width:100%;">Sample Graphic</button>
+          </div>
+          ${
+            node.imgUrl
+              ? `<div class="img-preview-box">
+                   <img src="${node.imgUrl}" alt="entity-img" />
+                   <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Image Attached</span>
+                   <button id="btn-node-clear-img" class="danger" style="padding:2px 6px;">Clear</button>
+                 </div>`
+              : ""
+          }
+          <input id="insp-img-url" type="text" value="${node.imgUrl && !node.imgUrl.startsWith("data:") ? node.imgUrl : ""}" placeholder="Or paste image URL (https://...)" />
+          <div class="format-row">
+            <span>Icon / Img Layout</span>
+            <select id="insp-icon-pos">
+              <option value="left" ${currentPos === "left" ? "selected" : ""}>Left Badge</option>
+              <option value="top" ${currentPos === "top" ? "selected" : ""}>Top Centered</option>
+              <option value="cover" ${currentPos === "cover" ? "selected" : ""}>Full Card Cover</option>
+            </select>
+          </div>
         </div>
         <div class="format-section">
           <label>Colors</label>
@@ -1024,9 +1124,72 @@ function renderFormatPanel() {
         };
         swatchContainer.appendChild(el);
       });
+
+      const iconGridEl = document.getElementById("node-icon-grid");
+      ENTITY_ICONS.forEach(([iconKey, iconLabel]) => {
+        const btn = document.createElement("div");
+        btn.className = "icon-picker-btn" + (currentIcon === iconKey ? " active" : "");
+        btn.title = iconLabel;
+        if (iconKey !== "none") {
+          const icv = document.createElement("canvas");
+          icv.width = 20;
+          icv.height = 16;
+          const ictx = icv.getContext("2d");
+          const active = currentIcon === iconKey;
+          drawMinimalistBadgeGlyph(
+            ictx,
+            iconKey,
+            10,
+            8,
+            6.5,
+            active ? "#ffffff" : isLightCanvasTheme() ? "#000080" : "#38bdf8"
+          );
+          btn.appendChild(icv);
+        }
+        const lbl = document.createElement("span");
+        lbl.textContent = iconLabel.split(" ")[0];
+        btn.appendChild(lbl);
+        btn.onclick = () => {
+          saveSnapshot();
+          node.icon = iconKey;
+          renderFormatPanel();
+        };
+        iconGridEl.appendChild(btn);
+      });
+
+      document.getElementById("btn-node-upload-img").onclick = () => {
+        triggerEntityImageUpload(node);
+      };
+      document.getElementById("btn-node-sample-img").onclick = () => {
+        saveSnapshot();
+        node.imgUrl = DEFAULT_SAMPLE_IMAGE_DATA_URL;
+        getOrLoadImage(node.imgUrl);
+        renderFormatPanel();
+        showToast("Attached Sample Graphic");
+      };
+      const clearBtn = document.getElementById("btn-node-clear-img");
+      if (clearBtn) {
+        clearBtn.onclick = () => {
+          saveSnapshot();
+          node.imgUrl = "";
+          renderFormatPanel();
+          showToast("Cleared Entity Image");
+        };
+      }
+      document.getElementById("insp-img-url").onchange = (e) => {
+        saveSnapshot();
+        node.imgUrl = e.target.value.trim();
+        if (node.imgUrl) getOrLoadImage(node.imgUrl);
+        renderFormatPanel();
+      };
+      document.getElementById("insp-icon-pos").onchange = (e) => {
+        saveSnapshot();
+        node.iconPos = e.target.value;
+      };
       document.getElementById("insp-shape").onchange = (e) => {
         saveSnapshot();
         node.shape = e.target.value;
+        renderFormatPanel();
       };
       document.getElementById("insp-fill").oninput = (e) => {
         node.fill = e.target.value;
@@ -1226,10 +1389,11 @@ function createNodeFromStencil(item, worldX, worldY) {
   saveSnapshot();
   const p = page();
   const lightCanvas = isLightCanvasTheme();
+  const isImgCard = item.shape === "image_card";
   const newNode = {
     id: ++state.nextId,
     title: item.label,
-    body: item.id.split(".").pop(),
+    body: isImgCard ? "" : item.id.split(".").pop(),
     x: Math.round(worldX),
     y: Math.round(worldY),
     w: item.w,
@@ -1237,8 +1401,12 @@ function createNodeFromStencil(item, worldX, worldY) {
     fill: lightCanvas ? "#ffffff" : "#131b2e",
     stroke: state.theme === "apple90s" ? "#000080" : state.theme === "contrast" ? "#000000" : "#38bdf8",
     shape: item.shape,
+    icon: "none",
+    iconPos: isImgCard ? "cover" : "left",
+    imgUrl: isImgCard ? DEFAULT_SAMPLE_IMAGE_DATA_URL : "",
     z: p.nodes.length + 1,
   };
+  if (newNode.imgUrl) getOrLoadImage(newNode.imgUrl);
   p.nodes.push(newNode);
   invalidateGeometry();
   setSingleNodeSelection(newNode.id);
@@ -1246,12 +1414,74 @@ function createNodeFromStencil(item, worldX, worldY) {
   showToast(`Added ${item.label}`);
 }
 
+let pendingImageTargetNode = null;
+const entityImageInput = document.getElementById("entity-image-input");
+
+function triggerEntityImageUpload(targetNode = null) {
+  pendingImageTargetNode = targetNode || nodeMap.get(state.selectedNodeId) || null;
+  if (entityImageInput) {
+    entityImageInput.value = "";
+    entityImageInput.click();
+  }
+}
+
+if (entityImageInput) {
+  entityImageInput.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      if (typeof dataUrl !== "string") return;
+      saveSnapshot();
+      getOrLoadImage(dataUrl);
+      if (pendingImageTargetNode) {
+        pendingImageTargetNode.imgUrl = dataUrl;
+        if (!pendingImageTargetNode.iconPos) pendingImageTargetNode.iconPos = "left";
+        renderFormatPanel();
+        showToast(`Attached ${file.name} to #${pendingImageTargetNode.id}`);
+      } else {
+        const p = page();
+        const center = screenToWorld(canvas.width / 2 - 85, canvas.height / 2 - 50);
+        const newNode = {
+          id: ++state.nextId,
+          title: file.name.replace(/\.[^.]+$/, ""),
+          body: "",
+          x: Math.round(center.x / 20) * 20,
+          y: Math.round(center.y / 20) * 20,
+          w: 170,
+          h: 100,
+          fill: isLightCanvasTheme() ? "#ffffff" : "#131b2e",
+          stroke: state.theme === "apple90s" ? "#000080" : "#38bdf8",
+          shape: "image_card",
+          icon: "none",
+          iconPos: "cover",
+          imgUrl: dataUrl,
+          z: p.nodes.length + 1,
+        };
+        p.nodes.push(newNode);
+        invalidateGeometry();
+        setSingleNodeSelection(newNode.id);
+        renderFormatPanel();
+        showToast(`Added Image Entity "${newNode.title}"`);
+      }
+      pendingImageTargetNode = null;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+const btnUploadImgToolbar = document.getElementById("btn-upload-img");
+if (btnUploadImgToolbar) {
+  btnUploadImgToolbar.onclick = () => triggerEntityImageUpload(nodeMap.get(state.selectedNodeId) || null);
+}
+
 function addStencilToCanvasCenter(item) {
   const center = screenToWorld(canvas.width / 2 - item.w / 2, canvas.height / 2 - item.h / 2);
   createNodeFromStencil(item, Math.round(center.x / 20) * 20, Math.round(center.y / 20) * 20);
 }
 
-// HTML5 Drag & Drop support on Canvas
+// HTML5 Drag & Drop support on Canvas (Stencils + OS Image Files)
 canvas.addEventListener("dragover", (e) => {
   e.preventDefault();
   e.dataTransfer.dropEffect = "copy";
@@ -1284,11 +1514,58 @@ canvas.addEventListener("dragleave", () => {
 
 canvas.addEventListener("drop", (e) => {
   e.preventDefault();
+  const sx = e.clientX - canvasRect.left;
+  const sy = e.clientY - canvasRect.top;
+  const wpt = screenToWorld(sx, sy);
+
+  // 1. OS Image File Dropped onto Canvas or Node
+  const files = e.dataTransfer?.files;
+  if (files && files.length > 0 && files[0].type.startsWith("image/")) {
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      if (typeof dataUrl !== "string") return;
+      saveSnapshot();
+      getOrLoadImage(dataUrl);
+      const p = page();
+      const hitNode = [...p.nodes].reverse().find((n) => wpt.x >= n.x && wpt.x <= n.x + n.w && wpt.y >= n.y && wpt.y <= n.y + n.h);
+      if (hitNode) {
+        hitNode.imgUrl = dataUrl;
+        setSingleNodeSelection(hitNode.id);
+        renderFormatPanel();
+        showToast(`Set Image on #${hitNode.id}`);
+      } else {
+        const newNode = {
+          id: ++state.nextId,
+          title: file.name.replace(/\.[^.]+$/, ""),
+          body: "",
+          x: Math.round(wpt.x - 85),
+          y: Math.round(wpt.y - 50),
+          w: 170,
+          h: 100,
+          fill: isLightCanvasTheme() ? "#ffffff" : "#131b2e",
+          stroke: state.theme === "apple90s" ? "#000080" : "#38bdf8",
+          shape: "image_card",
+          icon: "none",
+          iconPos: "cover",
+          imgUrl: dataUrl,
+          z: p.nodes.length + 1,
+        };
+        p.nodes.push(newNode);
+        invalidateGeometry();
+        setSingleNodeSelection(newNode.id);
+        renderFormatPanel();
+        showToast(`Dropped Image "${newNode.title}"`);
+      }
+    };
+    reader.readAsDataURL(file);
+    return;
+  }
+
+  // 2. Left Panel Stencil Dropped onto Canvas
   if (state.draggingStencil) {
     const item = state.draggingStencil.item;
-    const sx = e.clientX - canvasRect.left;
-    const sy = e.clientY - canvasRect.top;
-    const wpt = screenToWorld(sx, sy);
     const dropX = state.draggingStencil.overCanvas ? state.draggingStencil.ghostX : wpt.x - item.w * 0.5;
     const dropY = state.draggingStencil.overCanvas ? state.draggingStencil.ghostY : wpt.y - item.h * 0.5;
     state.draggingStencil = null;
@@ -1355,10 +1632,10 @@ canvas.addEventListener("mousedown", (e) => {
           sourcePort: arrow.side,
           target: newNode.id,
           targetPort: arrow.targetSide,
-          label: "Flow",
+          label: "",
           anim: state.edgeAnimPreset,
           kind: state.edgeKindPreset,
-          color: "#818cf8",
+          color: state.theme === "apple90s" ? "#000080" : "#818cf8",
           width: 1.8,
           bend: null,
         });
@@ -1714,10 +1991,10 @@ window.addEventListener("mouseup", (e) => {
         sourcePort: srcPort.side,
         target: snap.node.id,
         targetPort: snap.port.side,
-        label: "Flow",
+        label: "",
         anim: state.edgeAnimPreset,
         kind: state.edgeKindPreset,
-        color: "#818cf8",
+        color: state.theme === "apple90s" ? "#000080" : "#818cf8",
         width: 1.8,
         bend: null,
       };
@@ -1797,14 +2074,12 @@ function drawMinimalistBadgeGlyph(ctx, shape, cx, cy, s, strokeCol) {
   ctx.beginPath();
 
   if (shape === "aws_lambda") {
-    // Minimalist vector Lambda (λ)
     ctx.moveTo(cx - s * 0.45, cy - s * 0.65);
     ctx.lineTo(cx - s * 0.1, cy - s * 0.65);
     ctx.lineTo(cx + s * 0.5, cy + s * 0.65);
     ctx.moveTo(cx + s * 0.08, cy - s * 0.1);
     ctx.lineTo(cx - s * 0.48, cy + s * 0.65);
   } else if (shape === "aws_s3") {
-    // Minimalist isometric storage cube / bucket
     ctx.moveTo(cx, cy - s * 0.7);
     ctx.lineTo(cx + s * 0.65, cy - s * 0.35);
     ctx.lineTo(cx + s * 0.65, cy + s * 0.35);
@@ -1818,7 +2093,6 @@ function drawMinimalistBadgeGlyph(ctx, shape, cx, cy, s, strokeCol) {
     ctx.moveTo(cx, cy);
     ctx.lineTo(cx, cy + s * 0.7);
   } else if (shape === "k8s_pod") {
-    // Minimalist Kubernetes helm wheel / pod hexagon
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2 - Math.PI * 0.5;
       const px = cx + Math.cos(a) * s * 0.7;
@@ -1830,7 +2104,6 @@ function drawMinimalistBadgeGlyph(ctx, shape, cx, cy, s, strokeCol) {
     ctx.moveTo(cx + s * 0.28, cy);
     ctx.arc(cx, cy, s * 0.28, 0, Math.PI * 2);
   } else if (shape === "server") {
-    // Minimalist stacked dual server blades (Lucide server style)
     ctx.roundRect(cx - s * 0.7, cy - s * 0.65, s * 1.4, s * 0.52, 2);
     ctx.roundRect(cx - s * 0.7, cy + s * 0.13, s * 1.4, s * 0.52, 2);
     ctx.moveTo(cx - s * 0.4, cy - s * 0.39);
@@ -1838,7 +2111,6 @@ function drawMinimalistBadgeGlyph(ctx, shape, cx, cy, s, strokeCol) {
     ctx.moveTo(cx - s * 0.4, cy + s * 0.39);
     ctx.lineTo(cx - s * 0.35, cy + s * 0.39);
   } else if (shape === "firewall") {
-    // Minimalist security shield-grid glyph
     ctx.moveTo(cx, cy - s * 0.72);
     ctx.lineTo(cx + s * 0.62, cy - s * 0.42);
     ctx.bezierCurveTo(cx + s * 0.62, cy + s * 0.2, cx + s * 0.15, cy + s * 0.6, cx, cy + s * 0.72);
@@ -1849,15 +2121,179 @@ function drawMinimalistBadgeGlyph(ctx, shape, cx, cy, s, strokeCol) {
     ctx.moveTo(cx - s * 0.28, cy);
     ctx.lineTo(cx + s * 0.28, cy);
   } else if (shape === "uml_component") {
-    // Minimalist UML component glyph (box + 2 left pins)
     ctx.roundRect(cx - s * 0.45, cy - s * 0.65, s * 1.05, s * 1.3, 2);
     ctx.moveTo(cx - s * 0.7, cy - s * 0.28);
     ctx.lineTo(cx - s * 0.2, cy - s * 0.28);
     ctx.moveTo(cx - s * 0.7, cy + s * 0.28);
     ctx.lineTo(cx - s * 0.2, cy + s * 0.28);
+  } else if (shape === "globe") {
+    ctx.arc(cx, cy, s * 0.68, 0, Math.PI * 2);
+    ctx.moveTo(cx - s * 0.68, cy);
+    ctx.lineTo(cx + s * 0.68, cy);
+    ctx.moveTo(cx, cy - s * 0.68);
+    ctx.ellipse(cx, cy, s * 0.32, s * 0.68, 0, 0, Math.PI * 2);
+  } else if (shape === "cpu") {
+    ctx.roundRect(cx - s * 0.48, cy - s * 0.48, s * 0.96, s * 0.96, 1.5);
+    ctx.moveTo(cx - s * 0.22, cy - s * 0.72);
+    ctx.lineTo(cx - s * 0.22, cy - s * 0.48);
+    ctx.moveTo(cx + s * 0.22, cy - s * 0.72);
+    ctx.lineTo(cx + s * 0.22, cy - s * 0.48);
+    ctx.moveTo(cx - s * 0.22, cy + s * 0.48);
+    ctx.lineTo(cx - s * 0.22, cy + s * 0.72);
+    ctx.moveTo(cx + s * 0.22, cy + s * 0.48);
+    ctx.lineTo(cx + s * 0.22, cy + s * 0.72);
+    ctx.moveTo(cx - s * 0.72, cy - s * 0.22);
+    ctx.lineTo(cx - s * 0.48, cy - s * 0.22);
+    ctx.moveTo(cx - s * 0.72, cy + s * 0.22);
+    ctx.lineTo(cx - s * 0.48, cy + s * 0.22);
+    ctx.moveTo(cx + s * 0.48, cy - s * 0.22);
+    ctx.lineTo(cx + s * 0.72, cy - s * 0.22);
+    ctx.moveTo(cx + s * 0.48, cy + s * 0.22);
+    ctx.lineTo(cx + s * 0.72, cy + s * 0.22);
+  } else if (shape === "database") {
+    ctx.ellipse(cx, cy - s * 0.42, s * 0.6, s * 0.24, 0, 0, Math.PI * 2);
+    ctx.moveTo(cx - s * 0.6, cy - s * 0.42);
+    ctx.lineTo(cx - s * 0.6, cy + s * 0.42);
+    ctx.ellipse(cx, cy + s * 0.42, s * 0.6, s * 0.24, 0, 0, Math.PI);
+    ctx.lineTo(cx + s * 0.6, cy - s * 0.42);
+  } else if (shape === "cloud") {
+    ctx.moveTo(cx - s * 0.45, cy + s * 0.42);
+    ctx.lineTo(cx + s * 0.48, cy + s * 0.42);
+    ctx.bezierCurveTo(cx + s * 0.75, cy + s * 0.42, cx + s * 0.75, cy - s * 0.05, cx + s * 0.45, cy - s * 0.05);
+    ctx.bezierCurveTo(cx + s * 0.42, cy - s * 0.55, cx - s * 0.2, cy - s * 0.55, cx - s * 0.28, cy - s * 0.12);
+    ctx.bezierCurveTo(cx - s * 0.75, cy - s * 0.12, cx - s * 0.75, cy + s * 0.42, cx - s * 0.45, cy + s * 0.42);
+  } else if (shape === "lock") {
+    ctx.roundRect(cx - s * 0.55, cy - s * 0.08, s * 1.1, s * 0.76, 2);
+    ctx.moveTo(cx - s * 0.34, cy - s * 0.08);
+    ctx.lineTo(cx - s * 0.34, cy - s * 0.36);
+    ctx.arc(cx, cy - s * 0.36, s * 0.34, Math.PI, 0, false);
+    ctx.lineTo(cx + s * 0.34, cy - s * 0.08);
+  } else if (shape === "user") {
+    ctx.arc(cx, cy - s * 0.26, s * 0.32, 0, Math.PI * 2);
+    ctx.moveTo(cx - s * 0.6, cy + s * 0.64);
+    ctx.bezierCurveTo(cx - s * 0.5, cy + s * 0.15, cx + s * 0.5, cy + s * 0.15, cx + s * 0.6, cy + s * 0.64);
+  } else if (shape === "code") {
+    ctx.moveTo(cx - s * 0.32, cy - s * 0.42);
+    ctx.lineTo(cx - s * 0.68, cy);
+    ctx.lineTo(cx - s * 0.32, cy + s * 0.42);
+    ctx.moveTo(cx + s * 0.32, cy - s * 0.42);
+    ctx.lineTo(cx + s * 0.68, cy);
+    ctx.lineTo(cx + s * 0.32, cy + s * 0.42);
+    ctx.moveTo(cx + s * 0.14, cy - s * 0.55);
+    ctx.lineTo(cx - s * 0.14, cy + s * 0.55);
+  } else if (shape === "terminal") {
+    ctx.roundRect(cx - s * 0.68, cy - s * 0.54, s * 1.36, s * 1.08, 2);
+    ctx.moveTo(cx - s * 0.38, cy - s * 0.2);
+    ctx.lineTo(cx - s * 0.12, cy + s * 0.04);
+    ctx.lineTo(cx - s * 0.38, cy + s * 0.28);
+    ctx.moveTo(cx + s * 0.04, cy + s * 0.28);
+    ctx.lineTo(cx + s * 0.36, cy + s * 0.28);
+  } else if (shape === "gear") {
+    ctx.arc(cx, cy, s * 0.32, 0, Math.PI * 2);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      ctx.moveTo(cx + Math.cos(a) * s * 0.42, cy + Math.sin(a) * s * 0.42);
+      ctx.lineTo(cx + Math.cos(a) * s * 0.68, cy + Math.sin(a) * s * 0.68);
+    }
+  } else if (shape === "rocket") {
+    ctx.moveTo(cx + s * 0.58, cy - s * 0.58);
+    ctx.bezierCurveTo(cx + s * 0.1, cy - s * 0.58, cx - s * 0.35, cy - s * 0.15, cx - s * 0.48, cy + s * 0.22);
+    ctx.lineTo(cx - s * 0.22, cy + s * 0.48);
+    ctx.bezierCurveTo(cx + s * 0.15, cy + s * 0.35, cx + s * 0.58, cy - s * 0.1, cx + s * 0.58, cy - s * 0.58);
+    ctx.moveTo(cx - s * 0.48, cy + s * 0.22);
+    ctx.lineTo(cx - s * 0.66, cy + s * 0.66);
+    ctx.lineTo(cx - s * 0.22, cy + s * 0.48);
+  } else if (shape === "image_card") {
+    ctx.roundRect(cx - s * 0.68, cy - s * 0.52, s * 1.36, s * 1.04, 2);
+    ctx.moveTo(cx - s * 0.22, cy - s * 0.16);
+    ctx.arc(cx - s * 0.32, cy - s * 0.16, s * 0.12, 0, Math.PI * 2);
+    ctx.moveTo(cx - s * 0.68, cy + s * 0.32);
+    ctx.lineTo(cx - s * 0.18, cy - s * 0.1);
+    ctx.lineTo(cx + s * 0.18, cy + s * 0.22);
+    ctx.lineTo(cx + s * 0.42, cy + s * 0.02);
+    ctx.lineTo(cx + s * 0.68, cy + s * 0.32);
   }
   ctx.stroke();
   ctx.restore();
+}
+
+function drawNodeEntityMedia(ctx, n, strokeCol, fillCol) {
+  const { x, y, w, h } = n;
+  const iconKey = getEffectiveNodeIcon(n);
+  const hasImg = Boolean(n.imgUrl);
+  if (!hasImg && !iconKey) return;
+
+  const pos = n.iconPos || (n.shape === "image_card" ? "cover" : "left");
+  const imgObj = hasImg ? getOrLoadImage(n.imgUrl) : null;
+
+  if (pos === "cover") {
+    const bannerH = n.title ? 24 : 0;
+    const mediaH = Math.max(20, h - bannerH);
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x + 2, y + 2, w - 4, mediaH - 2, bannerH ? [6, 6, 0, 0] : 6);
+    ctx.clip();
+    if (imgObj) {
+      ctx.drawImage(imgObj, x + 2, y + 2, w - 4, mediaH - 2);
+    } else {
+      ctx.fillStyle = "rgba(128, 128, 164, 0.14)";
+      ctx.fillRect(x + 2, y + 2, w - 4, mediaH - 2);
+      drawMinimalistBadgeGlyph(
+        ctx,
+        iconKey || "image_card",
+        x + w * 0.5,
+        y + mediaH * 0.5,
+        Math.min(w, mediaH) * 0.28,
+        strokeCol
+      );
+    }
+    ctx.restore();
+    if (bannerH) {
+      ctx.beginPath();
+      ctx.moveTo(x, y + mediaH);
+      ctx.lineTo(x + w, y + mediaH);
+      ctx.stroke();
+    }
+    return;
+  }
+
+  if (pos === "top") {
+    const bx = x + w * 0.5;
+    const by = y + 20;
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(bx - 13, by - 13, 26, 26, 6);
+    ctx.fillStyle = "rgba(148, 163, 184, 0.1)";
+    ctx.fill();
+    ctx.stroke();
+    if (imgObj) {
+      ctx.clip();
+      ctx.drawImage(imgObj, bx - 13, by - 13, 26, 26);
+    } else if (iconKey) {
+      drawMinimalistBadgeGlyph(ctx, iconKey, bx, by, 9, strokeCol);
+    }
+    ctx.restore();
+    ctx.fillStyle = fillCol;
+    return;
+  }
+
+  // Default: "left" badge
+  const bx = x + 26;
+  const by = y + h * 0.5;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(bx - 13, by - 13, 26, 26, 6);
+  ctx.fillStyle = "rgba(148, 163, 184, 0.1)";
+  ctx.fill();
+  ctx.stroke();
+  if (imgObj) {
+    ctx.clip();
+    ctx.drawImage(imgObj, bx - 13, by - 13, 26, 26);
+  } else if (iconKey) {
+    drawMinimalistBadgeGlyph(ctx, iconKey, bx, by, 9, strokeCol);
+  }
+  ctx.restore();
+  ctx.fillStyle = fillCol;
 }
 
 function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
@@ -2124,8 +2560,9 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.lineTo(x + w * 0.65, y + h - (isMiniPreview ? 3.5 : 8));
     ctx.stroke();
   }
-  // 17. Minimalist Architecture Cards with Left Monoline Badge (AWS Lambda, S3, K8s, Server, Firewall, UML Component)
+  // 17. Minimalist Architecture Cards & Image Cards
   else if (
+    shape === "image_card" ||
     shape === "aws_lambda" ||
     shape === "aws_s3" ||
     shape === "k8s_pod" ||
@@ -2139,16 +2576,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
 
     if (isMiniPreview) {
       drawMinimalistBadgeGlyph(ctx, shape, x + w * 0.5, y + h * 0.5, Math.min(w, h) * 0.42, strokeCol);
-    } else {
-      const bx = x + 26;
-      const by = y + h * 0.5;
-      ctx.beginPath();
-      ctx.roundRect(bx - 13, by - 13, 26, 26, 6);
-      ctx.fillStyle = "rgba(148, 163, 184, 0.08)";
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = fillCol;
-      drawMinimalistBadgeGlyph(ctx, shape, bx, by, 9, strokeCol);
     }
   }
   // 18. Standard Minimalist Process Card
@@ -2157,11 +2584,18 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.fill();
     ctx.stroke();
   }
+
+  // Render Entity Icon or Image on any shape when on the main canvas
+  if (!isMiniPreview) {
+    drawNodeEntityMedia(ctx, n, strokeCol, fillCol);
+  }
 }
 
 function getNodeTextPlacement(n) {
   const { x, y, w, h, shape } = n;
   const cx = x + w * 0.5;
+  const hasMedia = Boolean(n.imgUrl || getEffectiveNodeIcon(n));
+  const mediaPos = n.iconPos || (shape === "image_card" ? "cover" : "left");
 
   if (shape === "actor" || shape === "gateway_xor" || shape === "gateway_parallel" || shape === "timer") {
     return {
@@ -2171,21 +2605,40 @@ function getNodeTextPlacement(n) {
       external: true,
     };
   }
+  if (hasMedia && mediaPos === "cover") {
+    return {
+      cx,
+      titleY: y + h - 8,
+      bodyY: y + h + 14,
+      external: false,
+      hideBody: true,
+    };
+  }
+  if (hasMedia && mediaPos === "top") {
+    return {
+      cx,
+      titleY: y + 48,
+      bodyY: y + 63,
+      external: false,
+    };
+  }
+  const textCx = hasMedia && mediaPos === "left" ? x + 44 + (w - 44) * 0.5 : cx;
+
   if (shape === "cylinder") {
     const bodyCenterY = y + 16 + (h - 16) * 0.5;
-    return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 12, external: false };
+    return { cx: textCx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 12, external: false };
   }
   if (shape === "uml_package") {
     const bodyCenterY = y + 14 + (h - 14) * 0.5;
-    return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 12, external: false };
+    return { cx: textCx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 12, external: false };
   }
   if (shape === "browser") {
     const bodyCenterY = y + 22 + (h - 22) * 0.5;
-    return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 12, external: false };
+    return { cx: textCx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 12, external: false };
   }
   if (shape === "uml_class" || shape === "uml_interface") {
     return {
-      cx,
+      cx: textCx,
       titleY: y + 19,
       bodyY: y + 30 + (h - 30) * 0.5 + 4,
       external: false,
@@ -2193,29 +2646,14 @@ function getNodeTextPlacement(n) {
   }
   if (shape === "queue") {
     return {
-      cx: x + w * 0.5 - 4,
-      titleY: y + h * 0.5 - (n.body ? 5 : -4),
-      bodyY: y + h * 0.5 + 12,
-      external: false,
-    };
-  }
-  if (
-    shape === "aws_lambda" ||
-    shape === "aws_s3" ||
-    shape === "k8s_pod" ||
-    shape === "server" ||
-    shape === "firewall" ||
-    shape === "uml_component"
-  ) {
-    return {
-      cx: x + 44 + (w - 44) * 0.5,
+      cx: hasMedia ? textCx : x + w * 0.5 - 4,
       titleY: y + h * 0.5 - (n.body ? 5 : -4),
       bodyY: y + h * 0.5 + 12,
       external: false,
     };
   }
   return {
-    cx,
+    cx: textCx,
     titleY: y + h * 0.5 - (n.body ? 5 : -4),
     bodyY: y + h * 0.5 + 12,
     external: false,
@@ -3159,7 +3597,7 @@ function renderLoop(timestamp) {
       }
     }
 
-    if (e.label) {
+    if (e.label && e.label.trim().length > 0) {
       const textW = geo.labelWidth;
       ctx.fillStyle = lightCanvas ? "#ffffff" : "#161b26";
       ctx.strokeStyle = strokeColor;
@@ -3299,6 +3737,7 @@ function renderLoop(timestamp) {
     const n = visibleNodes[i];
     if (!n.body) continue;
     const pos = getNodeTextPlacement(n);
+    if (pos.hideBody) continue;
     const darkFill = isDarkHexColor(n.fill);
     ctx.fillStyle = pos.external
       ? lightCanvas
