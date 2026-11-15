@@ -4,12 +4,305 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RustFlow Draw — Cross-Platform Diagramming Engine</title>
+    <style>
+      :root {
+        --bg-canvas: #f8fafc;
+        --bg-panel: #ffffff;
+        --border-color: #e2e8f0;
+        --text-primary: #0f172a;
+        --text-muted: #64748b;
+        --accent: #6366f1;
+        --accent-hover: #4f46e5;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      body {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-canvas);
+        color: var(--text-primary);
+      }
+      /* Top Toolbar */
+      header {
+        height: 48px;
+        background: var(--bg-panel);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        z-index: 10;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 15px;
+      }
+      .badge {
+        background: #eef2ff;
+        color: var(--accent);
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-weight: 600;
+      }
+      .toolbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      button, select, input {
+        font-size: 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        background: #fff;
+        color: var(--text-primary);
+        padding: 5px 10px;
+        cursor: pointer;
+        transition: all 0.12s ease;
+      }
+      button:hover {
+        border-color: #cbd5e1;
+        background: #f1f5f9;
+      }
+      button.primary {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      button.primary:hover {
+        background: var(--accent-hover);
+      }
+      /* Main Workspace */
+      .workspace {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 240px 1fr 270px;
+        overflow: hidden;
+        position: relative;
+      }
+      /* Left Sidebar: Stencil Palette */
+      .sidebar-left {
+        background: var(--bg-panel);
+        border-right: 1px solid var(--border-color);
+        padding: 12px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .search-input {
+        width: 100%;
+        padding: 7px 10px;
+        cursor: text;
+      }
+      .palette-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      .stencil-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .stencil-card {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px 8px;
+        font-size: 11px;
+        font-weight: 500;
+        text-align: center;
+        background: #f8fafc;
+        cursor: pointer;
+      }
+      .stencil-card:hover {
+        border-color: var(--accent);
+        background: #eef2ff;
+        color: var(--accent);
+      }
+      /* Center Canvas */
+      .canvas-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      canvas#rustflow-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        cursor: grab;
+      }
+      canvas#rustflow-canvas:active {
+        cursor: grabbing;
+      }
+      /* Minimap */
+      .minimap {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        width: 180px;
+        height: 120px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+      }
+      /* Right Sidebar: Format Inspector */
+      .sidebar-right {
+        background: var(--bg-panel);
+        border-left: 1px solid var(--border-color);
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow-y: auto;
+      }
+      .inspector-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
+      }
+      .inspector-group label {
+        font-size: 11px;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+      .inspector-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      /* Bottom Page Tabs */
+      footer {
+        height: 34px;
+        background: var(--bg-panel);
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px;
+        font-size: 12px;
+      }
+      .page-tabs {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .page-tab {
+        padding: 4px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--text-muted);
+        font-weight: 500;
+      }
+      .page-tab.active {
+        background: #eef2ff;
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .status-bar {
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+    </style>
   </head>
   <body>
-    <div id="app">
-      <canvas id="rustflow-canvas" width="1280" height="720"></canvas>
-      <div id="dom-overlay"></div>
+    <header>
+      <div class="brand">
+        <span>RustFlow Draw</span>
+        <span class="badge">Phase 1 Engine + React Flow UX</span>
+      </div>
+      <div class="toolbar-actions">
+        <button id="btn-undo" title="Undo (Ctrl+Z)">Undo</button>
+        <button id="btn-redo" title="Redo (Ctrl+Y)">Redo</button>
+        <button id="btn-duplicate" title="Duplicate (Ctrl+D)">Duplicate</button>
+        <button id="btn-delete" title="Delete (Del)">Delete</button>
+        <select id="select-edge-anim" title="Edge Animation Preset">
+          <option value="pulse">Anim: Pulse Particles</option>
+          <option value="ants">Anim: Marching Ants</option>
+          <option value="none">Anim: Static Bezier</option>
+        </select>
+        <button id="btn-layout-hier">Auto-Layout (Hierarchical)</button>
+        <button id="btn-layout-grid">Auto-Layout (Grid)</button>
+        <button id="btn-zoom-in">Zoom +</button>
+        <button id="btn-zoom-out">Zoom -</button>
+        <button id="btn-export-drawio" class="primary">Export .drawio XML</button>
+        <button id="btn-export-svg" class="primary">Export Animated SVG</button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar-left">
+        <input id="palette-search" class="search-input" type="text" placeholder="Search stencils (AWS, UML, BPMN...)" />
+        <div id="palette-list"></div>
+      </aside>
+
+      <main class="canvas-container">
+        <canvas id="rustflow-canvas"></canvas>
+        <canvas id="minimap-canvas" class="minimap" width="180" height="120"></canvas>
+      </main>
+
+      <aside class="sidebar-right">
+        <div class="palette-section-title">Format Inspector</div>
+        <div class="inspector-group">
+          <label>Node Title</label>
+          <input id="insp-title" type="text" placeholder="Select a node..." />
+          <label>Subtitle / Body</label>
+          <input id="insp-body" type="text" placeholder="Node description..." />
+        </div>
+        <div class="inspector-group">
+          <label>Style (Fill & Stroke)</label>
+          <div class="inspector-row">
+            <input id="insp-fill" type="color" value="#ffffff" />
+            <input id="insp-stroke" type="color" value="#6366f1" />
+          </div>
+        </div>
+        <div class="inspector-group">
+          <label>Arrange (X, Y, W, H)</label>
+          <div class="inspector-row">
+            <input id="insp-x" type="number" placeholder="X" />
+            <input id="insp-y" type="number" placeholder="Y" />
+          </div>
+          <div class="inspector-row">
+            <input id="insp-w" type="number" placeholder="Width" />
+            <input id="insp-h" type="number" placeholder="Height" />
+          </div>
+        </div>
+        <div class="inspector-group">
+          <label>Quick Tips</label>
+          <p style="font-size: 11px; color: var(--text-muted); line-height: 1.5;">
+            • Drag nodes to see <b>Smart Alignment Guides</b><br/>
+            • Drag from a right/bottom <b>Port dot</b> to another node to connect an animated Bezier edge<br/>
+            • Scroll wheel to cursor-centered zoom (10%–800%)<br/>
+            • Drag empty canvas to pan
+          </p>
+        </div>
+      </aside>
     </div>
-    <script type="module" src="/src/main.ts"></script>
+
+    <footer>
+      <div class="page-tabs" id="page-tabs"></div>
+      <div class="status-bar" id="status-bar">Zoom: 100% | Nodes: 0 | Edges: 0</div>
+    </footer>
+
+    <script type="module" src="/src/app.js"></script>
   </body>
 </html>
