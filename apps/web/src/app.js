@@ -1,49 +1,50 @@
 // High-Performance Draw.io + React Flow Web Engine
-// Major Performance & Smooth Animation Overhaul:
-// 1. Sub-pixel Arc-Length Parameterized Edge Animations (continuous linear interpolation + comet trail along Bezier, SmoothStep, Orthogonal, and Straight edges at 60-144 FPS)
-// 2. Smooth 1:1 Sub-Pixel Dragging, Resizing & Edge Bending (eliminated 10px stair-stepping deadzone during mousemove)
-// 3. Zero Layout Thrashing: Cached canvas bounding rect (zero getBoundingClientRect() in mousemove/wheel), cached cursor state, and RAF-throttled inspector DOM updates
-// 4. Selective O(deg) Edge Geometry Invalidation: Moving a node only invalidates edges connected to that node; nodeMap only rebuilds when nodes are added/removed
-// 5. 240x240 Macro-Tile Offscreen Grid Pattern Cache (reduces pattern repetitions by 95% per frame)
-// 6. Smooth Cubic-Out Animated Transitions for Auto-Layout (Hierarchical, Grid, Radial) and Zoom/Fit actions
+// Fixes:
+// 1. Authentic Draw.io Vector Symbols & Shapes:
+//    - Queue / Kafka: True 3D Horizontal Cylinder Pipe (curved left cap + 3D right oval cap + subtle left rings, zero lines cutting through text)
+//    - Database Cylinder: True 3D Vertical Elliptical Cylinder with shaded top disc + dual storage rings + lower-body text alignment
+//    - Cloud: Multi-puff vector cloud silhouette
+//    - BPMN Gateways (XOR / Parallel), BPMN Timer, and UML Actor: Clean internal vector emblems with labels positioned below the symbol (never colliding with internal icons)
+//    - Server Rack, WAF Firewall, UML Class/Interface/Component/Package, Document, Sticky Note, AWS Lambda, S3, K8s Pod: Dedicated vector symbols + live mini-canvas previews in the left stencil palette
+// 2. 60-144 FPS Performance & Sub-Pixel Arc-Length Edge Animations
 
 const STENCILS = [
   // Flowchart
-  { id: "flowchart.process", icon: "▭", label: "Process Card", category: "Flowchart", w: 175, h: 78, shape: "card" },
-  { id: "flowchart.rounded", icon: "⬭", label: "Start / End Pill", category: "Flowchart", w: 155, h: 64, shape: "rounded" },
-  { id: "flowchart.decision", icon: "◇", label: "Decision Diamond", category: "Flowchart", w: 140, h: 100, shape: "diamond" },
-  { id: "flowchart.database", icon: "🛢", label: "Database Cylinder", category: "Flowchart", w: 135, h: 96, shape: "cylinder" },
-  { id: "flowchart.data_io", icon: "▱", label: "Data I/O", category: "Flowchart", w: 165, h: 76, shape: "parallelogram" },
-  { id: "flowchart.hexagon", icon: "⬡", label: "Prep Hexagon", category: "Flowchart", w: 160, h: 80, shape: "hexagon" },
-  { id: "flowchart.document", icon: "📄", label: "Document", category: "Flowchart", w: 160, h: 86, shape: "document" },
-  { id: "flowchart.note", icon: "📝", label: "Sticky Note", category: "Flowchart", w: 150, h: 92, shape: "note" },
-  { id: "flowchart.circle", icon: "◯", label: "Circle / Junction", category: "Flowchart", w: 86, h: 86, shape: "circle" },
+  { id: "flowchart.process", label: "Process Card", category: "Flowchart", w: 175, h: 78, shape: "card" },
+  { id: "flowchart.rounded", label: "Start / End Pill", category: "Flowchart", w: 155, h: 64, shape: "rounded" },
+  { id: "flowchart.decision", label: "Decision Diamond", category: "Flowchart", w: 145, h: 96, shape: "diamond" },
+  { id: "flowchart.database", label: "Database Cylinder", category: "Flowchart", w: 140, h: 98, shape: "cylinder" },
+  { id: "flowchart.data_io", label: "Data I/O", category: "Flowchart", w: 165, h: 76, shape: "parallelogram" },
+  { id: "flowchart.hexagon", label: "Prep Hexagon", category: "Flowchart", w: 165, h: 80, shape: "hexagon" },
+  { id: "flowchart.document", label: "Document", category: "Flowchart", w: 160, h: 86, shape: "document" },
+  { id: "flowchart.note", label: "Sticky Note", category: "Flowchart", w: 150, h: 92, shape: "note" },
+  { id: "flowchart.circle", label: "Circle / Junction", category: "Flowchart", w: 86, h: 86, shape: "circle" },
 
   // UML & BPMN
-  { id: "uml.class", icon: "⊞", label: "UML Class", category: "UML & BPMN", w: 185, h: 100, shape: "uml_class" },
-  { id: "uml.interface", icon: "«»", label: "UML Interface", category: "UML & BPMN", w: 180, h: 90, shape: "uml_interface" },
-  { id: "uml.component", icon: "🧩", label: "UML Component", category: "UML & BPMN", w: 180, h: 86, shape: "uml_component" },
-  { id: "uml.package", icon: "📁", label: "UML Package", category: "UML & BPMN", w: 180, h: 96, shape: "uml_package" },
-  { id: "uml.actor", icon: "🧍", label: "UML Actor", category: "UML & BPMN", w: 86, h: 112, shape: "actor" },
-  { id: "bpmn.gateway.xor", icon: "⊗", label: "XOR Gateway (×)", category: "UML & BPMN", w: 96, h: 96, shape: "gateway_xor" },
-  { id: "bpmn.gateway.par", icon: "⊕", label: "Parallel Gateway (+)", category: "UML & BPMN", w: 96, h: 96, shape: "gateway_parallel" },
-  { id: "bpmn.timer", icon: "⏱", label: "Timer Event", category: "UML & BPMN", w: 86, h: 86, shape: "timer" },
+  { id: "uml.class", label: "UML Class", category: "UML & BPMN", w: 185, h: 96, shape: "uml_class" },
+  { id: "uml.interface", label: "UML Interface", category: "UML & BPMN", w: 185, h: 92, shape: "uml_interface" },
+  { id: "uml.component", label: "UML Component", category: "UML & BPMN", w: 180, h: 86, shape: "uml_component" },
+  { id: "uml.package", label: "UML Package", category: "UML & BPMN", w: 180, h: 96, shape: "uml_package" },
+  { id: "uml.actor", label: "UML Actor", category: "UML & BPMN", w: 76, h: 96, shape: "actor" },
+  { id: "bpmn.gateway.xor", label: "XOR Gateway (×)", category: "UML & BPMN", w: 86, h: 86, shape: "gateway_xor" },
+  { id: "bpmn.gateway.par", label: "Parallel Gateway (+)", category: "UML & BPMN", w: 86, h: 86, shape: "gateway_parallel" },
+  { id: "bpmn.timer", label: "Timer Event", category: "UML & BPMN", w: 78, h: 78, shape: "timer" },
 
   // Cloud & Kubernetes
-  { id: "cloud.aws.lambda", icon: "λ", label: "AWS Lambda", category: "Cloud & K8s", w: 165, h: 80, shape: "hexagon" },
-  { id: "cloud.aws.s3", icon: "🪣", label: "AWS S3 Storage", category: "Cloud & K8s", w: 140, h: 96, shape: "cylinder" },
-  { id: "cloud.gcp.cloudrun", icon: "☁", label: "Cloud Service", category: "Cloud & K8s", w: 175, h: 94, shape: "cloud" },
-  { id: "cloud.k8s.pod", icon: "☸", label: "K8s Pod Replica", category: "Cloud & K8s", w: 170, h: 80, shape: "hexagon" },
+  { id: "cloud.aws.lambda", label: "AWS Lambda", category: "Cloud & K8s", w: 175, h: 80, shape: "aws_lambda" },
+  { id: "cloud.aws.s3", label: "AWS S3 Bucket", category: "Cloud & K8s", w: 145, h: 96, shape: "aws_s3" },
+  { id: "cloud.gcp.cloudrun", label: "Cloud Service", category: "Cloud & K8s", w: 180, h: 96, shape: "cloud" },
+  { id: "cloud.k8s.pod", label: "K8s Pod Replica", category: "Cloud & K8s", w: 175, h: 82, shape: "k8s_pod" },
 
   // Network & Infra
-  { id: "network.queue", icon: "⇄", label: "Kafka / Queue", category: "Network & Infra", w: 175, h: 78, shape: "queue" },
-  { id: "network.server", icon: "🖥", label: "Server Rack", category: "Network & Infra", w: 165, h: 96, shape: "server" },
-  { id: "network.firewall", icon: "🧱", label: "WAF Firewall", category: "Network & Infra", w: 160, h: 84, shape: "firewall" },
-  { id: "network.shield", icon: "🛡", label: "Auth Shield", category: "Network & Infra", w: 130, h: 104, shape: "shield" },
+  { id: "network.queue", label: "Kafka / Queue", category: "Network & Infra", w: 185, h: 78, shape: "queue" },
+  { id: "network.server", label: "Server Rack", category: "Network & Infra", w: 170, h: 92, shape: "server" },
+  { id: "network.firewall", label: "WAF Firewall", category: "Network & Infra", w: 165, h: 88, shape: "firewall" },
+  { id: "network.shield", label: "Auth Shield", category: "Network & Infra", w: 135, h: 100, shape: "shield" },
 
   // Wireframes
-  { id: "wireframe.browser", icon: "🌐", label: "Browser Window", category: "Wireframes", w: 230, h: 145, shape: "browser" },
-  { id: "wireframe.mobile", icon: "📱", label: "Mobile Screen", category: "Wireframes", w: 125, h: 195, shape: "mobile" },
+  { id: "wireframe.browser", label: "Browser Window", category: "Wireframes", w: 230, h: 140, shape: "browser" },
+  { id: "wireframe.mobile", label: "Mobile Screen", category: "Wireframes", w: 125, h: 190, shape: "mobile" },
 ];
 
 const STYLE_SWATCHES = [
@@ -69,11 +70,11 @@ function createDogfoodPages() {
       pan: { x: 50, y: 40 },
       zoom: 1.0,
       nodes: [
-        { id: 1, title: "crates/core", body: "R-Tree + Scene + CRDT", x: 70, y: 155, w: 185, h: 82, fill: "#1e293b", stroke: "#818cf8", shape: "uml_package", z: 1 },
+        { id: 1, title: "crates/core", body: "R-Tree + Scene + CRDT", x: 70, y: 155, w: 185, h: 88, fill: "#1e293b", stroke: "#818cf8", shape: "uml_package", z: 1 },
         { id: 2, title: "crates/renderer", body: "wgpu WGSL + Bezier", x: 355, y: 45, w: 185, h: 82, fill: "#1e293b", stroke: "#38bdf8", shape: "uml_component", z: 2 },
         { id: 3, title: "crates/layout", body: "Sugiyama + Force + Spring", x: 355, y: 160, w: 185, h: 82, fill: "#1e293b", stroke: "#34d399", shape: "hexagon", z: 3 },
         { id: 4, title: "crates/io-formats", body: ".drawio XML + SVG + PDF", x: 355, y: 280, w: 185, h: 86, fill: "#1e293b", stroke: "#fbbf24", shape: "document", z: 4 },
-        { id: 5, title: "crates/ui-bridge", body: "WASM & Tauri v2 Shell", x: 650, y: 155, w: 200, h: 105, fill: "#1e293b", stroke: "#f472b6", shape: "browser", z: 5 },
+        { id: 5, title: "crates/ui-bridge", body: "WASM & Tauri v2 Shell", x: 650, y: 155, w: 205, h: 108, fill: "#1e293b", stroke: "#f472b6", shape: "browser", z: 5 },
       ],
       edges: [
         { id: 101, source: 1, sourcePort: "right", target: 2, targetPort: "left", label: "Frustum Query", anim: "pulse", kind: "bezier", color: "#818cf8", width: 2.2, bend: null },
@@ -92,11 +93,11 @@ function createDogfoodPages() {
       pan: { x: 60, y: 50 },
       zoom: 1.0,
       nodes: [
-        { id: 10, title: "Client Actor", body: "HTTPS", x: 70, y: 120, w: 86, h: 112, fill: "#1e293b", stroke: "#38bdf8", shape: "actor", z: 1 },
-        { id: 11, title: "WAF Firewall", body: "Rate Limiter", x: 240, y: 135, w: 160, h: 84, fill: "#1e293b", stroke: "#f43f5e", shape: "firewall", z: 2 },
-        { id: 12, title: "Auth Check", body: "XOR", x: 480, y: 130, w: 96, h: 96, fill: "#1e293b", stroke: "#fbbf24", shape: "gateway_xor", z: 3 },
-        { id: 13, title: "Kafka Stream", body: "events-topic", x: 660, y: 80, w: 175, h: 78, fill: "#1e293b", stroke: "#34d399", shape: "queue", z: 4 },
-        { id: 14, title: "Postgres Primary", body: "pgvector", x: 675, y: 210, w: 140, h: 96, fill: "#1e293b", stroke: "#818cf8", shape: "cylinder", z: 5 },
+        { id: 10, title: "Client Actor", body: "HTTPS", x: 70, y: 125, w: 76, h: 96, fill: "#1e293b", stroke: "#38bdf8", shape: "actor", z: 1 },
+        { id: 11, title: "WAF Firewall", body: "Rate Limiter", x: 235, y: 130, w: 165, h: 88, fill: "#1e293b", stroke: "#f43f5e", shape: "firewall", z: 2 },
+        { id: 12, title: "Auth Check", body: "XOR Gateway", x: 485, y: 132, w: 86, h: 86, fill: "#1e293b", stroke: "#fbbf24", shape: "gateway_xor", z: 3 },
+        { id: 13, title: "Kafka Stream", body: "events-topic", x: 660, y: 78, w: 185, h: 78, fill: "#1e293b", stroke: "#34d399", shape: "queue", z: 4 },
+        { id: 14, title: "Postgres Primary", body: "pgvector", x: 675, y: 210, w: 145, h: 98, fill: "#1e293b", stroke: "#818cf8", shape: "cylinder", z: 5 },
       ],
       edges: [
         { id: 201, source: 10, sourcePort: "right", target: 11, targetPort: "left", label: "Request", anim: "pulse", kind: "bezier", color: "#38bdf8", width: 2.2, bend: null },
@@ -118,7 +119,7 @@ const state = {
   activeFormatTab: "style", // "style" | "text" | "arrange"
   gridStyle: "dots",        // "dots" | "lines" | "off"
   gridSize: 20,
-  snapToGrid: false,        // Smooth 1:1 drag by default; optional grid snap
+  snapToGrid: false,
   hoveredPort: null,
   snapTargetPort: null,
   draggingNode: null,
@@ -138,11 +139,10 @@ const state = {
   geometryVersion: 1,
   minimapDirty: true,
   arrangeDirty: false,
-  layoutAnim: null,         // Smooth spring/cubic layout transition state
-  viewAnim: null,           // Smooth zoom/pan transition state
+  layoutAnim: null,
+  viewAnim: null,
 };
 
-// Cached DOM References & Layout Bounds (Zero DOM queries in hot loops)
 const canvas = document.getElementById("rustflow-canvas");
 const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true }) || canvas.getContext("2d", { alpha: false });
 const minimapCanvas = document.getElementById("minimap-canvas");
@@ -156,7 +156,6 @@ let currentCursor = "default";
 let nodeMap = new Map();
 let cachedGridPattern = null;
 let cachedGridKey = "";
-let cachedGridMacroStep = 240;
 
 function setCanvasCursor(cursor) {
   if (cursor !== currentCursor) {
@@ -178,14 +177,12 @@ function rebuildNodeMap() {
   }
 }
 
-// Full geometry invalidation (when adding/removing nodes or switching pages)
 function invalidateGeometry() {
   state.geometryVersion++;
   state.minimapDirty = true;
   rebuildNodeMap();
 }
 
-// Fast O(deg) selective invalidation when a single node moves or resizes
 function invalidateNodeEdges(nodeId) {
   const edges = page().edges;
   for (let i = 0; i < edges.length; i++) {
@@ -219,9 +216,13 @@ function resizeCanvas() {
   state.minimapDirty = true;
 }
 window.addEventListener("resize", resizeCanvas);
-window.addEventListener("scroll", () => {
-  canvasRect = canvas.parentElement.getBoundingClientRect();
-}, true);
+window.addEventListener(
+  "scroll",
+  () => {
+    canvasRect = canvas.parentElement.getBoundingClientRect();
+  },
+  true
+);
 resizeCanvas();
 rebuildNodeMap();
 
@@ -313,7 +314,6 @@ function evalBezier(p0, p1, p2, p3, t) {
   };
 }
 
-// Build smooth rounded corners for SmoothStep routing
 function buildSmoothStepSamples(p0, c1, c2, p3) {
   const pts = [p0];
   const corners = [
@@ -347,7 +347,6 @@ function buildSmoothStepSamples(p0, c1, c2, p3) {
   return pts;
 }
 
-// Cached Edge Geometry with Cumulative Arc-Length Table for Sub-Pixel 120 FPS Animation
 function getEdgeGeometry(e) {
   if (e._geo && e._ver === state.geometryVersion) {
     return e._geo;
@@ -408,7 +407,6 @@ function getEdgeGeometry(e) {
     }
   }
 
-  // Precompute Cumulative Arc-Length Table for Continuous Sub-Pixel Interpolation
   const cumLen = new Float32Array(samples.length);
   let totalLen = 0;
   let minX = p0.x, maxX = p0.x, minY = p0.y, maxY = p0.y;
@@ -444,7 +442,6 @@ function getEdgeGeometry(e) {
   return e._geo;
 }
 
-// Exact Sub-Pixel Linear Interpolation Along Edge Arc-Length (O(log N) lookup)
 function getPointAtArcDistance(geo, dist) {
   const { samples, cumLen, totalLen } = geo;
   const n = samples.length;
@@ -653,7 +650,6 @@ function setZoomImmediate(targetZoom, cx = canvas.width / 2, cy = canvas.height 
 }
 
 function animateZoom(targetZoom, cx = canvas.width / 2, cy = canvas.height / 2) {
-  const p = page();
   const clampedZoom = Math.min(8.0, Math.max(0.1, targetZoom));
   const before = screenToWorld(cx, cy);
   const targetPanX = cx - before.x * clampedZoom;
@@ -709,6 +705,36 @@ formatTabsEl.querySelectorAll(".format-tab").forEach((tab) => {
   });
 });
 
+const SHAPE_OPTIONS = [
+  ["card", "Process Card"],
+  ["rounded", "Start / End Pill"],
+  ["diamond", "Decision Diamond"],
+  ["cylinder", "Database Cylinder (3D)"],
+  ["queue", "Kafka / FIFO Queue Pipe (3D)"],
+  ["parallelogram", "Data I/O Parallelogram"],
+  ["hexagon", "Prep Hexagon"],
+  ["document", "Document (Wavy)"],
+  ["note", "Sticky Note"],
+  ["circle", "Circle / Junction"],
+  ["actor", "UML Stickman Actor"],
+  ["uml_class", "UML Class"],
+  ["uml_interface", "UML Interface"],
+  ["uml_component", "UML Component"],
+  ["uml_package", "UML Package"],
+  ["gateway_xor", "BPMN XOR Gateway (×)"],
+  ["gateway_parallel", "BPMN Parallel Gateway (+)"],
+  ["timer", "BPMN Timer Event (⏱)"],
+  ["aws_lambda", "AWS Lambda (λ)"],
+  ["aws_s3", "AWS S3 Bucket"],
+  ["cloud", "Cloud Service"],
+  ["k8s_pod", "Kubernetes Pod (☸)"],
+  ["server", "Server Rack"],
+  ["firewall", "WAF Brick Firewall"],
+  ["shield", "Auth Shield"],
+  ["browser", "Browser Window"],
+  ["mobile", "Mobile Screen"],
+];
+
 function renderFormatPanel() {
   const p = page();
   const node = nodeMap.get(state.selectedNodeId);
@@ -718,7 +744,6 @@ function renderFormatPanel() {
     t.classList.toggle("active", t.getAttribute("data-tab") === state.activeFormatTab);
   });
 
-  // CASE A: No item selected -> Draw.io Diagram / Canvas Inspector
   if (!node && !edge) {
     formatBadgeEl.textContent = "Diagram";
     formatTabsEl.style.display = "none";
@@ -786,7 +811,6 @@ function renderFormatPanel() {
 
   formatTabsEl.style.display = "grid";
 
-  // CASE B: NODE Selected -> Draw.io [Style | Text | Arrange]
   if (node) {
     formatBadgeEl.textContent = `Node #${node.id}`;
     if (state.activeFormatTab === "style") {
@@ -798,34 +822,7 @@ function renderFormatPanel() {
         <div class="format-section">
           <label>Shape / Symbol</label>
           <select id="insp-shape">
-            ${[
-              ["card", "React Flow Card"],
-              ["rounded", "Terminator / Pill"],
-              ["diamond", "Decision Diamond"],
-              ["cylinder", "Database Cylinder"],
-              ["parallelogram", "Data I/O Parallelogram"],
-              ["hexagon", "Hexagon"],
-              ["document", "Document (Wavy)"],
-              ["note", "Sticky Note"],
-              ["circle", "Circle / Event"],
-              ["actor", "UML Actor"],
-              ["uml_class", "UML Class"],
-              ["uml_interface", "UML Interface"],
-              ["uml_component", "UML Component"],
-              ["uml_package", "UML Package"],
-              ["gateway_xor", "BPMN XOR Gateway (×)"],
-              ["gateway_parallel", "BPMN Parallel Gateway (+)"],
-              ["timer", "BPMN Timer Event (⏱)"],
-              ["cloud", "Cloud"],
-              ["queue", "Kafka Queue"],
-              ["server", "Server Rack"],
-              ["firewall", "WAF Firewall"],
-              ["shield", "Auth Shield"],
-              ["browser", "Browser Window"],
-              ["mobile", "Mobile Screen"],
-            ]
-              .map(([val, lbl]) => `<option value="${val}" ${node.shape === val ? "selected" : ""}>${lbl}</option>`)
-              .join("")}
+            ${SHAPE_OPTIONS.map(([val, lbl]) => `<option value="${val}" ${node.shape === val ? "selected" : ""}>${lbl}</option>`).join("")}
           </select>
         </div>
         <div class="format-section">
@@ -924,7 +921,6 @@ function renderFormatPanel() {
     return;
   }
 
-  // CASE C: EDGE Selected -> Draw.io [Style | Text | Arrange]
   if (edge) {
     formatBadgeEl.textContent = `Edge #${edge.id}`;
     if (state.activeFormatTab === "style") {
@@ -1034,7 +1030,6 @@ function renderFormatPanel() {
 }
 renderFormatPanel();
 
-// Sync Arrange inputs inside RAF (throttled) instead of inside mousemove
 function syncArrangeInputsIfDirty() {
   if (!state.arrangeDirty) return;
   state.arrangeDirty = false;
@@ -1052,7 +1047,7 @@ function syncArrangeInputsIfDirty() {
 }
 
 // ============================================================================
-// POINTER & INTERACTION HANDLERS (Zero DOM Reflows in Mousemove)
+// POINTER & INTERACTION HANDLERS
 // ============================================================================
 canvas.addEventListener("mousedown", (e) => {
   inlineEditor.style.display = "none";
@@ -1066,7 +1061,6 @@ canvas.addEventListener("mousedown", (e) => {
   const p = page();
   const handleHitRadius = 13 / Math.max(0.4, p.zoom);
 
-  // 1. Selected Edge Bend & Endpoint Reconnect Handles
   const selectedEdge = p.edges.find((ed) => ed.id === state.selectedEdgeId);
   if (selectedEdge) {
     const geo = getEdgeGeometry(selectedEdge);
@@ -1089,7 +1083,6 @@ canvas.addEventListener("mousedown", (e) => {
     }
   }
 
-  // 2. Selected Node Resize Handle & Quick-Add Arrows
   const selectedNode = nodeMap.get(state.selectedNodeId);
   if (selectedNode) {
     if (Math.hypot(wpt.x - (selectedNode.x + selectedNode.w), wpt.y - (selectedNode.y + selectedNode.h)) <= handleHitRadius) {
@@ -1130,7 +1123,6 @@ canvas.addEventListener("mousedown", (e) => {
     }
   }
 
-  // 3. Port Handle Click (Drag-to-Connect)
   const portHitRadius = 15 / Math.max(0.4, p.zoom);
   for (let i = 0; i < p.nodes.length; i++) {
     const n = p.nodes[i];
@@ -1145,7 +1137,6 @@ canvas.addEventListener("mousedown", (e) => {
     }
   }
 
-  // 4. Edge Hit-Test
   const hitEdge = hitTestEdge(wpt);
   if (hitEdge) {
     state.selectedEdgeId = hitEdge.id;
@@ -1159,7 +1150,6 @@ canvas.addEventListener("mousedown", (e) => {
     return;
   }
 
-  // 5. Node Body Hit-Test
   let hit = null;
   for (let i = p.nodes.length - 1; i >= 0; i--) {
     const n = p.nodes[i];
@@ -1270,20 +1260,16 @@ window.addEventListener(
       return;
     }
 
-    // Smooth 1:1 Edge Bend Dragging (Zero 5px stair-stepping)
     if (state.draggingEdgeBend) {
-      const rawX = wx;
-      const rawY = wy;
       state.draggingEdgeBend.bend = {
-        x: state.snapToGrid ? Math.round(rawX / state.gridSize) * state.gridSize : rawX,
-        y: state.snapToGrid ? Math.round(rawY / state.gridSize) * state.gridSize : rawY,
+        x: state.snapToGrid ? Math.round(wx / state.gridSize) * state.gridSize : wx,
+        y: state.snapToGrid ? Math.round(wy / state.gridSize) * state.gridSize : wy,
       };
       state.draggingEdgeBend._ver = -1;
       setCanvasCursor("grabbing");
       return;
     }
 
-    // Smooth 1:1 Node Resizing (Zero 10px stair-stepping)
     if (state.resizingNode) {
       const { node, aspect } = state.resizingNode;
       const rawW = Math.max(70, wx - node.x);
@@ -1299,7 +1285,6 @@ window.addEventListener(
       return;
     }
 
-    // Smooth 1:1 Node Dragging (Zero 10px stair-stepping; only invalidates connected edges!)
     if (state.draggingNode) {
       const { node, offsetX, offsetY } = state.draggingNode;
       const rawX = wx - offsetX;
@@ -1320,7 +1305,6 @@ window.addEventListener(
       return;
     }
 
-    // Idle Port Hover Detection (Bounding-Box Culled)
     state.hoveredPort = null;
     const portHoverRadius = 15 / Math.max(0.4, p.zoom);
     for (let i = 0; i < p.nodes.length; i++) {
@@ -1394,7 +1378,6 @@ window.addEventListener("mouseup", (e) => {
     }
   }
 
-  // Round to clean integer coordinates on release
   if (state.draggingNode) {
     const n = state.draggingNode.node;
     n.x = Math.round(n.x);
@@ -1455,6 +1438,501 @@ function addStencilToCanvas(item) {
   renderFormatPanel();
 }
 
+// ============================================================================
+// AUTHENTIC DRAW.IO VECTOR SHAPE RENDERER (Used on Main Canvas & Palette Icons)
+// ============================================================================
+function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
+  const { x, y, w, h, shape } = n;
+  const strokeCol = ctx.strokeStyle;
+  const fillCol = ctx.fillStyle;
+
+  ctx.beginPath();
+
+  // 1. Decision Diamond & BPMN Gateways (XOR / Parallel)
+  if (shape === "diamond" || shape === "gateway_xor" || shape === "gateway_parallel") {
+    const cx = x + w * 0.5;
+    const cy = y + h * 0.5;
+    ctx.moveTo(cx, y);
+    ctx.lineTo(x + w, cy);
+    ctx.lineTo(cx, y + h);
+    ctx.lineTo(x, cy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    if (shape === "gateway_xor" || shape === "gateway_parallel") {
+      // Inner BPMN diamond rim
+      const inset = Math.min(w, h) * 0.08;
+      ctx.beginPath();
+      ctx.moveTo(cx, y + inset);
+      ctx.lineTo(x + w - inset, cy);
+      ctx.lineTo(cx, y + h - inset);
+      ctx.lineTo(x + inset, cy);
+      ctx.closePath();
+      ctx.stroke();
+
+      // Bold centered gateway marker (text is rendered below the diamond, never colliding!)
+      ctx.save();
+      ctx.lineWidth = isMiniPreview ? 1.6 : 2.6;
+      const s = Math.min(w, h) * 0.19;
+      ctx.beginPath();
+      if (shape === "gateway_xor") {
+        ctx.moveTo(cx - s, cy - s);
+        ctx.lineTo(cx + s, cy + s);
+        ctx.moveTo(cx + s, cy - s);
+        ctx.lineTo(cx - s, cy + s);
+      } else {
+        ctx.moveTo(cx - s * 1.15, cy);
+        ctx.lineTo(cx + s * 1.15, cy);
+        ctx.moveTo(cx, cy - s * 1.15);
+        ctx.lineTo(cx, cy + s * 1.15);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+  // 2. Terminator / Rounded Pill
+  else if (shape === "rounded") {
+    ctx.roundRect(x, y, w, h, Math.min(w, h) * 0.5);
+    ctx.fill();
+    ctx.stroke();
+  }
+  // 3. Circle & BPMN Timer Event
+  else if (shape === "circle" || shape === "timer") {
+    const r = Math.min(w, h) * 0.5;
+    const cx = x + w * 0.5;
+    const cy = y + h * 0.5;
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    if (shape === "timer") {
+      // BPMN double ring + 12 clock ticks + hands (label sits below circle)
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.82, 0, Math.PI * 2);
+      for (let tick = 0; tick < 12; tick++) {
+        const ang = (tick / 12) * Math.PI * 2;
+        const r1 = r * 0.66;
+        const r2 = r * 0.8;
+        ctx.moveTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
+        ctx.lineTo(cx + Math.cos(ang) * r2, cy + Math.sin(ang) * r2);
+      }
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx, cy - r * 0.48);
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + r * 0.36, cy + r * 0.12);
+      ctx.stroke();
+    }
+  }
+  // 4. True 3D Vertical Database Cylinder ( & AWS S3 Bucket )
+  else if (shape === "cylinder" || shape === "aws_s3") {
+    const ry = Math.min(14, h * 0.16);
+    const rx = w * 0.5;
+    const cx = x + rx;
+
+    // Cylinder outer silhouette using exact elliptical arcs
+    ctx.ellipse(cx, y + ry, rx, ry, 0, Math.PI, Math.PI * 2, false);
+    ctx.lineTo(x + w, y + h - ry);
+    ctx.ellipse(cx, y + h - ry, rx, ry, 0, 0, Math.PI, false);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Shaded top 3D disc lid
+    ctx.beginPath();
+    ctx.ellipse(cx, y + ry, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
+    ctx.fill();
+    ctx.stroke();
+
+    // Second database platter ring
+    if (!isMiniPreview) {
+      ctx.beginPath();
+      ctx.ellipse(cx, y + ry + 8, rx, ry * 0.88, 0, 0.08, Math.PI - 0.08);
+      ctx.stroke();
+    }
+    ctx.fillStyle = fillCol;
+  }
+  // 5. True 3D Horizontal Cylinder Pipe (Kafka / FIFO Message Queue)
+  //    Curved left cap + straight top/bottom + 3D right oval cap,
+  //    with wide open center body so text never touches any seam lines!
+  else if (shape === "queue") {
+    const rx = Math.min(13, w * 0.085);
+    const ry = h * 0.5;
+    const cy = y + ry;
+
+    // Outer 3D horizontal tube silhouette
+    ctx.ellipse(x + rx, cy, rx, ry, 0, Math.PI * 0.5, Math.PI * 1.5, false);
+    ctx.lineTo(x + w - rx, y);
+    ctx.ellipse(x + w - rx, cy, rx, ry, 0, -Math.PI * 0.5, Math.PI * 0.5, false);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Right-end 3D oval cap with recessed inner shading
+    ctx.beginPath();
+    ctx.ellipse(x + w - rx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner pipe opening on right cap + single left rim seam
+    if (!isMiniPreview) {
+      ctx.beginPath();
+      ctx.ellipse(x + w - rx, cy, rx * 0.45, ry * 0.48, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.ellipse(x + rx + 10, cy, rx * 0.85, ry, 0, Math.PI * 0.56, Math.PI * 1.44, false);
+      ctx.stroke();
+    }
+    ctx.fillStyle = fillCol;
+  }
+  // 6. Data I/O Parallelogram
+  else if (shape === "parallelogram") {
+    const skew = Math.min(20, w * 0.16);
+    ctx.moveTo(x + skew, y);
+    ctx.lineTo(x + w, y);
+    ctx.lineTo(x + w - skew, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  // 7. Prep Hexagon / AWS Lambda / Kubernetes Pod
+  else if (shape === "hexagon" || shape === "aws_lambda" || shape === "k8s_pod") {
+    const cut = Math.min(20, w * 0.14);
+    ctx.moveTo(x + cut, y);
+    ctx.lineTo(x + w - cut, y);
+    ctx.lineTo(x + w, y + h * 0.5);
+    ctx.lineTo(x + w - cut, y + h);
+    ctx.lineTo(x + cut, y + h);
+    ctx.lineTo(x, y + h * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    if (!isMiniPreview && (shape === "aws_lambda" || shape === "k8s_pod")) {
+      // Draw left-side emblem badge
+      const bx = x + 26;
+      const by = y + h * 0.5;
+      ctx.beginPath();
+      ctx.arc(bx, by, 12, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(56, 189, 248, 0.15)";
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = strokeCol;
+      ctx.font = "700 13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(shape === "aws_lambda" ? "λ" : "☸", bx, by + 4.5);
+      ctx.fillStyle = fillCol;
+    }
+  }
+  // 8. Wavy Bottom Document
+  else if (shape === "document") {
+    const wave = Math.min(12, h * 0.15);
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w, y);
+    ctx.lineTo(x + w, y + h - wave);
+    ctx.bezierCurveTo(
+      x + w * 0.72,
+      y + h + wave * 0.85,
+      x + w * 0.28,
+      y + h - wave * 2.1,
+      x,
+      y + h - wave * 0.6
+    );
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  // 9. Sticky Note with Shaded Folded Corner
+  else if (shape === "note") {
+    const fold = Math.min(18, w * 0.18, h * 0.22);
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w - fold, y);
+    ctx.lineTo(x + w, y + fold);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x + w - fold, y);
+    ctx.lineTo(x + w - fold, y + fold);
+    ctx.lineTo(x + w, y + fold);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = fillCol;
+  }
+  // 10. Multi-Puff Vector Cloud (True Cloud Shape!)
+  else if (shape === "cloud") {
+    const l = x + w * 0.06;
+    const r = x + w * 0.94;
+    const t = y + h * 0.12;
+    const b = y + h * 0.88;
+    const cw = r - l;
+    const ch = b - t;
+
+    ctx.moveTo(l + cw * 0.2, b);
+    ctx.bezierCurveTo(l - cw * 0.06, b, l - cw * 0.06, t + ch * 0.42, l + cw * 0.15, t + ch * 0.36);
+    ctx.bezierCurveTo(l + cw * 0.16, t - ch * 0.06, l + cw * 0.46, t - ch * 0.08, l + cw * 0.54, t + ch * 0.16);
+    ctx.bezierCurveTo(l + cw * 0.68, t - ch * 0.04, l + cw * 0.92, t + ch * 0.08, l + cw * 0.88, t + ch * 0.38);
+    ctx.bezierCurveTo(r + cw * 0.08, t + ch * 0.42, r + cw * 0.06, b, l + cw * 0.8, b);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  // 11. UML Stickman Actor (Scales proportionally; text sits below figure!)
+  else if (shape === "actor") {
+    const cx = x + w * 0.5;
+    const headR = Math.min(w, h) * 0.15;
+    const headY = y + headR + 4;
+    const neckY = headY + headR;
+    const hipY = y + h * 0.64;
+    const footY = y + h - 4;
+    const armSpan = w * 0.34;
+    const legSpan = w * 0.28;
+
+    ctx.arc(cx, headY, headR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(cx, neckY);
+    ctx.lineTo(cx, hipY);
+    ctx.moveTo(cx - armSpan, neckY + (hipY - neckY) * 0.35);
+    ctx.lineTo(cx + armSpan, neckY + (hipY - neckY) * 0.35);
+    ctx.moveTo(cx, hipY);
+    ctx.lineTo(cx - legSpan, footY);
+    ctx.moveTo(cx, hipY);
+    ctx.lineTo(cx + legSpan, footY);
+    ctx.stroke();
+  }
+  // 12. UML Package (Folder Tab + Body)
+  else if (shape === "uml_package") {
+    const tabW = Math.min(76, w * 0.45);
+    const tabH = Math.min(18, h * 0.22);
+    ctx.roundRect(x, y, tabW, tabH, [5, 5, 0, 0]);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.roundRect(x, y + tabH, w, h - tabH, [0, 8, 8, 8]);
+    ctx.fill();
+    ctx.stroke();
+  }
+  // 13. UML Component (Card + Standard Top-Right Component Symbol)
+  else if (shape === "uml_component") {
+    ctx.roundRect(x, y, w, h, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    if (!isMiniPreview) {
+      const ix = x + w - 24;
+      const iy = y + 8;
+      ctx.beginPath();
+      ctx.rect(ix, iy, 14, 18);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillRect(ix - 4, iy + 3, 8, 4);
+      ctx.strokeRect(ix - 4, iy + 3, 8, 4);
+      ctx.fillRect(ix - 4, iy + 11, 8, 4);
+      ctx.strokeRect(ix - 4, iy + 11, 8, 4);
+    }
+  }
+  // 14. UML Class & UML Interface (Clean Header Compartment + Body Compartment)
+  else if (shape === "uml_class" || shape === "uml_interface") {
+    const headerH = isMiniPreview ? h * 0.38 : 34;
+    ctx.roundRect(x, y, w, h, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x, y + headerH);
+    ctx.lineTo(x + w, y + headerH);
+    ctx.stroke();
+  }
+  // 15. Security Auth Shield
+  else if (shape === "shield") {
+    const cx = x + w * 0.5;
+    ctx.moveTo(cx, y);
+    ctx.lineTo(x + w, y + h * 0.18);
+    ctx.bezierCurveTo(x + w, y + h * 0.68, cx + w * 0.12, y + h * 0.92, cx, y + h);
+    ctx.bezierCurveTo(cx - w * 0.12, y + h * 0.92, x, y + h * 0.68, x, y + h * 0.18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  // 16. WAF Brick Firewall (Top Masonry Brick Wall Header + Clean Label Body)
+  else if (shape === "firewall") {
+    const headerH = isMiniPreview ? h * 0.45 : 24;
+    ctx.roundRect(x, y, w, h, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    // Shaded brick header band
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, headerH, [8, 8, 0, 0]);
+    ctx.fillStyle = "rgba(244, 63, 94, 0.18)";
+    ctx.fill();
+    ctx.restore();
+
+    ctx.beginPath();
+    const midY = y + headerH * 0.5;
+    ctx.moveTo(x, midY);
+    ctx.lineTo(x + w, midY);
+    ctx.moveTo(x, y + headerH);
+    ctx.lineTo(x + w, y + headerH);
+    // Row 1 bricks
+    for (const f of [0.25, 0.5, 0.75]) {
+      ctx.moveTo(x + w * f, y);
+      ctx.lineTo(x + w * f, midY);
+    }
+    // Row 2 staggered bricks
+    for (const f of [0.125, 0.375, 0.625, 0.875]) {
+      ctx.moveTo(x + w * f, midY);
+      ctx.lineTo(x + w * f, y + headerH);
+    }
+    ctx.stroke();
+  }
+  // 17. Server Rack (Top Rack Unit Header with LEDs + Clean Label Body)
+  else if (shape === "server") {
+    const headerH = isMiniPreview ? h * 0.35 : 22;
+    ctx.roundRect(x, y, w, h, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x, y + headerH);
+    ctx.lineTo(x + w, y + headerH);
+    if (!isMiniPreview) {
+      // Rack vent slots on top right
+      for (let i = 0; i < 4; i++) {
+        const vx = x + w - 14 - i * 6;
+        ctx.moveTo(vx, y + 6);
+        ctx.lineTo(vx, y + headerH - 6);
+      }
+    }
+    ctx.stroke();
+
+    if (!isMiniPreview) {
+      const leds = ["#34d399", "#38bdf8"];
+      for (let i = 0; i < 2; i++) {
+        ctx.beginPath();
+        ctx.arc(x + 14 + i * 11, y + headerH * 0.5, 3.2, 0, Math.PI * 2);
+        ctx.fillStyle = leds[i];
+        ctx.fill();
+      }
+      ctx.fillStyle = fillCol;
+    }
+  }
+  // 18. Browser Window Wireframe
+  else if (shape === "browser") {
+    const headerH = isMiniPreview ? h * 0.3 : 26;
+    ctx.roundRect(x, y, w, h, 10);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y + headerH);
+    ctx.lineTo(x + w, y + headerH);
+    ctx.stroke();
+    if (!isMiniPreview) {
+      const colors = ["#f43f5e", "#fbbf24", "#34d399"];
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(x + 14 + i * 12, y + 13, 3.8, 0, Math.PI * 2);
+        ctx.fillStyle = colors[i];
+        ctx.fill();
+      }
+      ctx.fillStyle = fillCol;
+    }
+  }
+  // 19. Mobile Screen Wireframe
+  else if (shape === "mobile") {
+    ctx.roundRect(x, y, w, h, isMiniPreview ? 6 : 18);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.35, y + (isMiniPreview ? 4 : 10));
+    ctx.lineTo(x + w * 0.65, y + (isMiniPreview ? 4 : 10));
+    ctx.moveTo(x + w * 0.3, y + h - (isMiniPreview ? 4 : 10));
+    ctx.lineTo(x + w * 0.7, y + h - (isMiniPreview ? 4 : 10));
+    ctx.stroke();
+  }
+  // 20. Standard React Flow Process Card
+  else {
+    ctx.roundRect(x, y, w, h, isMiniPreview ? 4 : 10);
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+// Compute Clean Non-Overlapping Text Coordinates for Every Shape
+function getNodeTextPlacement(n) {
+  const { x, y, w, h, shape } = n;
+  const cx = x + w * 0.5;
+
+  // Shapes with full-interior symbols place their label cleanly below the symbol
+  if (shape === "actor" || shape === "gateway_xor" || shape === "gateway_parallel" || shape === "timer") {
+    return {
+      cx,
+      titleY: y + h + 16,
+      bodyY: y + h + 31,
+      external: true,
+    };
+  }
+  // Shapes with top header compartments or 3D top lids shift text into the lower body
+  if (shape === "cylinder" || shape === "aws_s3") {
+    const bodyCenterY = y + 20 + (h - 20) * 0.5;
+    return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 13, external: false };
+  }
+  if (shape === "uml_package") {
+    const bodyCenterY = y + 18 + (h - 18) * 0.5;
+    return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 13, external: false };
+  }
+  if (shape === "firewall" || shape === "server" || shape === "browser") {
+    const topBar = shape === "browser" ? 26 : 23;
+    const bodyCenterY = y + topBar + (h - topBar) * 0.5;
+    return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 13, external: false };
+  }
+  if (shape === "uml_class" || shape === "uml_interface") {
+    return {
+      cx,
+      titleY: y + 22,
+      bodyY: y + 34 + (h - 34) * 0.5 + 4,
+      external: false,
+    };
+  }
+  if (shape === "queue") {
+    return {
+      cx: x + w * 0.5 - 5,
+      titleY: y + h * 0.5 - (n.body ? 5 : -4),
+      bodyY: y + h * 0.5 + 14,
+      external: false,
+    };
+  }
+  if (shape === "aws_lambda" || shape === "k8s_pod") {
+    return {
+      cx: x + w * 0.5 + 10,
+      titleY: y + h * 0.5 - (n.body ? 5 : -4),
+      bodyY: y + h * 0.5 + 14,
+      external: false,
+    };
+  }
+  return {
+    cx,
+    titleY: y + h * 0.5 - (n.body ? 5 : -4),
+    bodyY: y + h * 0.5 + 14,
+    external: false,
+  };
+}
+
+// Render Left Stencil Palette with Live Mini Vector Canvas Previews
 function renderPalette(filter = "") {
   const container = document.getElementById("palette-list");
   container.innerHTML = "";
@@ -1479,7 +1957,24 @@ function renderPalette(filter = "") {
     for (const item of items) {
       const card = document.createElement("div");
       card.className = "stencil-card";
-      card.innerHTML = `<span class="stencil-icon">${item.icon}</span><span>${item.label}</span>`;
+
+      const thumb = document.createElement("canvas");
+      thumb.width = 30;
+      thumb.height = 22;
+      thumb.style.flexShrink = "0";
+      const tctx = thumb.getContext("2d");
+      tctx.fillStyle = "#1e293b";
+      tctx.strokeStyle = "#38bdf8";
+      tctx.lineWidth = 1.4;
+      drawNodeShapeGeometry(tctx, { x: 2, y: 2, w: 26, h: 18, shape: item.shape }, true);
+
+      const labelSpan = document.createElement("span");
+      labelSpan.textContent = item.label;
+      labelSpan.style.overflow = "hidden";
+      labelSpan.style.textOverflow = "ellipsis";
+
+      card.appendChild(thumb);
+      card.appendChild(labelSpan);
       card.onclick = () => addStencilToCanvas(item);
       grid.appendChild(card);
     }
@@ -1605,7 +2100,6 @@ function deleteSelected() {
   renderFormatPanel();
 }
 
-// Smooth Animated Sugiyama Hierarchical Auto-Layout
 function runHierarchicalLayout() {
   const p = page();
   saveSnapshot();
@@ -1629,7 +2123,7 @@ function runHierarchicalLayout() {
     group.forEach((n, sibIdx) => {
       targets.set(n.id, {
         x: 90 + Number(layerIdx) * 250,
-        y: 70 + sibIdx * 125,
+        y: 70 + sibIdx * 135,
       });
     });
   });
@@ -1646,8 +2140,8 @@ function runGridLayout() {
     const col = idx % cols;
     const row = Math.floor(idx / cols);
     targets.set(n.id, {
-      x: 80 + col * 230,
-      y: 70 + row * 130,
+      x: 80 + col * 235,
+      y: 70 + row * 140,
     });
   });
   p.edges.forEach((e) => (e.bend = null));
@@ -1691,7 +2185,7 @@ function generateStressGraph(count) {
       h: 74,
       fill: "#1e293b",
       stroke: "#38bdf8",
-      shape: i % 4 === 0 ? "hexagon" : "card",
+      shape: i % 4 === 0 ? "queue" : i % 3 === 0 ? "cylinder" : "card",
       z: i,
     });
     if (i > 1) {
@@ -1793,7 +2287,7 @@ const COMMANDS = [
   { label: "Export: Download .drawio XML", shortcut: "File", run: exportDrawioXml },
   { label: "Export: Download Animated SVG", shortcut: "File", run: exportAnimatedSvg },
   { label: "Benchmark: Generate 100-Node Graph", shortcut: "Extras", run: () => generateStressGraph(100) },
-  ...STENCILS.map((s) => ({ label: `Add ${s.icon} ${s.label}`, shortcut: s.category, run: () => addStencilToCanvas(s) })),
+  ...STENCILS.map((s) => ({ label: `Add ${s.label}`, shortcut: s.category, run: () => addStencilToCanvas(s) })),
 ];
 
 function openCommandPalette() {
@@ -1878,10 +2372,8 @@ function drawInfiniteGridFast(p) {
   const key = `${state.theme}:${state.gridStyle}:${step}`;
   if (key !== cachedGridKey) {
     cachedGridKey = key;
-    // Build a ~240x240 macro-tile so CanvasPattern repeats 95% fewer times across screen
     const reps = Math.max(1, Math.round(240 / step));
     const macro = step * reps;
-    cachedGridMacroStep = macro;
 
     const tile = document.createElement("canvas");
     tile.width = macro;
@@ -1923,232 +2415,6 @@ function drawInfiniteGridFast(p) {
   }
 }
 
-function drawNodeShapeGeometry(ctx, n) {
-  const { x, y, w, h, shape } = n;
-
-  ctx.beginPath();
-  if (shape === "diamond" || shape === "gateway_xor" || shape === "gateway_parallel") {
-    ctx.moveTo(x + w / 2, y);
-    ctx.lineTo(x + w, y + h / 2);
-    ctx.lineTo(x + w / 2, y + h);
-    ctx.lineTo(x, y + h / 2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    if (shape === "gateway_xor") {
-      ctx.beginPath();
-      const s = Math.min(w, h) * 0.16;
-      const cx = x + w / 2, cy = y + h / 2 - 10;
-      ctx.moveTo(cx - s, cy - s);
-      ctx.lineTo(cx + s, cy + s);
-      ctx.moveTo(cx + s, cy - s);
-      ctx.lineTo(cx - s, cy + s);
-      ctx.stroke();
-    } else if (shape === "gateway_parallel") {
-      ctx.beginPath();
-      const s = Math.min(w, h) * 0.18;
-      const cx = x + w / 2, cy = y + h / 2 - 10;
-      ctx.moveTo(cx - s, cy);
-      ctx.lineTo(cx + s, cy);
-      ctx.moveTo(cx, cy - s);
-      ctx.lineTo(cx, cy + s);
-      ctx.stroke();
-    }
-  } else if (shape === "rounded") {
-    ctx.roundRect(x, y, w, h, Math.min(w, h) * 0.5);
-    ctx.fill();
-    ctx.stroke();
-  } else if (shape === "circle" || shape === "timer") {
-    const r = Math.min(w, h) / 2;
-    const cx = x + w / 2, cy = y + h / 2;
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    if (shape === "timer") {
-      ctx.beginPath();
-      ctx.arc(cx, cy, r * 0.78, 0, Math.PI * 2);
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx, cy - r * 0.5);
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + r * 0.38, cy);
-      ctx.stroke();
-    }
-  } else if (shape === "cylinder") {
-    const ry = 12;
-    ctx.moveTo(x, y + ry);
-    ctx.lineTo(x, y + h - ry);
-    ctx.bezierCurveTo(x, y + h + ry * 0.6, x + w, y + h + ry * 0.6, x + w, y + h - ry);
-    ctx.lineTo(x + w, y + ry);
-    ctx.bezierCurveTo(x + w, y - ry * 0.6, x, y - ry * 0.6, x, y + ry);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.ellipse(x + w / 2, y + ry, w / 2, ry, 0, 0, Math.PI * 2);
-    ctx.stroke();
-  } else if (shape === "queue") {
-    const rx = 14;
-    ctx.roundRect(x, y, w, h, rx);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.ellipse(x + w - rx, y + h / 2, rx * 0.7, h / 2, 0, 0, Math.PI * 2);
-    ctx.moveTo(x + w * 0.25, y);
-    ctx.lineTo(x + w * 0.25, y + h);
-    ctx.moveTo(x + w * 0.45, y);
-    ctx.lineTo(x + w * 0.45, y + h);
-    ctx.stroke();
-  } else if (shape === "parallelogram") {
-    const skew = 20;
-    ctx.moveTo(x + skew, y);
-    ctx.lineTo(x + w, y);
-    ctx.lineTo(x + w - skew, y + h);
-    ctx.lineTo(x, y + h);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  } else if (shape === "hexagon") {
-    const cut = 22;
-    ctx.moveTo(x + cut, y);
-    ctx.lineTo(x + w - cut, y);
-    ctx.lineTo(x + w, y + h / 2);
-    ctx.lineTo(x + w - cut, y + h);
-    ctx.lineTo(x + cut, y + h);
-    ctx.lineTo(x, y + h / 2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  } else if (shape === "document") {
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + w, y);
-    ctx.lineTo(x + w, y + h - 12);
-    ctx.bezierCurveTo(x + w * 0.7, y + h + 8, x + w * 0.3, y + h - 24, x, y + h - 8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  } else if (shape === "note") {
-    const fold = 18;
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + w - fold, y);
-    ctx.lineTo(x + w, y + fold);
-    ctx.lineTo(x + w, y + h);
-    ctx.lineTo(x, y + h);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x + w - fold, y);
-    ctx.lineTo(x + w - fold, y + fold);
-    ctx.lineTo(x + w, y + fold);
-    ctx.stroke();
-  } else if (shape === "cloud") {
-    ctx.roundRect(x + 8, y + 10, w - 16, h - 16, 28);
-    ctx.fill();
-    ctx.stroke();
-  } else if (shape === "actor") {
-    const cx = x + w / 2;
-    ctx.arc(cx, y + 18, 12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cx, y + 30);
-    ctx.lineTo(cx, y + 66);
-    ctx.moveTo(cx - 22, y + 44);
-    ctx.lineTo(cx + 22, y + 44);
-    ctx.moveTo(cx, y + 66);
-    ctx.lineTo(cx - 18, y + 92);
-    ctx.moveTo(cx, y + 66);
-    ctx.lineTo(cx + 18, y + 92);
-    ctx.stroke();
-  } else if (shape === "uml_package") {
-    ctx.rect(x, y, 70, 18);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.roundRect(x, y + 18, w, h - 18, [0, 8, 8, 8]);
-    ctx.fill();
-    ctx.stroke();
-  } else if (shape === "uml_component") {
-    ctx.roundRect(x, y, w, h, 8);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillRect(x - 8, y + 16, 16, 10);
-    ctx.strokeRect(x - 8, y + 16, 16, 10);
-    ctx.fillRect(x - 8, y + 34, 16, 10);
-    ctx.strokeRect(x - 8, y + 34, 16, 10);
-  } else if (shape === "uml_class" || shape === "uml_interface") {
-    ctx.roundRect(x, y, w, h, 8);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x, y + 36);
-    ctx.lineTo(x + w, y + 36);
-    ctx.moveTo(x, y + 64);
-    ctx.lineTo(x + w, y + 64);
-    ctx.stroke();
-  } else if (shape === "shield") {
-    ctx.moveTo(x + w / 2, y);
-    ctx.lineTo(x + w, y + 18);
-    ctx.bezierCurveTo(x + w, y + h * 0.7, x + w / 2, y + h, x + w / 2, y + h);
-    ctx.bezierCurveTo(x + w / 2, y + h, x, y + h * 0.7, x, y + 18);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  } else if (shape === "firewall") {
-    ctx.roundRect(x, y, w, h, 8);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x, y + 22);
-    ctx.lineTo(x + w, y + 22);
-    ctx.moveTo(x + w * 0.33, y);
-    ctx.lineTo(x + w * 0.33, y + 22);
-    ctx.moveTo(x + w * 0.66, y);
-    ctx.lineTo(x + w * 0.66, y + 22);
-    ctx.stroke();
-  } else if (shape === "server") {
-    ctx.roundRect(x, y, w, h, 8);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x, y + h / 3);
-    ctx.lineTo(x + w, y + h / 3);
-    ctx.moveTo(x, y + (2 * h) / 3);
-    ctx.lineTo(x + w, y + (2 * h) / 3);
-    ctx.stroke();
-  } else if (shape === "browser") {
-    ctx.roundRect(x, y, w, h, 10);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x, y + 26);
-    ctx.lineTo(x + w, y + 26);
-    ctx.stroke();
-    const colors = ["#f43f5e", "#fbbf24", "#34d399"];
-    for (let i = 0; i < 3; i++) {
-      ctx.beginPath();
-      ctx.arc(x + 14 + i * 12, y + 13, 4, 0, Math.PI * 2);
-      ctx.fillStyle = colors[i];
-      ctx.fill();
-    }
-  } else if (shape === "mobile") {
-    ctx.roundRect(x, y, w, h, 18);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x + w * 0.35, y + 10);
-    ctx.lineTo(x + w * 0.65, y + 10);
-    ctx.moveTo(x + w * 0.3, y + h - 10);
-    ctx.lineTo(x + w * 0.7, y + h - 10);
-    ctx.stroke();
-  } else {
-    ctx.roundRect(x, y, w, h, 10);
-    ctx.fill();
-    ctx.stroke();
-  }
-}
-
 function drawArrowhead(ctx, fromPt, toPt, color) {
   const angle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x);
   const headLen = 10;
@@ -2171,7 +2437,6 @@ function renderLoop(timestamp) {
   const timeSec = timestamp * 0.001;
   const p = page();
 
-  // Step Smooth Layout Animation (easeOutCubic)
   if (state.layoutAnim) {
     const elapsed = timestamp - state.layoutAnim.startTime;
     const rawT = Math.min(1, elapsed / state.layoutAnim.duration);
@@ -2188,7 +2453,6 @@ function renderLoop(timestamp) {
     }
   }
 
-  // Step Smooth View Zoom/Pan Animation (easeOutCubic)
   if (state.viewAnim) {
     const elapsed = timestamp - state.viewAnim.startTime;
     const rawT = Math.min(1, elapsed / state.viewAnim.duration);
@@ -2203,14 +2467,11 @@ function renderLoop(timestamp) {
     }
   }
 
-  // Clear background
   ctx.fillStyle = state.theme === "light" ? "#f8fafc" : state.theme === "contrast" ? "#000000" : "#0b0f19";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // 1. Macro-Tile Cached Pattern Grid
   drawInfiniteGridFast(p);
 
-  // Compute visible world frustum for culling
   const viewTL = screenToWorld(0, 0);
   const viewBR = screenToWorld(canvas.width, canvas.height);
 
@@ -2218,7 +2479,6 @@ function renderLoop(timestamp) {
   ctx.translate(p.pan.x, p.pan.y);
   ctx.scale(p.zoom, p.zoom);
 
-  // 2. Smart Alignment Guides
   if (state.smartGuides.length) {
     ctx.strokeStyle = "#f43f5e";
     ctx.lineWidth = 1.2 / p.zoom;
@@ -2238,7 +2498,6 @@ function renderLoop(timestamp) {
     ctx.setLineDash([]);
   }
 
-  // 3. Frustum-Culled Edges & Sub-Pixel Continuous Arc-Length Animations
   ctx.font = "600 11px Inter, sans-serif";
   ctx.textAlign = "center";
 
@@ -2282,13 +2541,11 @@ function renderLoop(timestamp) {
     const prevPt = geo.samples[Math.max(0, geo.samples.length - 2)];
     drawArrowhead(ctx, prevPt, geo.p3, strokeColor);
 
-    // Sub-Pixel Butter-Smooth Comet Pulse Along Exact Arc-Length
     if (e.anim === "pulse") {
       const speedPxPerSec = 145;
       const spacing = geo.totalLen * 0.5;
       for (let pIdx = 0; pIdx < 2; pIdx++) {
         const headDist = (timeSec * speedPxPerSec + pIdx * spacing) % geo.totalLen;
-        // Draw smooth comet tail + glowing head using exact sub-pixel linear interpolation
         const tail1 = getPointAtArcDistance(geo, headDist - 12);
         const tail2 = getPointAtArcDistance(geo, headDist - 6);
         const head = getPointAtArcDistance(geo, headDist);
@@ -2358,7 +2615,6 @@ function renderLoop(timestamp) {
     }
   }
 
-  // Active connection drag preview line + Magnetic Target Port Snap Ring
   if (state.connectingFrom || state.reconnectingEdge) {
     let startPt = { x: 0, y: 0 };
     if (state.connectingFrom) {
@@ -2386,15 +2642,15 @@ function renderLoop(timestamp) {
     }
   }
 
-  // 4. Frustum-Culled Nodes (Batched Shape Pass + Batched Text Pass to Eliminate Font Switching Overhead)
+  // Frustum-Culled Nodes
   const visibleNodes = [];
   for (let i = 0; i < p.nodes.length; i++) {
     const n = p.nodes[i];
     if (
-      n.x + n.w + 35 < viewTL.x ||
-      n.x - 35 > viewBR.x ||
-      n.y + n.h + 35 < viewTL.y ||
-      n.y - 35 > viewBR.y
+      n.x + n.w + 45 < viewTL.x ||
+      n.x - 45 > viewBR.x ||
+      n.y + n.h + 45 < viewTL.y ||
+      n.y - 45 > viewBR.y
     ) {
       continue;
     }
@@ -2402,15 +2658,15 @@ function renderLoop(timestamp) {
 
     const selected = n.id === state.selectedNodeId;
     if (selected) {
-      ctx.strokeStyle = "rgba(56, 189, 248, 0.28)";
-      ctx.lineWidth = 6;
-      ctx.strokeRect(n.x - 2, n.y - 2, n.w + 4, n.h + 4);
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
+      ctx.lineWidth = 5;
+      ctx.strokeRect(n.x - 3, n.y - 3, n.w + 6, n.h + 6);
     }
 
     ctx.fillStyle = n.fill;
     ctx.strokeStyle = selected ? "#38bdf8" : n.stroke;
-    ctx.lineWidth = selected ? 2.5 : 1.7;
-    drawNodeShapeGeometry(ctx, n);
+    ctx.lineWidth = selected ? 2.4 : 1.8;
+    drawNodeShapeGeometry(ctx, n, false);
 
     for (const port of getNodePorts(n)) {
       const isHovered =
@@ -2425,41 +2681,33 @@ function renderLoop(timestamp) {
     }
   }
 
-  // Batched Title Text Pass (1 font state change for all visible nodes!)
+  // Batched Title Text Pass
   ctx.font = "600 13px Inter, sans-serif";
   ctx.textAlign = "center";
   for (let i = 0; i < visibleNodes.length; i++) {
     const n = visibleNodes[i];
-    const { x, y, w, h, shape } = n;
-    ctx.fillStyle = state.theme === "light" && n.fill === "#ffffff" ? "#0f172a" : "#f8fafc";
-    const titleY =
-      shape === "actor"
-        ? y + h - 4
-        : shape === "uml_class" || shape === "uml_interface"
-        ? y + 23
-        : shape === "browser"
-        ? y + 54
-        : y + h * 0.5 - (n.body ? 6 : -4);
-    ctx.fillText(n.title, x + w * 0.5, titleY);
+    const pos = getNodeTextPlacement(n);
+    ctx.fillStyle =
+      pos.external
+        ? state.theme === "light"
+          ? "#0f172a"
+          : "#f8fafc"
+        : state.theme === "light" && n.fill === "#ffffff"
+        ? "#0f172a"
+        : "#f8fafc";
+    ctx.fillText(n.title, pos.cx, pos.titleY);
   }
 
-  // Batched Subtitle Text Pass (1 font state change for all visible nodes!)
+  // Batched Subtitle Text Pass
   ctx.font = "400 11px monospace";
   ctx.fillStyle = "#94a3b8";
   for (let i = 0; i < visibleNodes.length; i++) {
     const n = visibleNodes[i];
-    if (!n.body || n.shape === "actor") continue;
-    const { x, y, w, h, shape } = n;
-    const bodyY =
-      shape === "uml_class" || shape === "uml_interface"
-        ? y + 54
-        : shape === "browser"
-        ? y + 78
-        : y + h * 0.5 + 16;
-    ctx.fillText(n.body, x + w * 0.5, bodyY);
+    if (!n.body) continue;
+    const pos = getNodeTextPlacement(n);
+    ctx.fillText(n.body, pos.cx, pos.bodyY);
   }
 
-  // Selected Node Quick-Connect Overlay & Resize Handle
   const selectedNode = nodeMap.get(state.selectedNodeId);
   if (selectedNode) {
     ctx.fillStyle = "#38bdf8";
@@ -2481,7 +2729,6 @@ function renderLoop(timestamp) {
 
   ctx.restore();
 
-  // 5. Throttled Dirty-Checked Minimap & Arrange Input Sync
   frameCounter++;
   if (state.minimapDirty && (!state.draggingNode || frameCounter % 3 === 0)) {
     state.minimapDirty = false;
