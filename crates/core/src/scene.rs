@@ -59,6 +59,20 @@ pub enum ShapeKind {
     Cloud,
     Actor,
     Document,
+    Note,
+    Callout,
+    Queue,
+    Server,
+    Firewall,
+    Shield,
+    GatewayXor,
+    GatewayParallel,
+    TimerEvent,
+    Package,
+    Component,
+    Interface,
+    BrowserWindow,
+    MobileScreen,
     CustomSvg { view_box: Rect, path_data: String },
 }
 
@@ -604,6 +618,104 @@ impl SceneGraph {
         best.map(|(_, nid, pid, pt)| (nid, pid, pt))
     }
 
+    /// Resolve a drag-from-port drop point: snaps to any port within `snap_radius`, or if dropped
+    /// anywhere on a target node's body, snaps to the closest port on that node.
+    pub fn resolve_connection_target(
+        &self,
+        drop_world_pt: Point,
+        snap_radius: f32,
+        exclude_node: NodeId,
+    ) -> Option<(NodeId, Option<PortId>, Point)> {
+        if let Some((nid, pid, pt)) =
+            self.find_nearest_port(drop_world_pt, snap_radius, Some(exclude_node))
+        {
+            return Some((nid, Some(pid), pt));
+        }
+        // Fallback: if dropped anywhere inside or within margin of a node body, pick its nearest port
+        let expanded = Rect::new(
+            drop_world_pt.x - snap_radius,
+            drop_world_pt.y - snap_radius,
+            snap_radius * 2.0,
+            snap_radius * 2.0,
+        );
+        let candidates = self.node_rtree.query_rect(&expanded);
+        let target_node = self
+            .nodes
+            .iter()
+            .filter(|n| {
+                n.id != exclude_node
+                    && candidates.contains(&n.id)
+                    && n.bounds.expand(12.0).contains_point(drop_world_pt)
+            })
+            .max_by_key(|n| (n.z_index, n.id))?;
+
+        if let Some((pid, pt)) = target_node
+            .ports
+            .iter()
+            .map(|p| (p.id, p.world_position(&target_node.bounds)))
+            .min_by(|a, b| {
+                a.1.distance_to(drop_world_pt)
+                    .partial_cmp(&b.1.distance_to(drop_world_pt))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+        {
+            Some((target_node.id, Some(pid), pt))
+        } else {
+            Some((target_node.id, None, target_node.bounds.center()))
+        }
+    }
+
+    /// Replace an edge's custom routing waypoints and update its spatial index envelope.
+    pub fn set_edge_waypoints(&mut self, edge_id: EdgeId, waypoints: Vec<Point>) -> bool {
+        let Some(edge) = self.edges.iter_mut().find(|e| e.id == edge_id) else {
+            return false;
+        };
+        edge.waypoints = waypoints;
+        let updated = edge.clone();
+        let bounds = self.compute_edge_bounds(&updated);
+        self.edge_rtree.upsert(edge_id, bounds);
+        true
+    }
+
+    /// Move a single waypoint `index` on `edge_id` to `new_pos` (or insert if empty).
+    pub fn move_edge_waypoint(&mut self, edge_id: EdgeId, index: usize, new_pos: Point) -> bool {
+        let Some(edge) = self.edges.iter_mut().find(|e| e.id == edge_id) else {
+            return false;
+        };
+        if index < edge.waypoints.len() {
+            edge.waypoints[index] = new_pos;
+        } else {
+            edge.waypoints.push(new_pos);
+        }
+        let updated = edge.clone();
+        let bounds = self.compute_edge_bounds(&updated);
+        self.edge_rtree.upsert(edge_id, bounds);
+        true
+    }
+
+    /// Reconnect an edge's source and/or target node & port handles.
+    pub fn reconnect_edge(
+        &mut self,
+        edge_id: EdgeId,
+        new_source: (NodeId, Option<PortId>),
+        new_target: (NodeId, Option<PortId>),
+    ) -> bool {
+        if new_source.0 == new_target.0 {
+            return false;
+        }
+        let Some(edge) = self.edges.iter_mut().find(|e| e.id == edge_id) else {
+            return false;
+        };
+        edge.source_node = new_source.0;
+        edge.source_port = new_source.1;
+        edge.target_node = new_target.0;
+        edge.target_port = new_target.1;
+        let updated = edge.clone();
+        let bounds = self.compute_edge_bounds(&updated);
+        self.edge_rtree.upsert(edge_id, bounds);
+        true
+    }
+
     /// Draw.io quick-add directional arrow action: clones `source_id` in `dir` and connects with an edge.
     pub fn quick_clone_and_connect(
         &mut self,
@@ -682,5 +794,19 @@ mod tests {
         assert_eq!(snap.0, 1);
         assert!((snap.2.x - 280.0).abs() < 1e-3);
         assert!((snap.2.y - 140.0).abs() < 1e-3);
+
+        // Dropping inside node 2 body snaps to its nearest port
+        let target_hit = graph
+            .resolve_connection_target(Point::new(370.0, 140.0), 16.0, 1)
+            .expect("should resolve target node and port");
+        assert_eq!(target_hit.0, n2_id);
+        assert!(target_hit.1.is_some());
+
+        // Adjusting edge waypoints
+        assert!(graph.move_edge_waypoint(e1_id, 0, Point::new(320.0, 60.0)));
+        assert_eq!(
+            graph.get_edge(e1_id).unwrap().waypoints,
+            vec![Point::new(320.0, 60.0)]
+        );
     }
 }

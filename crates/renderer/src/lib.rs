@@ -325,8 +325,25 @@ pub fn tessellate_edge_path(scene: &SceneGraph, edge: &Edge) -> Vec<Point> {
             pts.push(end);
             pts
         }
-        EdgeKind::Bezier => tessellate_cubic_bezier(start, end, start_side, end_side, 24),
-        EdgeKind::SmoothStep => tessellate_smooth_step(start, end, 12.0),
+        EdgeKind::Bezier => {
+            if let Some(&via) = edge.waypoints.first() {
+                let mut pts = Vec::with_capacity(25);
+                for i in 0..=24 {
+                    let t = i as f32 / 24.0;
+                    pts.push(eval_cubic_bezier(start, via, via, end, t));
+                }
+                pts
+            } else {
+                tessellate_cubic_bezier(start, end, start_side, end_side, 24)
+            }
+        }
+        EdgeKind::SmoothStep => {
+            if !edge.waypoints.is_empty() {
+                route_orthogonal(start, end, &edge.waypoints, &[])
+            } else {
+                tessellate_smooth_step(start, end, 12.0)
+            }
+        }
         EdgeKind::Orthogonal => {
             let obstacles: Vec<Rect> = scene
                 .nodes()
