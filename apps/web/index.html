@@ -806,6 +806,97 @@
         padding: 1px 6px;
         color: var(--text-primary);
       }
+      /* Symbol Studio & Palette Action Bar */
+      .palette-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5px;
+        margin-bottom: 6px;
+      }
+      .palette-actions button {
+        padding: 4px 6px;
+        font-size: 10.5px;
+      }
+      .stencil-card {
+        position: relative;
+      }
+      .stencil-del-btn {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 14px;
+        height: 14px;
+        font-size: 10px;
+        line-height: 12px;
+        text-align: center;
+        padding: 0;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-outer);
+        color: var(--danger);
+        display: none;
+      }
+      .stencil-card:hover .stencil-del-btn {
+        display: block;
+      }
+      .studio-body {
+        padding: 12px;
+        background: var(--bg-subtle);
+        display: grid;
+        grid-template-columns: 265px 1fr;
+        gap: 12px;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+      .studio-canvas-wrap {
+        background: var(--bg-well);
+        border: 2px solid var(--border-outer);
+        box-shadow: inset 1px 1px 0px var(--bevel-dark);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 8px;
+        gap: 6px;
+      }
+      #sym-draw-canvas {
+        background: #f5f3ec;
+        border: 1px solid #000000;
+        cursor: crosshair;
+        box-shadow: 2px 2px 0px rgba(0,0,0,0.18);
+      }
+      .studio-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        width: 100%;
+        justify-content: center;
+      }
+      .studio-tools button {
+        padding: 3px 7px;
+        font-size: 10.5px;
+      }
+      .studio-tools button.active {
+        background: var(--accent);
+        color: #ffffff;
+      }
+      .studio-col {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .studio-col label {
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+      .studio-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: var(--bg-panel);
+        border-top: 2px solid var(--border-outer);
+      }
     </style>
   </head>
   <body>
@@ -821,9 +912,12 @@
           File
           <div class="dropdown-menu">
             <div class="dropdown-entry" data-action="new-page"><span>New Page Tab</span><span class="dropdown-shortcut">⌘N</span></div>
+            <div class="dropdown-entry" data-action="open-symbol-studio"><span>Create / Import Symbol...</span><span class="dropdown-shortcut">⇧⌘S</span></div>
             <div class="dropdown-divider"></div>
+            <div class="dropdown-entry" data-action="export-gif"><span>Export Animated GIF (.gif)...</span><span class="dropdown-shortcut">⌘G</span></div>
+            <div class="dropdown-entry" data-action="export-png"><span>Export High-DPI PNG (.png)...</span><span class="dropdown-shortcut">.png</span></div>
+            <div class="dropdown-entry" data-action="export-svg"><span>Export Animated SVG (.svg)...</span><span class="dropdown-shortcut">⌘E</span></div>
             <div class="dropdown-entry" data-action="export-drawio"><span>Save .drawio XML...</span><span class="dropdown-shortcut">⌘S</span></div>
-            <div class="dropdown-entry" data-action="export-svg"><span>Export Animated SVG...</span><span class="dropdown-shortcut">⌘E</span></div>
             <div class="dropdown-entry" data-action="export-json"><span>Export Native JSON...</span><span class="dropdown-shortcut">.json</span></div>
           </div>
         </div>
@@ -953,6 +1047,17 @@
         Image
       </button>
       <input type="file" id="entity-image-input" accept="image/*" style="display:none" />
+      <button id="btn-open-symbol-studio" title="Create Custom Symbol or Import SVG / Icon Pack">
+        <svg class="icon-svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        + Symbol
+      </button>
+      <button id="btn-export-gif" class="primary" title="Export Animated GIF (.gif) with Live Edge Flows">
+        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        Export GIF
+      </button>
+      <button id="btn-export-png" title="Export High-DPI PNG Image (.png)">
+        PNG
+      </button>
       <button id="btn-layout-hier" title="Sugiyama Auto-Layout (Ctrl+Shift+L)">
         <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="9" y="15" width="6" height="6" rx="1"/><path d="M6 9v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9"/></svg>
         Layout
@@ -976,10 +1081,15 @@
           <span class="mac-window-box"></span>
         </div>
         <div class="sidebar-left-body">
-          <input id="palette-search" class="search-input" type="text" placeholder="Search 28 symbols..." />
+          <input id="palette-search" class="search-input" type="text" placeholder="Search symbols..." />
+          <div class="palette-actions">
+            <button id="btn-create-symbol" class="primary" title="Create a new custom symbol or import from URL/SVG">+ Create</button>
+            <button id="btn-import-symbol-file" title="Import .svg, .png, .jpg, or .json symbol file">Import File</button>
+          </div>
+          <input type="file" id="symbol-file-input" accept=".svg,image/*,.json" multiple style="display:none" />
           <div class="palette-hint">
             <span>Drag to canvas or click</span>
-            <span style="font-family:var(--font-mono);">28 items</span>
+            <span id="palette-count-label" style="font-family:var(--font-mono);">28 items</span>
           </div>
           <div id="palette-list"></div>
         </div>
@@ -1072,6 +1182,108 @@
       </div>
     </div>
 
-    <script type="module" src="/src/app.js?v=7"></script>
+    <!-- Custom Symbol Studio & External Symbol Importer Dialog -->
+    <div class="cmd-overlay" id="symbol-studio-overlay">
+      <div class="cmd-modal" style="width: 650px;">
+        <div class="mac-titlebar">
+          <span class="mac-window-box" id="btn-close-symbol-studio" style="cursor:pointer;" title="Close"></span>
+          <span class="mac-titlebar-label">Macintosh Symbol Studio — Create &amp; Import Stencils</span>
+          <span class="mac-window-box"></span>
+        </div>
+        <div class="studio-body">
+          <!-- Left Column: Interactive Vector Symbol Drafting Pad -->
+          <div class="studio-canvas-wrap">
+            <div style="font-size:10.5px; font-weight:700; color:var(--text-muted); width:100%; display:flex; justify-content:space-between;">
+              <span>1. Draw Vector Symbol</span>
+              <span id="sym-stroke-count" style="font-family:var(--font-mono);">0 paths</span>
+            </div>
+            <canvas id="sym-draw-canvas" width="240" height="148"></canvas>
+            <div class="studio-tools">
+              <button type="button" class="sym-tool-btn active" data-tool="path" title="Freehand Pen">Pen</button>
+              <button type="button" class="sym-tool-btn" data-tool="line" title="Straight Line">Line</button>
+              <button type="button" class="sym-tool-btn" data-tool="rect" title="Rectangle">Rect</button>
+              <button type="button" class="sym-tool-btn" data-tool="ellipse" title="Circle / Ellipse">Circle</button>
+              <button type="button" class="sym-tool-btn" data-tool="diamond" title="Polygon / Diamond">Diamond</button>
+            </div>
+            <div class="studio-tools">
+              <button type="button" id="btn-sym-undo">Undo</button>
+              <button type="button" id="btn-sym-clear" class="danger">Clear</button>
+              <select id="sym-preset-template" style="width:auto; padding:2px 4px; font-size:10.5px;">
+                <option value="">Templates...</option>
+                <option value="redis">Redis Cube</option>
+                <option value="graphql">GraphQL Hex</option>
+                <option value="webhook">Webhook Bolt</option>
+                <option value="router">Mesh Router</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Right Column: Metadata + Import from External Sources (SVG / File / URL / JSON) -->
+          <div class="studio-col">
+            <div class="format-row">
+              <div style="flex:1;">
+                <label>Symbol Name</label>
+                <input id="sym-name" type="text" value="Custom Service" placeholder="e.g. Redis Cache" />
+              </div>
+              <div style="width:135px;">
+                <label>Category</label>
+                <select id="sym-category">
+                  <option value="Custom Symbols">Custom Symbols</option>
+                  <option value="Cloud & K8s">Cloud &amp; K8s</option>
+                  <option value="Network & Infra">Network &amp; Infra</option>
+                  <option value="Flowchart">Flowchart</option>
+                  <option value="UML & BPMN">UML &amp; BPMN</option>
+                  <option value="Wireframes">Wireframes</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="format-row">
+              <div style="flex:1;">
+                <label>Default Size (W × H)</label>
+                <div class="format-row">
+                  <input id="sym-w" type="number" min="40" max="400" value="170" />
+                  <input id="sym-h" type="number" min="40" max="300" value="80" />
+                </div>
+              </div>
+              <div style="width:135px;">
+                <label>Fill &amp; Stroke</label>
+                <div class="format-row">
+                  <input id="sym-fill" type="color" value="#ffffff" />
+                  <input id="sym-stroke" type="color" value="#000080" />
+                </div>
+              </div>
+            </div>
+
+            <div style="border-top:1px solid var(--border-color); padding-top:6px; margin-top:2px;">
+              <label>2. Or Import Symbol From Other Source</label>
+              <div class="format-row" style="margin-top:4px;">
+                <button type="button" id="btn-sym-upload-file" style="flex:1;">Upload .SVG / .PNG / .JSON...</button>
+                <button type="button" id="btn-sym-export-pack" title="Export your custom symbols as a shareable .json pack">Export Pack (.json)</button>
+              </div>
+            </div>
+
+            <div>
+              <label>Paste Raw &lt;svg&gt; Code or SVG Path (d="...")</label>
+              <input id="sym-svg-input" type="text" placeholder="Paste <svg>...</svg> or M 10 10 L 90 50 Z" />
+            </div>
+
+            <div>
+              <label>Or External Symbol / Icon URL</label>
+              <input id="sym-url-input" type="text" placeholder="https://cdn.simpleicons.org/rust/000080" />
+            </div>
+          </div>
+        </div>
+        <div class="studio-footer">
+          <span style="font-size:11px; color:var(--text-muted);">Saved symbols persist in your palette &amp; can be dragged onto the canvas.</span>
+          <div style="display:flex; gap:6px;">
+            <button type="button" id="btn-sym-cancel">Cancel</button>
+            <button type="button" id="btn-sym-save" class="primary">Save Symbol &amp; Add to Palette</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/app.js?v=8"></script>
   </body>
 </html>

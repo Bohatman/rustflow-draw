@@ -49,6 +49,169 @@ const STENCILS = [
   { id: "wireframe.mobile", label: "Mobile UI", category: "Wireframes", w: 118, h: 180, shape: "mobile" },
 ];
 
+// Preset Vector Templates for Custom Symbol Studio (normalized [0..1] coordinates)
+const SYMBOL_STUDIO_TEMPLATES = {
+  redis: {
+    name: "Redis Cube",
+    category: "Custom Symbols",
+    w: 155,
+    h: 90,
+    fill: "#fdecee",
+    stroke: "#c92027",
+    paths: [
+      {
+        tool: "path",
+        pts: [
+          { x: 0.5, y: 0.08 },
+          { x: 0.88, y: 0.28 },
+          { x: 0.88, y: 0.72 },
+          { x: 0.5, y: 0.92 },
+          { x: 0.12, y: 0.72 },
+          { x: 0.12, y: 0.28 },
+          { x: 0.5, y: 0.08 },
+        ],
+      },
+      {
+        tool: "path",
+        pts: [
+          { x: 0.12, y: 0.28 },
+          { x: 0.5, y: 0.48 },
+          { x: 0.88, y: 0.28 },
+        ],
+      },
+      {
+        tool: "line",
+        pts: [
+          { x: 0.5, y: 0.48 },
+          { x: 0.5, y: 0.92 },
+        ],
+      },
+    ],
+  },
+  graphql: {
+    name: "GraphQL API",
+    category: "Custom Symbols",
+    w: 155,
+    h: 92,
+    fill: "#f5edf7",
+    stroke: "#7a267b",
+    paths: [
+      {
+        tool: "path",
+        pts: [
+          { x: 0.5, y: 0.08 },
+          { x: 0.86, y: 0.29 },
+          { x: 0.86, y: 0.71 },
+          { x: 0.5, y: 0.92 },
+          { x: 0.14, y: 0.71 },
+          { x: 0.14, y: 0.29 },
+          { x: 0.5, y: 0.08 },
+        ],
+      },
+      {
+        tool: "path",
+        pts: [
+          { x: 0.5, y: 0.08 },
+          { x: 0.86, y: 0.71 },
+          { x: 0.14, y: 0.71 },
+          { x: 0.5, y: 0.08 },
+        ],
+      },
+    ],
+  },
+  webhook: {
+    name: "Webhook Trigger",
+    category: "Custom Symbols",
+    w: 150,
+    h: 84,
+    fill: "#fff9e6",
+    stroke: "#c47f00",
+    paths: [
+      { tool: "rect", pts: [{ x: 0.06, y: 0.08 }, { x: 0.94, y: 0.92 }] },
+      {
+        tool: "path",
+        pts: [
+          { x: 0.54, y: 0.18 },
+          { x: 0.36, y: 0.52 },
+          { x: 0.52, y: 0.52 },
+          { x: 0.46, y: 0.82 },
+          { x: 0.64, y: 0.48 },
+          { x: 0.48, y: 0.48 },
+          { x: 0.54, y: 0.18 },
+        ],
+      },
+    ],
+  },
+  router: {
+    name: "Mesh Router",
+    category: "Custom Symbols",
+    w: 150,
+    h: 88,
+    fill: "#e8f6fc",
+    stroke: "#0077b5",
+    paths: [
+      { tool: "ellipse", pts: [{ x: 0.1, y: 0.1 }, { x: 0.9, y: 0.9 }] },
+      { tool: "line", pts: [{ x: 0.25, y: 0.5 }, { x: 0.75, y: 0.5 }] },
+      { tool: "line", pts: [{ x: 0.5, y: 0.22 }, { x: 0.5, y: 0.78 }] },
+    ],
+  },
+};
+
+const CUSTOM_STENCILS_STORAGE_KEY = "rustflow_custom_stencils_v1";
+const customStencilsMap = new Map();
+
+function loadStoredCustomStencils() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_STENCILS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // Ignore storage read errors
+  }
+  // Default starter custom symbols so the user immediately sees Custom Symbols in the palette
+  return [
+    {
+      id: "custom.redis_cube",
+      label: "Redis Cube",
+      category: "Custom Symbols",
+      w: 155,
+      h: 90,
+      shape: "custom.redis_cube",
+      defaultFill: "#fdecee",
+      defaultStroke: "#c92027",
+      customPaths: SYMBOL_STUDIO_TEMPLATES.redis.paths,
+      svgPath: "",
+      imgUrl: "",
+      isCustom: true,
+    },
+    {
+      id: "custom.graphql_api",
+      label: "GraphQL API",
+      category: "Custom Symbols",
+      w: 155,
+      h: 92,
+      shape: "custom.graphql_api",
+      defaultFill: "#f5edf7",
+      defaultStroke: "#7a267b",
+      customPaths: SYMBOL_STUDIO_TEMPLATES.graphql.paths,
+      svgPath: "",
+      imgUrl: "",
+      isCustom: true,
+    },
+  ];
+}
+
+function saveCustomStencilsToStorage() {
+  try {
+    const customList = STENCILS.filter((s) => s.isCustom);
+    localStorage.setItem(CUSTOM_STENCILS_STORAGE_KEY, JSON.stringify(customList));
+  } catch {
+    // Ignore quota errors
+  }
+}
+
 const ENTITY_ICONS = [
   ["none", "None"],
   ["globe", "Web / API"],
@@ -697,6 +860,15 @@ function handleMenuAction(action) {
     case "new-page":
       addNewPage();
       break;
+    case "open-symbol-studio":
+      openSymbolStudioModal();
+      break;
+    case "export-gif":
+      exportAnimatedGif();
+      break;
+    case "export-png":
+      exportPngImage();
+      break;
     case "export-drawio":
       exportDrawioXml();
       break;
@@ -917,6 +1089,38 @@ const SHAPE_OPTIONS = [
   ["browser", "Browser UI"],
   ["mobile", "Mobile UI"],
 ];
+
+function registerCustomStencil(item, persist = true) {
+  const existingIdx = STENCILS.findIndex((s) => s.id === item.id);
+  if (existingIdx >= 0) {
+    STENCILS[existingIdx] = item;
+  } else {
+    STENCILS.unshift(item);
+  }
+  customStencilsMap.set(item.id, item);
+  customStencilsMap.set(item.shape, item);
+  if (!SHAPE_OPTIONS.some(([val]) => val === item.shape)) {
+    SHAPE_OPTIONS.push([item.shape, `${item.label} (Custom)`]);
+  }
+  if (item.imgUrl) getOrLoadImage(item.imgUrl);
+  if (persist) saveCustomStencilsToStorage();
+}
+
+function removeCustomStencil(id) {
+  const idx = STENCILS.findIndex((s) => s.id === id && s.isCustom);
+  if (idx >= 0) {
+    const removed = STENCILS.splice(idx, 1)[0];
+    customStencilsMap.delete(removed.id);
+    customStencilsMap.delete(removed.shape);
+    saveCustomStencilsToStorage();
+    renderPalette(document.getElementById("palette-search")?.value || "");
+    showToast(`Removed symbol "${removed.label}"`);
+  }
+}
+
+for (const customItem of loadStoredCustomStencils()) {
+  registerCustomStencil(customItem, false);
+}
 
 function getEffectiveNodeIcon(n) {
   if (n.icon && n.icon !== "none") return n.icon;
@@ -1390,20 +1594,24 @@ function createNodeFromStencil(item, worldX, worldY) {
   const p = page();
   const lightCanvas = isLightCanvasTheme();
   const isImgCard = item.shape === "image_card";
+  const hasCustomImg = Boolean(item.imgUrl);
   const newNode = {
     id: ++state.nextId,
     title: item.label,
-    body: isImgCard ? "" : item.id.split(".").pop(),
+    body: isImgCard || item.isCustom ? "" : item.id.split(".").pop(),
     x: Math.round(worldX),
     y: Math.round(worldY),
     w: item.w,
     h: item.h,
-    fill: lightCanvas ? "#ffffff" : "#131b2e",
-    stroke: state.theme === "apple90s" ? "#000080" : state.theme === "contrast" ? "#000000" : "#38bdf8",
+    fill: item.defaultFill || (lightCanvas ? "#ffffff" : "#131b2e"),
+    stroke:
+      item.defaultStroke || (state.theme === "apple90s" ? "#000080" : state.theme === "contrast" ? "#000000" : "#38bdf8"),
     shape: item.shape,
     icon: "none",
-    iconPos: isImgCard ? "cover" : "left",
-    imgUrl: isImgCard ? DEFAULT_SAMPLE_IMAGE_DATA_URL : "",
+    iconPos: isImgCard ? "cover" : hasCustomImg ? "top" : "left",
+    imgUrl: item.imgUrl || (isImgCard ? DEFAULT_SAMPLE_IMAGE_DATA_URL : ""),
+    customPaths: item.customPaths ? JSON.parse(JSON.stringify(item.customPaths)) : null,
+    svgPath: item.svgPath || "",
     z: p.nodes.length + 1,
   };
   if (newNode.imgUrl) getOrLoadImage(newNode.imgUrl);
@@ -2578,17 +2786,111 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       drawMinimalistBadgeGlyph(ctx, shape, x + w * 0.5, y + h * 0.5, Math.min(w, h) * 0.42, strokeCol);
     }
   }
-  // 18. Standard Minimalist Process Card
+  // 18. Custom Vector / Imported Symbol or Standard Minimalist Process Card
   else {
-    ctx.roundRect(x, y, w, h, isMiniPreview ? 3 : 8);
-    ctx.fill();
-    ctx.stroke();
+    const customDef = customStencilsMap.get(shape);
+    const paths = n.customPaths || customDef?.customPaths || null;
+    const svgPath = n.svgPath || customDef?.svgPath || "";
+    const previewImgUrl = n.imgUrl || customDef?.imgUrl || "";
+
+    if (paths && Array.isArray(paths) && paths.length > 0) {
+      drawNormalizedCustomPaths(ctx, x, y, w, h, paths, fillCol, strokeCol);
+    } else if (svgPath) {
+      ctx.roundRect(x, y, w, h, isMiniPreview ? 3 : 8);
+      ctx.fill();
+      ctx.stroke();
+      try {
+        ctx.save();
+        ctx.translate(x + w * 0.14, y + h * 0.14);
+        ctx.scale((w * 0.72) / 100, (h * 0.72) / 100);
+        const p2d = new Path2D(svgPath);
+        ctx.strokeStyle = strokeCol;
+        ctx.lineWidth = 2.2;
+        ctx.stroke(p2d);
+        ctx.restore();
+      } catch {
+        // Ignore malformed SVG path
+      }
+    } else {
+      ctx.roundRect(x, y, w, h, isMiniPreview ? 3 : 8);
+      ctx.fill();
+      ctx.stroke();
+      if (isMiniPreview && previewImgUrl) {
+        const img = getOrLoadImage(previewImgUrl);
+        if (img) {
+          ctx.drawImage(img, x + 2, y + 2, w - 4, h - 4);
+        }
+      }
+    }
   }
 
   // Render Entity Icon or Image on any shape when on the main canvas
   if (!isMiniPreview) {
     drawNodeEntityMedia(ctx, n, strokeCol, fillCol);
   }
+}
+
+function drawNormalizedCustomPaths(ctx, x, y, w, h, paths, fillCol, strokeCol) {
+  ctx.save();
+  ctx.fillStyle = fillCol;
+  ctx.strokeStyle = strokeCol;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  for (let i = 0; i < paths.length; i++) {
+    const strokeObj = paths[i];
+    const pts = strokeObj.pts;
+    if (!pts || pts.length === 0) continue;
+
+    ctx.beginPath();
+    if (strokeObj.tool === "rect" && pts.length >= 2) {
+      const rx = x + Math.min(pts[0].x, pts[1].x) * w;
+      const ry = y + Math.min(pts[0].y, pts[1].y) * h;
+      const rw = Math.abs(pts[1].x - pts[0].x) * w;
+      const rh = Math.abs(pts[1].y - pts[0].y) * h;
+      ctx.roundRect(rx, ry, Math.max(2, rw), Math.max(2, rh), 4);
+      if (i === 0) ctx.fill();
+      ctx.stroke();
+    } else if (strokeObj.tool === "ellipse" && pts.length >= 2) {
+      const cx = x + ((pts[0].x + pts[1].x) * 0.5) * w;
+      const cy = y + ((pts[0].y + pts[1].y) * 0.5) * h;
+      const rx = Math.max(2, Math.abs(pts[1].x - pts[0].x) * 0.5 * w);
+      const ry = Math.max(2, Math.abs(pts[1].y - pts[0].y) * 0.5 * h);
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      if (i === 0) ctx.fill();
+      ctx.stroke();
+    } else if (strokeObj.tool === "diamond" && pts.length >= 2) {
+      const x0 = x + Math.min(pts[0].x, pts[1].x) * w;
+      const y0 = y + Math.min(pts[0].y, pts[1].y) * h;
+      const dw = Math.abs(pts[1].x - pts[0].x) * w;
+      const dh = Math.abs(pts[1].y - pts[0].y) * h;
+      ctx.moveTo(x0 + dw * 0.5, y0);
+      ctx.lineTo(x0 + dw, y0 + dh * 0.5);
+      ctx.lineTo(x0 + dw * 0.5, y0 + dh);
+      ctx.lineTo(x0, y0 + dh * 0.5);
+      ctx.closePath();
+      if (i === 0) ctx.fill();
+      ctx.stroke();
+    } else if (strokeObj.tool === "line" && pts.length >= 2) {
+      ctx.moveTo(x + pts[0].x * w, y + pts[0].y * h);
+      ctx.lineTo(x + pts[1].x * w, y + pts[1].y * h);
+      ctx.stroke();
+    } else {
+      ctx.moveTo(x + pts[0].x * w, y + pts[0].y * h);
+      for (let j = 1; j < pts.length; j++) {
+        ctx.lineTo(x + pts[j].x * w, y + pts[j].y * h);
+      }
+      if (
+        pts.length >= 3 &&
+        Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].y - pts[pts.length - 1].y) < 0.08
+      ) {
+        ctx.closePath();
+        if (i === 0) ctx.fill();
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 function getNodeTextPlacement(n) {
@@ -2663,7 +2965,13 @@ function getNodeTextPlacement(n) {
 // Render Left Stencil Palette with Drag-and-Drop + Minimalist Monoline Thumbnails
 function renderPalette(filter = "") {
   const container = document.getElementById("palette-list");
+  if (!container) return;
   container.innerHTML = "";
+  const countEl = document.getElementById("palette-count-label");
+  if (countEl) countEl.textContent = `${STENCILS.length} items`;
+  const searchEl = document.getElementById("palette-search");
+  if (searchEl && !searchEl.value) searchEl.placeholder = `Search ${STENCILS.length} symbols...`;
+
   const q = filter.trim().toLowerCase();
   const categories = [...new Set(STENCILS.map((s) => s.category))];
 
@@ -2694,11 +3002,25 @@ function renderPalette(filter = "") {
       thumb.style.flexShrink = "0";
       const tctx = thumb.getContext("2d");
       const lightUI = isLightCanvasTheme();
-      tctx.fillStyle = lightUI ? "#ffffff" : "rgba(56, 189, 248, 0.08)";
+      tctx.fillStyle = item.defaultFill || (lightUI ? "#ffffff" : "rgba(56, 189, 248, 0.08)");
       tctx.strokeStyle =
-        state.theme === "apple90s" ? "#000080" : state.theme === "contrast" ? "#000000" : lightUI ? "#2563eb" : "#38bdf8";
+        item.defaultStroke ||
+        (state.theme === "apple90s" ? "#000080" : state.theme === "contrast" ? "#000000" : lightUI ? "#2563eb" : "#38bdf8");
       tctx.lineWidth = 1.4;
-      drawNodeShapeGeometry(tctx, { x: 2.5, y: 2.5, w: 25, h: 17, shape: item.shape }, true);
+      drawNodeShapeGeometry(
+        tctx,
+        {
+          x: 2.5,
+          y: 2.5,
+          w: 25,
+          h: 17,
+          shape: item.shape,
+          customPaths: item.customPaths,
+          svgPath: item.svgPath,
+          imgUrl: item.imgUrl,
+        },
+        true
+      );
 
       const labelSpan = document.createElement("span");
       labelSpan.textContent = item.label;
@@ -2707,6 +3029,19 @@ function renderPalette(filter = "") {
 
       card.appendChild(thumb);
       card.appendChild(labelSpan);
+
+      if (item.isCustom) {
+        const delBtn = document.createElement("button");
+        delBtn.className = "stencil-del-btn";
+        delBtn.textContent = "×";
+        delBtn.title = `Remove "${item.label}" from palette`;
+        delBtn.addEventListener("mousedown", (ev) => ev.stopPropagation());
+        delBtn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          removeCustomStencil(item.id);
+        });
+        card.appendChild(delBtn);
+      }
 
       // Pointer drag-and-drop initiation
       card.addEventListener("mousedown", (e) => {
@@ -3139,11 +3474,392 @@ document.getElementById("select-edge-kind").onchange = (e) => {
 };
 
 function downloadFile(filename, content, mime) {
-  const blob = new Blob([content], { type: mime });
+  const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = filename;
   a.click();
+}
+
+function getDiagramExportBounds(p, pad = 42) {
+  if (!p.nodes.length) {
+    return { minX: 0, minY: 0, width: 720, height: 420 };
+  }
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  for (const n of p.nodes) {
+    if (n.x < minX) minX = n.x;
+    if (n.y < minY) minY = n.y;
+    if (n.x + n.w > maxX) maxX = n.x + n.w;
+    if (n.y + n.h + 26 > maxY) maxY = n.y + n.h + 26;
+  }
+  for (const e of p.edges) {
+    const geo = getEdgeGeometry(e);
+    if (!geo) continue;
+    if (geo.bounds.minX < minX) minX = geo.bounds.minX;
+    if (geo.bounds.minY < minY) minY = geo.bounds.minY;
+    if (geo.bounds.maxX > maxX) maxX = geo.bounds.maxX;
+    if (geo.bounds.maxY > maxY) maxY = geo.bounds.maxY;
+  }
+  return {
+    minX: Math.floor(minX - pad),
+    minY: Math.floor(minY - pad),
+    width: Math.max(240, Math.ceil(maxX - minX + pad * 2)),
+    height: Math.max(160, Math.ceil(maxY - minY + pad * 2)),
+  };
+}
+
+function renderDiagramFrameToContext(tctx, p, bounds, scale, timeSec) {
+  const lightCanvas = isLightCanvasTheme();
+  const wPx = Math.round(bounds.width * scale);
+  const hPx = Math.round(bounds.height * scale);
+
+  tctx.save();
+  tctx.fillStyle =
+    state.theme === "apple90s"
+      ? "#f5f3ec"
+      : state.theme === "light"
+      ? "#f8fafc"
+      : state.theme === "contrast"
+      ? "#ffffff"
+      : "#0d121d";
+  tctx.fillRect(0, 0, wPx, hPx);
+
+  tctx.scale(scale, scale);
+  tctx.translate(-bounds.minX, -bounds.minY);
+
+  // Subtle drafting grid dots
+  if (state.gridStyle !== "off") {
+    tctx.fillStyle = lightCanvas ? "#cbc7bc" : "#1e293b";
+    const step = 20;
+    const gxStart = Math.floor(bounds.minX / step) * step;
+    const gyStart = Math.floor(bounds.minY / step) * step;
+    for (let gx = gxStart; gx < bounds.minX + bounds.width; gx += step) {
+      for (let gy = gyStart; gy < bounds.minY + bounds.height; gy += step) {
+        tctx.fillRect(gx, gy, 1.4, 1.4);
+      }
+    }
+  }
+
+  tctx.font = '700 11px "Charcoal", "Chicago", "Geneva", sans-serif';
+  tctx.textAlign = "center";
+
+  // Draw Edges + Animated Flows (ants & pulse)
+  for (let i = 0; i < p.edges.length; i++) {
+    const e = p.edges[i];
+    const geo = getEdgeGeometry(e);
+    if (!geo) continue;
+    const strokeColor = e.color || "#000080";
+
+    tctx.beginPath();
+    if (e.kind === "straight" || e.kind === "orthogonal" || e.kind === "smoothstep") {
+      tctx.moveTo(geo.samples[0].x, geo.samples[0].y);
+      for (let j = 1; j < geo.samples.length; j++) {
+        tctx.lineTo(geo.samples[j].x, geo.samples[j].y);
+      }
+    } else {
+      tctx.moveTo(geo.p0.x, geo.p0.y);
+      tctx.bezierCurveTo(geo.p1.x, geo.p1.y, geo.p2.x, geo.p2.y, geo.p3.x, geo.p3.y);
+    }
+
+    tctx.strokeStyle = strokeColor;
+    tctx.lineWidth = e.width || 1.8;
+    if (e.anim === "ants") {
+      tctx.setLineDash([7, 5]);
+      tctx.lineDashOffset = -timeSec * 36;
+    }
+    tctx.stroke();
+    if (e.anim === "ants") tctx.setLineDash([]);
+
+    const prevPt = geo.samples[Math.max(0, geo.samples.length - 2)];
+    drawArrowhead(tctx, prevPt, geo.p3, strokeColor);
+
+    if (e.anim === "pulse") {
+      const spacing = geo.totalLen * 0.5;
+      for (let pIdx = 0; pIdx < 2; pIdx++) {
+        const headDist = ((timeSec * geo.totalLen + pIdx * spacing) % geo.totalLen + geo.totalLen) % geo.totalLen;
+        const tail = getPointAtArcDistance(geo, headDist - 6);
+        const head = getPointAtArcDistance(geo, headDist);
+
+        tctx.fillStyle = lightCanvas ? "rgba(0, 85, 204, 0.35)" : "rgba(56, 189, 248, 0.35)";
+        tctx.beginPath();
+        tctx.arc(tail.x, tail.y, 4.4, 0, Math.PI * 2);
+        tctx.fill();
+
+        tctx.fillStyle = lightCanvas ? strokeColor : "#e0f2fe";
+        tctx.beginPath();
+        tctx.arc(head.x, head.y, 3.4, 0, Math.PI * 2);
+        tctx.fill();
+      }
+    }
+
+    if (e.label && e.label.trim().length > 0) {
+      const textW = geo.labelWidth;
+      tctx.fillStyle = lightCanvas ? "#ffffff" : "#161b26";
+      tctx.strokeStyle = strokeColor;
+      tctx.lineWidth = 1.25;
+      tctx.beginPath();
+      tctx.roundRect(geo.midPoint.x - textW * 0.5, geo.midPoint.y - 9.5, textW, 19, 3);
+      tctx.fill();
+      tctx.stroke();
+      tctx.fillStyle = lightCanvas ? "#000000" : "#f1f5f9";
+      tctx.fillText(e.label, geo.midPoint.x, geo.midPoint.y + 3.5);
+    }
+  }
+
+  // Draw Nodes + Custom Symbols + Icons + Images
+  for (let i = 0; i < p.nodes.length; i++) {
+    const n = p.nodes[i];
+    tctx.save();
+    if (state.theme === "apple90s" || state.theme === "contrast") {
+      tctx.shadowColor = "rgba(0, 0, 0, 0.18)";
+      tctx.shadowOffsetX = 3 * scale;
+      tctx.shadowOffsetY = 3 * scale;
+      tctx.shadowBlur = 0;
+    }
+    tctx.fillStyle = n.fill;
+    tctx.strokeStyle = n.stroke;
+    tctx.lineWidth = 1.75;
+    drawNodeShapeGeometry(tctx, n, false);
+    tctx.restore();
+  }
+
+  // Node Titles
+  tctx.font = '700 12.5px "Charcoal", "Chicago", "Geneva", sans-serif';
+  tctx.textAlign = "center";
+  for (let i = 0; i < p.nodes.length; i++) {
+    const n = p.nodes[i];
+    const pos = getNodeTextPlacement(n);
+    const darkFill = isDarkHexColor(n.fill);
+    tctx.fillStyle = pos.external ? (lightCanvas ? "#000000" : "#f1f5f9") : darkFill ? "#f1f5f9" : "#000000";
+    tctx.fillText(n.title, pos.cx, pos.titleY);
+  }
+
+  // Node Subtitles
+  tctx.font = '600 10.5px "Monaco", "Menlo", monospace';
+  for (let i = 0; i < p.nodes.length; i++) {
+    const n = p.nodes[i];
+    if (!n.body) continue;
+    const pos = getNodeTextPlacement(n);
+    if (pos.hideBody) continue;
+    const darkFill = isDarkHexColor(n.fill);
+    tctx.fillStyle = pos.external ? (lightCanvas ? "#4a4a4a" : "#94a3b8") : darkFill ? "#94a3b8" : "#4a4a4a";
+    tctx.fillText(n.body, pos.cx, pos.bodyY);
+  }
+
+  tctx.restore();
+}
+
+// Self-Contained GIF89a Animated LZW Encoder (256-color table + Netscape 2.0 infinite loop)
+function encodeGif89a(rgbaFrames, width, height, delayCs = 6) {
+  // Build 256-color palette: 216 (6x6x6 RGB cube) + 40 grayscale/drafting steps
+  const palette = new Uint8Array(256 * 3);
+  let pIdx = 0;
+  for (let r = 0; r < 6; r++) {
+    for (let g = 0; g < 6; g++) {
+      for (let b = 0; b < 6; b++) {
+        palette[pIdx * 3] = Math.round((r * 255) / 5);
+        palette[pIdx * 3 + 1] = Math.round((g * 255) / 5);
+        palette[pIdx * 3 + 2] = Math.round((b * 255) / 5);
+        pIdx++;
+      }
+    }
+  }
+  // Add warm Macintosh paper "#f5f3ec" at index 216 and grays for the rest
+  palette[216 * 3] = 245;
+  palette[216 * 3 + 1] = 243;
+  palette[216 * 3 + 2] = 236;
+  for (let i = 217; i < 256; i++) {
+    const v = Math.round(((i - 217) * 255) / 38);
+    palette[i * 3] = v;
+    palette[i * 3 + 1] = v;
+    palette[i * 3 + 2] = v;
+  }
+
+  const out = [];
+  const writeByte = (b) => out.push(b & 0xff);
+  const writeShort = (s) => {
+    out.push(s & 0xff, (s >> 8) & 0xff);
+  };
+  const writeAscii = (str) => {
+    for (let i = 0; i < str.length; i++) out.push(str.charCodeAt(i));
+  };
+
+  // GIF89a Header & Logical Screen Descriptor
+  writeAscii("GIF89a");
+  writeShort(width);
+  writeShort(height);
+  writeByte(0xf7); // Global Color Table Flag (1), Color Res (7), Sort (0), Size of GCT (7 => 256 colors)
+  writeByte(0); // Background color
+  writeByte(0); // Pixel aspect ratio
+  for (let i = 0; i < palette.length; i++) writeByte(palette[i]);
+
+  // Netscape 2.0 Application Extension for Infinite Looping
+  writeByte(0x21);
+  writeByte(0xff);
+  writeByte(11);
+  writeAscii("NETSCAPE2.0");
+  writeByte(3);
+  writeByte(1);
+  writeShort(0); // Loop forever
+  writeByte(0);
+
+  const numPixels = width * height;
+  const indexedPixels = new Uint8Array(numPixels);
+
+  // LZW Compression for 8-bit minCodeSize
+  function lzwEncodeFrame(pixels) {
+    const minCodeSize = 8;
+    const clearCode = 1 << minCodeSize; // 256
+    const eoiCode = clearCode + 1; // 257
+
+    let codeSize = minCodeSize + 1;
+    let nextCode = eoiCode + 1;
+    const dict = new Int32Array(4096 * 256).fill(-1);
+
+    let bitBuf = 0;
+    let bitCount = 0;
+    const subBlock = [];
+
+    const flushSubBlock = () => {
+      if (subBlock.length > 0) {
+        writeByte(subBlock.length);
+        for (let i = 0; i < subBlock.length; i++) writeByte(subBlock[i]);
+        subBlock.length = 0;
+      }
+    };
+
+    const emitCode = (code) => {
+      bitBuf |= code << bitCount;
+      bitCount += codeSize;
+      while (bitCount >= 8) {
+        subBlock.push(bitBuf & 0xff);
+        if (subBlock.length === 255) flushSubBlock();
+        bitBuf >>= 8;
+        bitCount -= 8;
+      }
+    };
+
+    writeByte(minCodeSize);
+    emitCode(clearCode);
+
+    let prefix = pixels[0];
+    for (let i = 1; i < pixels.length; i++) {
+      const k = pixels[i];
+      const key = (prefix << 8) | k;
+      const hit = dict[key];
+      if (hit !== -1) {
+        prefix = hit;
+      } else {
+        emitCode(prefix);
+        if (nextCode < 4096) {
+          dict[key] = nextCode++;
+          if (nextCode > 1 << codeSize && codeSize < 12) {
+            codeSize++;
+          }
+        } else {
+          emitCode(clearCode);
+          dict.fill(-1);
+          codeSize = minCodeSize + 1;
+          nextCode = eoiCode + 1;
+        }
+        prefix = k;
+      }
+    }
+    emitCode(prefix);
+    emitCode(eoiCode);
+    if (bitCount > 0) {
+      subBlock.push(bitBuf & 0xff);
+    }
+    flushSubBlock();
+    writeByte(0); // Block terminator
+  }
+
+  for (const rgba of rgbaFrames) {
+    // Graphic Control Extension
+    writeByte(0x21);
+    writeByte(0xf9);
+    writeByte(4);
+    writeByte(0x00);
+    writeShort(delayCs);
+    writeByte(0);
+    writeByte(0);
+
+    // Image Descriptor
+    writeByte(0x2c);
+    writeShort(0);
+    writeShort(0);
+    writeShort(width);
+    writeShort(height);
+    writeByte(0x00);
+
+    // Map RGBA to 256-color palette
+    for (let p = 0, j = 0; p < numPixels; p++, j += 4) {
+      const r = rgba[j];
+      const g = rgba[j + 1];
+      const b = rgba[j + 2];
+      if (r >= 242 && r <= 248 && g >= 240 && g <= 246 && b >= 232 && b <= 240) {
+        indexedPixels[p] = 216;
+      } else {
+        const ri = Math.round((r * 5) / 255);
+        const gi = Math.round((g * 5) / 255);
+        const bi = Math.round((b * 5) / 255);
+        indexedPixels[p] = ri * 36 + gi * 6 + bi;
+      }
+    }
+
+    lzwEncodeFrame(indexedPixels);
+  }
+
+  writeByte(0x3b); // GIF Trailer
+  return new Uint8Array(out);
+}
+
+function exportAnimatedGif() {
+  const p = page();
+  const bounds = getDiagramExportBounds(p, 36);
+  const maxDim = 820;
+  const scale = Math.min(1.0, maxDim / Math.max(bounds.width, bounds.height));
+  const width = Math.max(120, Math.round(bounds.width * scale));
+  const height = Math.max(90, Math.round(bounds.height * scale));
+
+  const offCanvas = document.createElement("canvas");
+  offCanvas.width = width;
+  offCanvas.height = height;
+  const offCtx = offCanvas.getContext("2d", { willReadFrequently: true });
+
+  const frameCount = 16;
+  const rgbaFrames = [];
+  for (let f = 0; f < frameCount; f++) {
+    const tSec = f / frameCount;
+    renderDiagramFrameToContext(offCtx, p, bounds, scale, tSec);
+    rgbaFrames.push(offCtx.getImageData(0, 0, width, height).data);
+  }
+
+  const gifBytes = encodeGif89a(rgbaFrames, width, height, 6);
+  const blob = new Blob([gifBytes], { type: "image/gif" });
+  downloadFile("diagram-animated.gif", blob, "image/gif");
+  showToast(`Exported diagram-animated.gif (${frameCount} frames, ${Math.round(gifBytes.byteLength / 1024)} KB)`);
+}
+
+function exportPngImage() {
+  const p = page();
+  const bounds = getDiagramExportBounds(p, 40);
+  const scale = 2.0; // High-DPI 2x PNG
+  const offCanvas = document.createElement("canvas");
+  offCanvas.width = Math.round(bounds.width * scale);
+  offCanvas.height = Math.round(bounds.height * scale);
+  const offCtx = offCanvas.getContext("2d");
+
+  renderDiagramFrameToContext(offCtx, p, bounds, scale, 0.25);
+  offCanvas.toBlob((blob) => {
+    if (blob) {
+      downloadFile("diagram.png", blob, "image/png");
+      showToast(`Exported High-DPI diagram.png (${offCanvas.width}×${offCanvas.height})`);
+    }
+  }, "image/png");
 }
 
 function exportDrawioXml() {
@@ -3162,20 +3878,397 @@ function exportDrawioXml() {
 
 function exportAnimatedSvg() {
   const p = page();
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="1000" height="600">\n  <style>\n    @keyframes rfd-ants { to { stroke-dashoffset: -28; } }\n    .ants { stroke-dasharray: 9 5; animation: rfd-ants 0.8s linear infinite; }\n    text { font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; fill: #f8fafc; }\n  </style>\n`;
+  const bounds = getDiagramExportBounds(p, 40);
+  const bg = state.theme === "apple90s" ? "#f5f3ec" : state.theme === "light" ? "#f8fafc" : "#0d121d";
+  const textCol = isLightCanvasTheme() ? "#000000" : "#f8fafc";
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}" width="${bounds.width}" height="${bounds.height}">\n  <style>\n    @keyframes rfd-ants { to { stroke-dashoffset: -24; } }\n    .ants { stroke-dasharray: 7 5; animation: rfd-ants 0.75s linear infinite; }\n    text { font-family: Charcoal, Chicago, Geneva, sans-serif; font-size: 12.5px; font-weight: 700; fill: ${textCol}; }\n  </style>\n  <rect x="${bounds.minX}" y="${bounds.minY}" width="${bounds.width}" height="${bounds.height}" fill="${bg}"/>\n`;
   for (const e of p.edges) {
     const geo = getEdgeGeometry(e);
     if (!geo) continue;
     const d = `M ${geo.p0.x} ${geo.p0.y} C ${geo.p1.x} ${geo.p1.y}, ${geo.p2.x} ${geo.p2.y}, ${geo.p3.x} ${geo.p3.y}`;
-    svg += `  <path d="${d}" fill="none" stroke="${e.color || "#818cf8"}" stroke-width="${e.width || 1.8}" class="${e.anim === "ants" ? "ants" : ""}"/>\n`;
+    const col = e.color || "#000080";
+    svg += `  <path id="edge-path-${e.id}" d="${d}" fill="none" stroke="${col}" stroke-width="${e.width || 1.8}" class="${e.anim === "ants" ? "ants" : ""}"/>\n`;
+    if (e.anim === "pulse") {
+      svg += `  <circle r="3.6" fill="${col}"><animateMotion dur="1.4s" repeatCount="indefinite" path="${d}"/></circle>\n`;
+    }
   }
   for (const n of p.nodes) {
-    svg += `  <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="8" fill="${n.fill}" stroke="${n.stroke}" stroke-width="1.8"/>\n`;
+    svg += `  <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="7" fill="${n.fill}" stroke="${n.stroke}" stroke-width="1.8"/>\n`;
     svg += `  <text x="${n.x + n.w / 2}" y="${n.y + n.h / 2}" text-anchor="middle" dominant-baseline="middle">${n.title}</text>\n`;
   }
   svg += `</svg>`;
   downloadFile("diagram-animated.svg", svg, "image/svg+xml");
   showToast("Exported diagram-animated.svg");
+}
+
+const btnExportGif = document.getElementById("btn-export-gif");
+if (btnExportGif) btnExportGif.onclick = exportAnimatedGif;
+const btnExportPng = document.getElementById("btn-export-png");
+if (btnExportPng) btnExportPng.onclick = exportPngImage;
+
+// ============================================================================
+// CUSTOM SYMBOL STUDIO & EXTERNAL SYMBOL IMPORTER
+// ============================================================================
+const symbolStudioOverlay = document.getElementById("symbol-studio-overlay");
+const symDrawCanvas = document.getElementById("sym-draw-canvas");
+const symDrawCtx = symDrawCanvas ? symDrawCanvas.getContext("2d") : null;
+const symbolFileInput = document.getElementById("symbol-file-input");
+
+const studioState = {
+  tool: "path",
+  paths: JSON.parse(JSON.stringify(SYMBOL_STUDIO_TEMPLATES.redis.paths)),
+  activeStroke: null,
+  importedImgUrl: "",
+  svgPath: "",
+};
+
+function renderStudioPreviewCanvas() {
+  if (!symDrawCtx || !symDrawCanvas) return;
+  const w = symDrawCanvas.width;
+  const h = symDrawCanvas.height;
+  symDrawCtx.fillStyle = "#f5f3ec";
+  symDrawCtx.fillRect(0, 0, w, h);
+
+  // Subtle drafting grid
+  symDrawCtx.fillStyle = "#cbc7bc";
+  for (let gx = 16; gx < w; gx += 16) {
+    for (let gy = 16; gy < h; gy += 16) {
+      symDrawCtx.fillRect(gx, gy, 1.2, 1.2);
+    }
+  }
+
+  const fillCol = document.getElementById("sym-fill")?.value || "#ffffff";
+  const strokeCol = document.getElementById("sym-stroke")?.value || "#000080";
+  const padX = 24;
+  const padY = 16;
+  const boxW = w - padX * 2;
+  const boxH = h - padY * 2;
+
+  // Guide bounding frame
+  symDrawCtx.save();
+  symDrawCtx.strokeStyle = "rgba(0, 0, 128, 0.2)";
+  symDrawCtx.setLineDash([4, 4]);
+  symDrawCtx.strokeRect(padX, padY, boxW, boxH);
+  symDrawCtx.restore();
+
+  const allPaths = studioState.activeStroke ? [...studioState.paths, studioState.activeStroke] : studioState.paths;
+
+  if (studioState.importedImgUrl) {
+    symDrawCtx.fillStyle = fillCol;
+    symDrawCtx.strokeStyle = strokeCol;
+    symDrawCtx.lineWidth = 2;
+    symDrawCtx.beginPath();
+    symDrawCtx.roundRect(padX, padY, boxW, boxH, 7);
+    symDrawCtx.fill();
+    symDrawCtx.stroke();
+    const img = getOrLoadImage(studioState.importedImgUrl);
+    if (img) {
+      symDrawCtx.drawImage(img, padX + 12, padY + 10, boxW - 24, boxH - 20);
+    }
+  } else if (studioState.svgPath) {
+    symDrawCtx.fillStyle = fillCol;
+    symDrawCtx.strokeStyle = strokeCol;
+    symDrawCtx.lineWidth = 2;
+    symDrawCtx.beginPath();
+    symDrawCtx.roundRect(padX, padY, boxW, boxH, 7);
+    symDrawCtx.fill();
+    symDrawCtx.stroke();
+    try {
+      symDrawCtx.save();
+      symDrawCtx.translate(padX + boxW * 0.15, padY + boxH * 0.15);
+      symDrawCtx.scale((boxW * 0.7) / 100, (boxH * 0.7) / 100);
+      const p2d = new Path2D(studioState.svgPath);
+      symDrawCtx.strokeStyle = strokeCol;
+      symDrawCtx.lineWidth = 2.4;
+      symDrawCtx.stroke(p2d);
+      symDrawCtx.restore();
+    } catch {
+      // Ignore invalid SVG path while typing
+    }
+  } else if (allPaths.length > 0) {
+    symDrawCtx.lineWidth = 2.2;
+    drawNormalizedCustomPaths(symDrawCtx, padX, padY, boxW, boxH, allPaths, fillCol, strokeCol);
+  }
+
+  const countEl = document.getElementById("sym-stroke-count");
+  if (countEl) {
+    countEl.textContent = studioState.importedImgUrl
+      ? "Image/SVG"
+      : studioState.svgPath
+      ? "SVG Path"
+      : `${studioState.paths.length} paths`;
+  }
+}
+
+function openSymbolStudioModal() {
+  if (!symbolStudioOverlay) return;
+  symbolStudioOverlay.classList.add("open");
+  renderStudioPreviewCanvas();
+}
+
+function closeSymbolStudioModal() {
+  if (!symbolStudioOverlay) return;
+  symbolStudioOverlay.classList.remove("open");
+}
+
+document.getElementById("btn-open-symbol-studio")?.addEventListener("click", openSymbolStudioModal);
+document.getElementById("btn-create-symbol")?.addEventListener("click", openSymbolStudioModal);
+document.getElementById("btn-close-symbol-studio")?.addEventListener("click", closeSymbolStudioModal);
+document.getElementById("btn-sym-cancel")?.addEventListener("click", closeSymbolStudioModal);
+symbolStudioOverlay?.addEventListener("click", (e) => {
+  if (e.target === symbolStudioOverlay) closeSymbolStudioModal();
+});
+
+// Interactive Vector Drawing on #sym-draw-canvas
+if (symDrawCanvas) {
+  const toNormPt = (e) => {
+    const r = symDrawCanvas.getBoundingClientRect();
+    const padX = 24;
+    const padY = 16;
+    const boxW = symDrawCanvas.width - padX * 2;
+    const boxH = symDrawCanvas.height - padY * 2;
+    const nx = Math.max(0, Math.min(1, (e.clientX - r.left - padX) / boxW));
+    const ny = Math.max(0, Math.min(1, (e.clientY - r.top - padY) / boxH));
+    return { x: Number(nx.toFixed(3)), y: Number(ny.toFixed(3)) };
+  };
+
+  symDrawCanvas.addEventListener("mousedown", (e) => {
+    studioState.importedImgUrl = "";
+    studioState.svgPath = "";
+    const pt = toNormPt(e);
+    studioState.activeStroke = {
+      tool: studioState.tool,
+      pts: studioState.tool === "path" ? [pt] : [pt, pt],
+    };
+    renderStudioPreviewCanvas();
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!studioState.activeStroke) return;
+    const pt = toNormPt(e);
+    if (studioState.activeStroke.tool === "path") {
+      const pts = studioState.activeStroke.pts;
+      const last = pts[pts.length - 1];
+      if (Math.hypot(pt.x - last.x, pt.y - last.y) > 0.02) {
+        pts.push(pt);
+      }
+    } else {
+      studioState.activeStroke.pts[1] = pt;
+    }
+    renderStudioPreviewCanvas();
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (!studioState.activeStroke) return;
+    studioState.paths.push(studioState.activeStroke);
+    studioState.activeStroke = null;
+    renderStudioPreviewCanvas();
+  });
+}
+
+document.querySelectorAll(".sym-tool-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".sym-tool-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    studioState.tool = btn.getAttribute("data-tool") || "path";
+  });
+});
+
+document.getElementById("btn-sym-undo")?.addEventListener("click", () => {
+  studioState.paths.pop();
+  renderStudioPreviewCanvas();
+});
+
+document.getElementById("btn-sym-clear")?.addEventListener("click", () => {
+  studioState.paths = [];
+  studioState.importedImgUrl = "";
+  studioState.svgPath = "";
+  const svgIn = document.getElementById("sym-svg-input");
+  const urlIn = document.getElementById("sym-url-input");
+  if (svgIn) svgIn.value = "";
+  if (urlIn) urlIn.value = "";
+  renderStudioPreviewCanvas();
+});
+
+document.getElementById("sym-preset-template")?.addEventListener("change", (e) => {
+  const key = e.target.value;
+  const tpl = SYMBOL_STUDIO_TEMPLATES[key];
+  if (!tpl) return;
+  studioState.paths = JSON.parse(JSON.stringify(tpl.paths));
+  studioState.importedImgUrl = "";
+  studioState.svgPath = "";
+  document.getElementById("sym-name").value = tpl.name;
+  document.getElementById("sym-category").value = tpl.category;
+  document.getElementById("sym-w").value = tpl.w;
+  document.getElementById("sym-h").value = tpl.h;
+  document.getElementById("sym-fill").value = tpl.fill;
+  document.getElementById("sym-stroke").value = tpl.stroke;
+  renderStudioPreviewCanvas();
+  e.target.value = "";
+});
+
+document.getElementById("sym-fill")?.addEventListener("input", renderStudioPreviewCanvas);
+document.getElementById("sym-stroke")?.addEventListener("input", renderStudioPreviewCanvas);
+
+document.getElementById("sym-svg-input")?.addEventListener("input", (e) => {
+  const val = e.target.value.trim();
+  if (!val) {
+    studioState.svgPath = "";
+    renderStudioPreviewCanvas();
+    return;
+  }
+  if (val.startsWith("<svg")) {
+    const dataUrl = "data:image/svg+xml;utf8," + encodeURIComponent(val);
+    studioState.importedImgUrl = dataUrl;
+    studioState.svgPath = "";
+    const img = getOrLoadImage(dataUrl);
+    if (!img) setTimeout(renderStudioPreviewCanvas, 60);
+  } else {
+    const matchD = val.match(/d=["']([^"']+)["']/);
+    studioState.svgPath = matchD ? matchD[1] : val;
+    studioState.importedImgUrl = "";
+  }
+  renderStudioPreviewCanvas();
+});
+
+document.getElementById("sym-url-input")?.addEventListener("input", (e) => {
+  const val = e.target.value.trim();
+  studioState.importedImgUrl = val;
+  if (val) {
+    getOrLoadImage(val);
+    setTimeout(renderStudioPreviewCanvas, 120);
+  }
+  renderStudioPreviewCanvas();
+});
+
+// Save Custom Symbol to Left Palette & Insert onto Canvas
+document.getElementById("btn-sym-save")?.addEventListener("click", () => {
+  const label = (document.getElementById("sym-name")?.value || "Custom Symbol").trim();
+  const category = document.getElementById("sym-category")?.value || "Custom Symbols";
+  const w = Math.max(40, Math.min(400, Number(document.getElementById("sym-w")?.value) || 165));
+  const h = Math.max(40, Math.min(300, Number(document.getElementById("sym-h")?.value) || 84));
+  const defaultFill = document.getElementById("sym-fill")?.value || "#ffffff";
+  const defaultStroke = document.getElementById("sym-stroke")?.value || "#000080";
+
+  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "_") + "_" + (Date.now() % 10000);
+  const id = `custom.${slug}`;
+  const customItem = {
+    id,
+    label,
+    category,
+    w,
+    h,
+    shape: id,
+    defaultFill,
+    defaultStroke,
+    customPaths:
+      !studioState.importedImgUrl && !studioState.svgPath && studioState.paths.length
+        ? JSON.parse(JSON.stringify(studioState.paths))
+        : studioState.paths.length
+        ? JSON.parse(JSON.stringify(studioState.paths))
+        : [{ tool: "rect", pts: [{ x: 0.05, y: 0.08 }, { x: 0.95, y: 0.92 }] }],
+    svgPath: studioState.svgPath || "",
+    imgUrl: studioState.importedImgUrl || "",
+    isCustom: true,
+  };
+
+  registerCustomStencil(customItem, true);
+  renderPalette(document.getElementById("palette-search")?.value || "");
+  addStencilToCanvasCenter(customItem);
+  closeSymbolStudioModal();
+  showToast(`Saved "${label}" to ${category}`);
+});
+
+// Export all custom symbols as a shareable .json pack
+document.getElementById("btn-sym-export-pack")?.addEventListener("click", () => {
+  const customList = STENCILS.filter((s) => s.isCustom);
+  downloadFile("rustflow-custom-symbols.json", JSON.stringify(customList, null, 2), "application/json");
+  showToast(`Exported ${customList.length} custom symbol(s)`);
+});
+
+// Import Symbols from File (.svg, .png, .jpg, .webp, .json)
+let importFromStudioModal = false;
+document.getElementById("btn-import-symbol-file")?.addEventListener("click", () => {
+  importFromStudioModal = false;
+  if (symbolFileInput) {
+    symbolFileInput.value = "";
+    symbolFileInput.click();
+  }
+});
+document.getElementById("btn-sym-upload-file")?.addEventListener("click", () => {
+  importFromStudioModal = true;
+  if (symbolFileInput) {
+    symbolFileInput.value = "";
+    symbolFileInput.click();
+  }
+});
+
+if (symbolFileInput) {
+  symbolFileInput.addEventListener("change", (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    for (const file of files) {
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      if (file.name.endsWith(".json")) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(String(reader.result));
+            const list = Array.isArray(parsed) ? parsed : [parsed];
+            let importedCount = 0;
+            for (const item of list) {
+              if (item && item.label) {
+                const cid = item.id || `custom.${Date.now()}_${importedCount}`;
+                registerCustomStencil({ ...item, id: cid, shape: item.shape || cid, isCustom: true }, true);
+                importedCount++;
+              }
+            }
+            renderPalette(document.getElementById("palette-search")?.value || "");
+            showToast(`Imported ${importedCount} symbol(s) from ${file.name}`);
+          } catch {
+            showToast(`Invalid JSON symbol pack: ${file.name}`);
+          }
+        };
+        reader.readAsText(file);
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = String(reader.result || "");
+          if (!dataUrl) return;
+          getOrLoadImage(dataUrl);
+          if (importFromStudioModal && symbolStudioOverlay?.classList.contains("open")) {
+            studioState.importedImgUrl = dataUrl;
+            document.getElementById("sym-name").value = baseName;
+            setTimeout(renderStudioPreviewCanvas, 50);
+            showToast(`Loaded ${file.name} into Symbol Studio`);
+          } else {
+            const slug = baseName.toLowerCase().replace(/[^a-z0-9]+/g, "_") + "_" + (Date.now() % 10000);
+            const id = `custom.${slug}`;
+            const newStencil = {
+              id,
+              label: baseName,
+              category: "Custom Symbols",
+              w: 165,
+              h: 92,
+              shape: id,
+              defaultFill: "#ffffff",
+              defaultStroke: "#000080",
+              customPaths: null,
+              svgPath: "",
+              imgUrl: dataUrl,
+              isCustom: true,
+            };
+            registerCustomStencil(newStencil, true);
+            renderPalette(document.getElementById("palette-search")?.value || "");
+            addStencilToCanvasCenter(newStencil);
+            showToast(`Imported symbol "${baseName}" to Palette`);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  });
 }
 
 // ============================================================================
@@ -3213,8 +4306,11 @@ const COMMANDS = [
   { label: "Theme: Dark Minimal", shortcut: "View", run: () => handleMenuAction("theme-dark") },
   { label: "Theme: Light Minimal", shortcut: "View", run: () => handleMenuAction("theme-light") },
   { label: "Theme: High Contrast", shortcut: "View", run: () => handleMenuAction("theme-contrast") },
+  { label: "Export: Animated GIF (.gif)", shortcut: "File", run: exportAnimatedGif },
+  { label: "Export: High-DPI PNG (.png)", shortcut: "File", run: exportPngImage },
   { label: "Export: Save .drawio XML", shortcut: "Ctrl+S", run: exportDrawioXml },
   { label: "Export: Animated SVG", shortcut: "Ctrl+E", run: exportAnimatedSvg },
+  { label: "Symbol Studio: Create or Import Custom Symbol", shortcut: "⇧⌘S", run: openSymbolStudioModal },
   { label: "Keyboard Shortcuts Cheat-Sheet", shortcut: "?", run: openShortcutsModal },
   { label: "Benchmark: Generate 100-Node Graph", shortcut: "Extras", run: () => generateStressGraph(100) },
   ...STENCILS.map((s) => ({ label: `Add ${s.label}`, shortcut: s.category, run: () => addStencilToCanvasCenter(s) })),
@@ -3270,6 +4366,7 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeCommandPalette();
     closeShortcutsModal();
+    closeSymbolStudioModal();
     inlineEditor.style.display = "none";
     state.draggingStencil = null;
     state.smartGuides = [];
