@@ -598,4 +598,23 @@ mod tests {
         let pdf = export_pdf_document(&scene);
         assert!(pdf.starts_with(b"%PDF-1.4"));
     }
+
+    #[test]
+    fn fuzz_malformed_xml_and_json_never_panic() {
+        let malformed_inputs = [
+            "",
+            "{",
+            "}",
+            "{\"version\": \"9.9.9\"}",
+            "{\"version\":\"1.0.0\",\"nodes\":[{\"id\":\"bad\"}]}",
+            "<mxfile><unclosed>",
+            "<mxfile><mxGraphModel><mxCell vertex=\"1\" id=\"not-a-number\"/></mxGraphModel></mxfile>",
+            "<mxfile><mxGraphModel><mxCell edge=\"1\" id=\"1\" source=\"bad\" target=\"2\"/></mxGraphModel></mxfile>",
+            "\0\0\x7f\"'<>\\n\\r",
+        ];
+        for sample in malformed_inputs {
+            let _ = import_native_json(sample);
+            let _ = import_drawio_xml(sample);
+        }
+    }
 }

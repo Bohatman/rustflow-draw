@@ -1,21 +1,36 @@
 //! Headless GPU / Framebuffer Visual Regression Testing (VRT) suite for RustFlow Draw.
 
-use rustflow_core::{ColorRgba, Edge, EdgeAnimation, Node, Rect, SceneGraph, Viewport};
+use rustflow_core::{
+    ColorRgba, Edge, EdgeAnimation, EdgeKind, Node, Rect, SceneGraph, ThemeMode, ThemeTokens,
+    Viewport,
+};
 use rustflow_renderer::HeadlessFramebuffer;
 
 pub fn render_reference_diagram(time_seconds: f32) -> HeadlessFramebuffer {
+    render_themed_diagram(ThemeMode::Light, EdgeKind::Bezier, time_seconds)
+}
+
+pub fn render_themed_diagram(
+    theme: ThemeMode,
+    edge_kind: EdgeKind,
+    time_seconds: f32,
+) -> HeadlessFramebuffer {
+    let tokens = ThemeTokens::for_mode(theme);
     let mut scene = SceneGraph::new();
-    scene.insert_node(Node::new_react_flow_card(
-        1,
-        "API Gateway",
-        Rect::new(40.0, 50.0, 90.0, 44.0),
-    ));
-    scene.insert_node(Node::new_react_flow_card(
-        2,
-        "Auth Service",
-        Rect::new(180.0, 90.0, 90.0, 44.0),
-    ));
+
+    let mut n1 = Node::new_react_flow_card(1, "API Gateway", Rect::new(40.0, 50.0, 90.0, 44.0));
+    n1.style.fill = tokens.card_fill;
+    n1.style.stroke = tokens.card_stroke;
+    scene.insert_node(n1);
+
+    let mut n2 = Node::new_react_flow_card(2, "Auth Service", Rect::new(180.0, 90.0, 90.0, 44.0));
+    n2.style.fill = tokens.card_fill;
+    n2.style.stroke = tokens.card_stroke;
+    scene.insert_node(n2);
+
     let mut edge = Edge::new_bezier(10, 1, 2);
+    edge.kind = edge_kind;
+    edge.stroke = tokens.edge_default;
     edge.animation = EdgeAnimation::PulseParticles {
         speed: 0.5,
         particle_count: 2,
@@ -25,7 +40,13 @@ pub fn render_reference_diagram(time_seconds: f32) -> HeadlessFramebuffer {
     scene.insert_edge(edge);
 
     let vp = Viewport::new(320.0, 180.0);
-    let mut fb = HeadlessFramebuffer::new(320, 180, [248, 250, 252, 255]);
+    let clear = [
+        (tokens.canvas_bg.r * 255.0) as u8,
+        (tokens.canvas_bg.g * 255.0) as u8,
+        (tokens.canvas_bg.b * 255.0) as u8,
+        255,
+    ];
+    let mut fb = HeadlessFramebuffer::new(320, 180, clear);
     fb.render_scene(&scene, &vp, time_seconds);
     fb
 }
@@ -49,9 +70,21 @@ mod tests {
         assert_eq!(frame_t0.checksum(), frame_t0_repeat.checksum());
         assert_eq!(frame_t0.pixel_diff_ratio(&frame_t0_repeat), 0.0);
 
-        // Advancing animation time moves pulse particles along the Bezier spline
         let frame_t1 = render_reference_diagram(0.5);
         let diff = frame_t0.pixel_diff_ratio(&frame_t1);
         assert!(diff > 0.0 && diff < 0.05);
+    }
+
+    #[test]
+    fn vrt_multi_theme_and_edge_routing_parity() {
+        let light_bezier = render_themed_diagram(ThemeMode::Light, EdgeKind::Bezier, 0.25);
+        let dark_bezier = render_themed_diagram(ThemeMode::Dark, EdgeKind::Bezier, 0.25);
+        let contrast_ortho =
+            render_themed_diagram(ThemeMode::HighContrast, EdgeKind::Orthogonal, 0.25);
+        let light_smooth = render_themed_diagram(ThemeMode::Light, EdgeKind::SmoothStep, 0.25);
+
+        assert_ne!(light_bezier.checksum(), dark_bezier.checksum());
+        assert_ne!(dark_bezier.checksum(), contrast_ortho.checksum());
+        assert_ne!(light_bezier.checksum(), light_smooth.checksum());
     }
 }

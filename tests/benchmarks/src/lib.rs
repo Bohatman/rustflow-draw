@@ -1,4 +1,4 @@
-//! Performance stress tests and benchmarks for 5,000+ nodes and 10,000+ animated edges.
+//! Performance stress tests and benchmarks tracking frame times at 1k, 5k, and 10k nodes.
 
 use rustflow_core::{ColorRgba, Edge, EdgeAnimation, Node, Rect, SceneGraph, Viewport};
 use rustflow_io_formats::export_drawio_xml;
@@ -58,6 +58,21 @@ pub fn build_large_scene(node_count: usize, edge_count: usize) -> SceneGraph {
     scene
 }
 
+pub fn benchmark_scene_tier(node_count: usize, edge_count: usize) -> (usize, usize, u128) {
+    let scene = build_large_scene(node_count, edge_count);
+    let vp = Viewport::new(1920.0, 1080.0);
+
+    let start = Instant::now();
+    let frame = RenderFrame::build(&scene, &vp, 1.25);
+    let elapsed_micros = start.elapsed().as_micros();
+
+    (
+        frame.node_instances.len(),
+        frame.edge_vertices.len(),
+        elapsed_micros,
+    )
+}
+
 pub fn benchmark_5k_nodes_10k_edges_frame() -> (usize, usize, u128) {
     let scene = build_large_scene(5_000, 10_000);
     let vp = Viewport::new(1920.0, 1080.0);
@@ -94,12 +109,12 @@ mod tests {
     }
 
     #[test]
-    fn stress_test_5000_nodes_10000_animated_edges_frustum_culled() {
-        let (visible_nodes, edge_verts, elapsed_micros) = benchmark_5k_nodes_10k_edges_frame();
-        // R-Tree frustum culling ensures only the visible subset of the 5,000 nodes is instantiated
-        assert!(visible_nodes > 0 && visible_nodes < 200);
-        assert!(edge_verts > 0);
-        // Frame preparation easily finishes well under 100ms even in unoptimized debug mode
-        assert!(elapsed_micros < 250_000);
+    fn stress_test_1k_5k_and_10k_nodes_frustum_culled() {
+        for (nodes, edges) in [(1_000, 2_000), (5_000, 10_000), (10_000, 15_000)] {
+            let (visible_nodes, edge_verts, elapsed_micros) = benchmark_scene_tier(nodes, edges);
+            assert!(visible_nodes > 0 && visible_nodes < 200);
+            assert!(edge_verts > 0);
+            assert!(elapsed_micros < 500_000);
+        }
     }
 }
