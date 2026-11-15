@@ -1,5 +1,8 @@
-// Developer-Focused Interactive Web App for RustFlow Draw
-// Includes: 28+ Stencil Shapes & Symbols, Magnetic Port-to-Node/Port Connection, and Interactive Edge Adjustment
+// High-Performance Draw.io + React Flow Web Engine
+// Fixes:
+// 1. Draw.io Dropdown Menu Bar (File, Edit, View, Arrange, Extras) + compact quick toolbar
+// 2. Draw.io Context-Sensitive Right Format Panel (Diagram vs Node [Style/Text/Arrange] vs Edge [Style/Text/Arrange])
+// 3. 60-120 FPS Performance Optimization: Offscreen cached grid pattern (O(1) draw), zero shadowBlur, O(1) node map, cached edge geometry, frustum culling, and dirty-checked minimap
 
 const STENCILS = [
   // Flowchart
@@ -38,6 +41,21 @@ const STENCILS = [
   // Wireframes
   { id: "wireframe.browser", icon: "🌐", label: "Browser Window", category: "Wireframes", w: 230, h: 145, shape: "browser" },
   { id: "wireframe.mobile", icon: "📱", label: "Mobile Screen", category: "Wireframes", w: 125, h: 195, shape: "mobile" },
+];
+
+const STYLE_SWATCHES = [
+  { fill: "#1e293b", stroke: "#38bdf8" },
+  { fill: "#1e1b4b", stroke: "#818cf8" },
+  { fill: "#064e3b", stroke: "#34d399" },
+  { fill: "#451a03", stroke: "#fbbf24" },
+  { fill: "#4c0519", stroke: "#f43f5e" },
+  { fill: "#3b0764", stroke: "#c084fc" },
+  { fill: "#ffffff", stroke: "#4f46e5" },
+  { fill: "#ecfeff", stroke: "#0891b2" },
+  { fill: "#f0fdf4", stroke: "#16a34a" },
+  { fill: "#fffbeb", stroke: "#d97706" },
+  { fill: "#fff1f2", stroke: "#e11d48" },
+  { fill: "#0f172a", stroke: "#f8fafc" },
 ];
 
 function createDogfoodPages() {
@@ -94,6 +112,9 @@ const state = {
   activePageId: 1,
   selectedNodeId: 1,
   selectedEdgeId: null,
+  activeFormatTab: "style", // "style" | "text" | "arrange"
+  gridStyle: "dots",        // "dots" | "lines" | "off"
+  gridSize: 20,
   hoveredPort: null,
   snapTargetPort: null,
   draggingNode: null,
@@ -110,7 +131,28 @@ const state = {
   theme: "dark",
   fps: 60,
   lastFrameTime: performance.now(),
+  geometryVersion: 1,
+  minimapDirty: true,
 };
+
+// Performance Cache: O(1) Node Lookup Map & Offscreen Grid Pattern Cache
+let nodeMap = new Map();
+let cachedGridPattern = null;
+let cachedGridKey = "";
+
+function rebuildNodeMap() {
+  const p = page();
+  nodeMap.clear();
+  for (const n of p.nodes) {
+    nodeMap.set(n.id, n);
+  }
+}
+
+function invalidateGeometry() {
+  state.geometryVersion++;
+  state.minimapDirty = true;
+  rebuildNodeMap();
+}
 
 function page() {
   return state.pages.find((p) => p.id === state.activePageId) || state.pages[0];
@@ -118,13 +160,18 @@ function page() {
 
 function saveSnapshot() {
   const p = page();
-  p.undoStack.push(JSON.stringify({ nodes: p.nodes, edges: p.edges }));
+  p.undoStack.push(
+    JSON.stringify({
+      nodes: p.nodes,
+      edges: p.edges.map(({ _geo, _ver, ...rest }) => rest),
+    })
+  );
   if (p.undoStack.length > 64) p.undoStack.shift();
   p.redoStack = [];
 }
 
 const canvas = document.getElementById("rustflow-canvas");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d", { alpha: false });
 const minimapCanvas = document.getElementById("minimap-canvas");
 const minimapCtx = minimapCanvas.getContext("2d");
 const inlineEditor = document.getElementById("inline-editor");
@@ -133,9 +180,11 @@ function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   canvas.width = rect.width;
   canvas.height = rect.height;
+  state.minimapDirty = true;
 }
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
+rebuildNodeMap();
 
 function screenToWorld(sx, sy) {
   const p = page();
@@ -157,16 +206,16 @@ function getNodePorts(n) {
 }
 
 function getPortPosition(node, side) {
-  const ports = getNodePorts(node);
-  return ports.find((p) => p.side === side) || ports[1];
+  if (side === "top") return { side: "top", x: node.x + node.w * 0.5, y: node.y };
+  if (side === "bottom") return { side: "bottom", x: node.x + node.w * 0.5, y: node.y + node.h };
+  if (side === "left") return { side: "left", x: node.x, y: node.y + node.h * 0.5 };
+  return { side: "right", x: node.x + node.w, y: node.y + node.h * 0.5 };
 }
 
-// Find the best target port when dragging a connection or reconnecting an edge
 function findSnapTargetPort(worldPt, excludeNodeId) {
   const p = page();
   const portSnapRadius = 22 / Math.max(0.4, p.zoom);
 
-  // 1. Direct proximity to any port handle
   let best = null;
   for (const n of p.nodes) {
     if (n.id === excludeNodeId) continue;
@@ -179,29 +228,27 @@ function findSnapTargetPort(worldPt, excludeNodeId) {
   }
   if (best) return best;
 
-  // 2. Dropped anywhere inside or within 14px of a node body -> snap to closest port on that node
   const margin = 14 / Math.max(0.4, p.zoom);
-  const hitNode = [...p.nodes]
-    .reverse()
-    .find(
-      (n) =>
-        n.id !== excludeNodeId &&
-        worldPt.x >= n.x - margin &&
-        worldPt.x <= n.x + n.w + margin &&
-        worldPt.y >= n.y - margin &&
-        worldPt.y <= n.y + n.h + margin
-    );
-  if (hitNode) {
-    let closestPort = getNodePorts(hitNode)[0];
-    let minD = Infinity;
-    for (const port of getNodePorts(hitNode)) {
-      const d = Math.hypot(worldPt.x - port.x, worldPt.y - port.y);
-      if (d < minD) {
-        minD = d;
-        closestPort = port;
+  for (let i = p.nodes.length - 1; i >= 0; i--) {
+    const n = p.nodes[i];
+    if (n.id === excludeNodeId) continue;
+    if (
+      worldPt.x >= n.x - margin &&
+      worldPt.x <= n.x + n.w + margin &&
+      worldPt.y >= n.y - margin &&
+      worldPt.y <= n.y + n.h + margin
+    ) {
+      let closestPort = getNodePorts(n)[0];
+      let minD = Infinity;
+      for (const port of getNodePorts(n)) {
+        const d = Math.hypot(worldPt.x - port.x, worldPt.y - port.y);
+        if (d < minD) {
+          minD = d;
+          closestPort = port;
+        }
       }
+      return { dist: minD, node: n, port: closestPort };
     }
-    return { dist: minD, node: hitNode, port: closestPort };
   }
   return null;
 }
@@ -216,11 +263,21 @@ function getQuickArrows(n) {
   ];
 }
 
-// Compute edge geometry and control points (including custom user bend point!)
+function evalBezier(p0, p1, p2, p3, t) {
+  const u = 1 - t;
+  return {
+    x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
+    y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y,
+  };
+}
+
+// Cached O(1) Edge Geometry Lookup — only recomputes when geometryVersion changes!
 function getEdgeGeometry(e) {
-  const p = page();
-  const src = p.nodes.find((n) => n.id === e.source);
-  const dst = p.nodes.find((n) => n.id === e.target);
+  if (e._geo && e._ver === state.geometryVersion) {
+    return e._geo;
+  }
+  const src = nodeMap.get(e.source);
+  const dst = nodeMap.get(e.target);
   if (!src || !dst) return null;
 
   const p0 = getPortPosition(src, e.sourcePort || "right");
@@ -237,9 +294,7 @@ function getEdgeGeometry(e) {
   let p1, p2, midPoint;
 
   if (e.bend) {
-    // User adjusted the edge bend handle!
     midPoint = { x: e.bend.x, y: e.bend.y };
-    // Compute control points so cubic bezier passes through midPoint at t=0.5
     const cx = (8 * midPoint.x - p0.x - p3.x) / 6;
     const cy = (8 * midPoint.y - p0.y - p3.y) / 6;
     p1 = { x: cx, y: cy };
@@ -252,7 +307,6 @@ function getEdgeGeometry(e) {
     midPoint = evalBezier(p0, p1, p2, p3, 0.5);
   }
 
-  // Sample polyline points for hit-testing and orthogonal/smoothstep drawing
   const samples = [];
   if (e.kind === "straight") {
     if (e.bend) {
@@ -265,19 +319,21 @@ function getEdgeGeometry(e) {
     const bendX = e.bend ? e.bend.x : (p0.x + p3.x) * 0.5;
     const bendY = e.bend ? e.bend.y : (p0.y + p3.y) * 0.5;
     midPoint = { x: bendX, y: bendY };
-    samples.push(
-      p0,
-      { x: bendX, y: p0.y },
-      { x: bendX, y: p3.y },
-      p3
-    );
+    samples.push(p0, { x: bendX, y: p0.y }, { x: bendX, y: p3.y }, p3);
   } else {
-    for (let i = 0; i <= 24; i++) {
-      samples.push(evalBezier(p0, p1, p2, p3, i / 24));
+    for (let i = 0; i <= 20; i++) {
+      samples.push(evalBezier(p0, p1, p2, p3, i / 20));
     }
   }
 
-  return { p0, p1, p2, p3, midPoint, samples };
+  const minX = Math.min(p0.x, p3.x, midPoint.x) - 20;
+  const maxX = Math.max(p0.x, p3.x, midPoint.x) + 20;
+  const minY = Math.min(p0.y, p3.y, midPoint.y) - 20;
+  const maxY = Math.max(p0.y, p3.y, midPoint.y) + 20;
+
+  e._geo = { p0, p1, p2, p3, midPoint, samples, bounds: { minX, maxX, minY, maxY } };
+  e._ver = state.geometryVersion;
+  return e._geo;
 }
 
 function distToSegment(pt, a, b) {
@@ -338,7 +394,476 @@ function computeSmartGuides(movingNode) {
   return guides;
 }
 
-// Pointer Down
+// ============================================================================
+// 1. TOP DROPDOWN MENU BAR LOGIC
+// ============================================================================
+const menuItems = document.querySelectorAll(".menu-item");
+menuItems.forEach((item) => {
+  item.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const wasOpen = item.classList.contains("open");
+    menuItems.forEach((m) => m.classList.remove("open"));
+    if (!wasOpen) item.classList.add("open");
+  });
+  item.addEventListener("mouseenter", () => {
+    const anyOpen = [...menuItems].some((m) => m.classList.contains("open"));
+    if (anyOpen) {
+      menuItems.forEach((m) => m.classList.remove("open"));
+      item.classList.add("open");
+    }
+  });
+});
+
+window.addEventListener("click", () => {
+  menuItems.forEach((m) => m.classList.remove("open"));
+});
+
+document.querySelectorAll(".dropdown-entry").forEach((entry) => {
+  entry.addEventListener("click", (e) => {
+    e.stopPropagation();
+    menuItems.forEach((m) => m.classList.remove("open"));
+    const action = entry.getAttribute("data-action");
+    handleMenuAction(action);
+  });
+});
+
+function handleMenuAction(action) {
+  const p = page();
+  switch (action) {
+    case "new-page":
+      addNewPage();
+      break;
+    case "export-drawio":
+      exportDrawioXml();
+      break;
+    case "export-svg":
+      exportAnimatedSvg();
+      break;
+    case "export-json":
+      downloadFile(
+        "diagram.rfd.json",
+        JSON.stringify({ version: "1.0.0", nodes: p.nodes, edges: p.edges.map(({ _geo, _ver, ...r }) => r) }, null, 2),
+        "application/json"
+      );
+      break;
+    case "undo":
+      undo();
+      break;
+    case "redo":
+      redo();
+      break;
+    case "duplicate":
+      duplicateSelected();
+      break;
+    case "delete":
+      deleteSelected();
+      break;
+    case "zoom-in":
+      setZoom(p.zoom * 1.2);
+      break;
+    case "zoom-out":
+      setZoom(p.zoom / 1.2);
+      break;
+    case "zoom-reset":
+      p.zoom = 1.0;
+      p.pan = { x: 60, y: 50 };
+      state.minimapDirty = true;
+      updateZoomLabel();
+      break;
+    case "toggle-grid":
+      state.gridStyle = state.gridStyle === "dots" ? "lines" : state.gridStyle === "lines" ? "off" : "dots";
+      renderFormatPanel();
+      break;
+    case "theme-dark":
+    case "theme-light":
+    case "theme-contrast":
+      state.theme = action.replace("theme-", "");
+      document.documentElement.setAttribute("data-theme", state.theme);
+      renderFormatPanel();
+      break;
+    case "layout-hier":
+      runHierarchicalLayout();
+      break;
+    case "layout-grid":
+      runGridLayout();
+      break;
+    case "layout-radial":
+      runRadialLayout();
+      break;
+    case "bring-front":
+      bringToFront();
+      break;
+    case "send-back":
+      sendToBack();
+      break;
+    case "cmd-palette":
+      openCommandPalette();
+      break;
+    case "stress-100":
+      generateStressGraph(100);
+      break;
+  }
+}
+
+function setZoom(targetZoom, cx = canvas.width / 2, cy = canvas.height / 2) {
+  const p = page();
+  const before = screenToWorld(cx, cy);
+  p.zoom = Math.min(8.0, Math.max(0.1, targetZoom));
+  p.pan.x = cx - before.x * p.zoom;
+  p.pan.y = cy - before.y * p.zoom;
+  state.minimapDirty = true;
+  updateZoomLabel();
+}
+
+function updateZoomLabel() {
+  document.getElementById("zoom-label").textContent = `${Math.round(page().zoom * 100)}%`;
+}
+
+// ============================================================================
+// 2. DRAW.IO CONTEXT-SENSITIVE RIGHT FORMAT PANEL (Style / Text / Arrange)
+// ============================================================================
+const formatTabsEl = document.getElementById("format-tabs");
+const formatBodyEl = document.getElementById("format-body");
+const formatBadgeEl = document.getElementById("format-selection-badge");
+
+formatTabsEl.querySelectorAll(".format-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    state.activeFormatTab = tab.getAttribute("data-tab");
+    renderFormatPanel();
+  });
+});
+
+function renderFormatPanel() {
+  const p = page();
+  const node = nodeMap.get(state.selectedNodeId);
+  const edge = p.edges.find((e) => e.id === state.selectedEdgeId);
+
+  formatTabsEl.querySelectorAll(".format-tab").forEach((t) => {
+    t.classList.toggle("active", t.getAttribute("data-tab") === state.activeFormatTab);
+  });
+
+  // CASE A: No item selected -> Draw.io Diagram / Canvas Inspector
+  if (!node && !edge) {
+    formatBadgeEl.textContent = "Diagram";
+    formatTabsEl.style.display = "none";
+    formatBodyEl.innerHTML = `
+      <div class="format-section">
+        <label>Page Name</label>
+        <input id="diag-page-name" type="text" value="${p.name}" />
+      </div>
+      <div class="format-section">
+        <label>View & Grid</label>
+        <div class="format-row">
+          <span>Grid Style</span>
+          <select id="diag-grid-style">
+            <option value="dots" ${state.gridStyle === "dots" ? "selected" : ""}>Dots</option>
+            <option value="lines" ${state.gridStyle === "lines" ? "selected" : ""}>Lines</option>
+            <option value="off" ${state.gridStyle === "off" ? "selected" : ""}>Hidden</option>
+          </select>
+        </div>
+        <div class="format-row">
+          <span>Grid Size (px)</span>
+          <input id="diag-grid-size" type="number" min="10" max="60" step="5" value="${state.gridSize}" />
+        </div>
+      </div>
+      <div class="format-section">
+        <label>Theme Preset</label>
+        <select id="diag-theme">
+          <option value="dark" ${state.theme === "dark" ? "selected" : ""}>Dark (Developer)</option>
+          <option value="light" ${state.theme === "light" ? "selected" : ""}>Light</option>
+          <option value="contrast" ${state.theme === "contrast" ? "selected" : ""}>High Contrast</option>
+        </select>
+      </div>
+      <div class="format-section" style="border-bottom:none;">
+        <label>Selection Hint</label>
+        <p style="font-size:11px; color:var(--text-muted); line-height:1.5;">
+          Click any <b>Shape</b> or <b>Edge</b> on the canvas to inspect and customize its <b>Style</b>, <b>Text</b>, and <b>Arrangement</b>.
+        </p>
+      </div>
+    `;
+    document.getElementById("diag-page-name").oninput = (e) => {
+      p.name = e.target.value;
+      renderPageTabs();
+    };
+    document.getElementById("diag-grid-style").onchange = (e) => {
+      state.gridStyle = e.target.value;
+    };
+    document.getElementById("diag-grid-size").oninput = (e) => {
+      state.gridSize = Math.max(10, Math.min(80, Number(e.target.value) || 20));
+    };
+    document.getElementById("diag-theme").onchange = (e) => {
+      state.theme = e.target.value;
+      document.documentElement.setAttribute("data-theme", state.theme);
+    };
+    return;
+  }
+
+  formatTabsEl.style.display = "grid";
+
+  // CASE B: NODE Selected -> Draw.io [Style | Text | Arrange]
+  if (node) {
+    formatBadgeEl.textContent = `Node #${node.id}`;
+    if (state.activeFormatTab === "style") {
+      formatBodyEl.innerHTML = `
+        <div class="format-section">
+          <label>Draw.io Style Presets</label>
+          <div class="swatch-grid" id="node-swatches"></div>
+        </div>
+        <div class="format-section">
+          <label>Shape / Symbol</label>
+          <select id="insp-shape">
+            ${[
+              ["card", "React Flow Card"],
+              ["rounded", "Terminator / Pill"],
+              ["diamond", "Decision Diamond"],
+              ["cylinder", "Database Cylinder"],
+              ["parallelogram", "Data I/O Parallelogram"],
+              ["hexagon", "Hexagon"],
+              ["document", "Document (Wavy)"],
+              ["note", "Sticky Note"],
+              ["circle", "Circle / Event"],
+              ["actor", "UML Actor"],
+              ["uml_class", "UML Class"],
+              ["uml_interface", "UML Interface"],
+              ["uml_component", "UML Component"],
+              ["uml_package", "UML Package"],
+              ["gateway_xor", "BPMN XOR Gateway (×)"],
+              ["gateway_parallel", "BPMN Parallel Gateway (+)"],
+              ["timer", "BPMN Timer Event (⏱)"],
+              ["cloud", "Cloud"],
+              ["queue", "Kafka Queue"],
+              ["server", "Server Rack"],
+              ["firewall", "WAF Firewall"],
+              ["shield", "Auth Shield"],
+              ["browser", "Browser Window"],
+              ["mobile", "Mobile Screen"],
+            ]
+              .map(([val, lbl]) => `<option value="${val}" ${node.shape === val ? "selected" : ""}>${lbl}</option>`)
+              .join("")}
+          </select>
+        </div>
+        <div class="format-section">
+          <label>Fill & Stroke Colors</label>
+          <div class="format-row">
+            <span>Fill</span>
+            <input id="insp-fill" type="color" value="${node.fill}" style="width:100%" />
+          </div>
+          <div class="format-row">
+            <span>Stroke</span>
+            <input id="insp-stroke" type="color" value="${node.stroke}" style="width:100%" />
+          </div>
+        </div>
+      `;
+      const swatchContainer = document.getElementById("node-swatches");
+      STYLE_SWATCHES.forEach((sw) => {
+        const el = document.createElement("div");
+        el.className = "swatch";
+        el.style.background = sw.fill;
+        el.style.borderColor = sw.stroke;
+        el.onclick = () => {
+          saveSnapshot();
+          node.fill = sw.fill;
+          node.stroke = sw.stroke;
+          renderFormatPanel();
+        };
+        swatchContainer.appendChild(el);
+      });
+      document.getElementById("insp-shape").onchange = (e) => {
+        saveSnapshot();
+        node.shape = e.target.value;
+      };
+      document.getElementById("insp-fill").oninput = (e) => {
+        node.fill = e.target.value;
+      };
+      document.getElementById("insp-stroke").oninput = (e) => {
+        node.stroke = e.target.value;
+      };
+    } else if (state.activeFormatTab === "text") {
+      formatBodyEl.innerHTML = `
+        <div class="format-section">
+          <label>Title Label</label>
+          <input id="insp-title" type="text" value="${node.title}" />
+          <label style="margin-top:6px;">Subtitle / Metadata</label>
+          <input id="insp-body" type="text" value="${node.body || ""}" />
+        </div>
+      `;
+      document.getElementById("insp-title").oninput = (e) => {
+        node.title = e.target.value;
+      };
+      document.getElementById("insp-body").oninput = (e) => {
+        node.body = e.target.value;
+      };
+    } else {
+      // Arrange tab
+      formatBodyEl.innerHTML = `
+        <div class="format-section">
+          <label>Position (X, Y)</label>
+          <div class="format-row">
+            <input id="insp-x" type="number" value="${Math.round(node.x)}" />
+            <input id="insp-y" type="number" value="${Math.round(node.y)}" />
+          </div>
+          <label style="margin-top:6px;">Dimensions (W, H)</label>
+          <div class="format-row">
+            <input id="insp-w" type="number" value="${Math.round(node.w)}" />
+            <input id="insp-h" type="number" value="${Math.round(node.h)}" />
+          </div>
+        </div>
+        <div class="format-section">
+          <label>Z-Order Layering</label>
+          <div class="format-row">
+            <button id="btn-front">Bring to Front</button>
+            <button id="btn-back">Send to Back</button>
+          </div>
+        </div>
+        <div class="format-section" style="border-bottom:none;">
+          <button id="btn-node-dup" style="width:100%">⧉ Duplicate Node</button>
+          <button id="btn-node-del" class="danger" style="width:100%; margin-top:4px;">✕ Delete Node</button>
+        </div>
+      `;
+      for (const [id, key] of [
+        ["insp-x", "x"],
+        ["insp-y", "y"],
+        ["insp-w", "w"],
+        ["insp-h", "h"],
+      ]) {
+        document.getElementById(id).oninput = (e) => {
+          node[key] = Number(e.target.value) || 40;
+          invalidateGeometry();
+        };
+      }
+      document.getElementById("btn-front").onclick = bringToFront;
+      document.getElementById("btn-back").onclick = sendToBack;
+      document.getElementById("btn-node-dup").onclick = duplicateSelected;
+      document.getElementById("btn-node-del").onclick = deleteSelected;
+    }
+    return;
+  }
+
+  // CASE C: EDGE Selected -> Draw.io [Style | Text | Arrange]
+  if (edge) {
+    formatBadgeEl.textContent = `Edge #${edge.id}`;
+    if (state.activeFormatTab === "style") {
+      formatBodyEl.innerHTML = `
+        <div class="format-section">
+          <label>Edge Routing Style</label>
+          <select id="edge-kind">
+            <option value="bezier" ${edge.kind === "bezier" ? "selected" : ""}>Bezier Curve</option>
+            <option value="orthogonal" ${edge.kind === "orthogonal" ? "selected" : ""}>Orthogonal</option>
+            <option value="smoothstep" ${edge.kind === "smoothstep" ? "selected" : ""}>SmoothStep</option>
+            <option value="straight" ${edge.kind === "straight" ? "selected" : ""}>Straight Line</option>
+          </select>
+          <label style="margin-top:6px;">Flow Animation</label>
+          <select id="edge-anim">
+            <option value="pulse" ${edge.anim === "pulse" ? "selected" : ""}>Pulse Particles</option>
+            <option value="ants" ${edge.anim === "ants" ? "selected" : ""}>Marching Ants</option>
+            <option value="none" ${edge.anim === "none" ? "selected" : ""}>Static Line</option>
+          </select>
+        </div>
+        <div class="format-section">
+          <label>Line Color & Width</label>
+          <div class="format-row">
+            <input id="edge-color" type="color" value="${edge.color || "#818cf8"}" style="width:100%" />
+            <input id="edge-width" type="number" min="1" max="10" step="0.5" value="${edge.width || 2.2}" />
+          </div>
+        </div>
+      `;
+      document.getElementById("edge-kind").onchange = (e) => {
+        edge.kind = e.target.value;
+        invalidateGeometry();
+      };
+      document.getElementById("edge-anim").onchange = (e) => {
+        edge.anim = e.target.value;
+      };
+      document.getElementById("edge-color").oninput = (e) => {
+        edge.color = e.target.value;
+      };
+      document.getElementById("edge-width").oninput = (e) => {
+        edge.width = Number(e.target.value) || 2;
+      };
+    } else if (state.activeFormatTab === "text") {
+      formatBodyEl.innerHTML = `
+        <div class="format-section">
+          <label>Edge Label</label>
+          <input id="edge-label" type="text" value="${edge.label || ""}" placeholder="Edge label..." />
+        </div>
+      `;
+      document.getElementById("edge-label").oninput = (e) => {
+        edge.label = e.target.value;
+      };
+    } else {
+      formatBodyEl.innerHTML = `
+        <div class="format-section">
+          <label>Port Attachment Sides</label>
+          <div class="format-row">
+            <span>Source</span>
+            <select id="edge-src-port">
+              ${["top", "right", "bottom", "left"]
+                .map((s) => `<option value="${s}" ${edge.sourcePort === s ? "selected" : ""}>${s}</option>`)
+                .join("")}
+            </select>
+          </div>
+          <div class="format-row">
+            <span>Target</span>
+            <select id="edge-dst-port">
+              ${["top", "right", "bottom", "left"]
+                .map((s) => `<option value="${s}" ${edge.targetPort === s ? "selected" : ""}>${s}</option>`)
+                .join("")}
+            </select>
+          </div>
+        </div>
+        <div class="format-section" style="border-bottom:none;">
+          <div class="format-row">
+            <button id="btn-edge-reverse">⇄ Reverse</button>
+            <button id="btn-edge-reset">↺ Reset Bend</button>
+          </div>
+          <button id="btn-edge-delete" class="danger" style="width:100%; margin-top:6px;">✕ Delete Edge</button>
+        </div>
+      `;
+      document.getElementById("edge-src-port").onchange = (e) => {
+        edge.sourcePort = e.target.value;
+        invalidateGeometry();
+      };
+      document.getElementById("edge-dst-port").onchange = (e) => {
+        edge.targetPort = e.target.value;
+        invalidateGeometry();
+      };
+      document.getElementById("btn-edge-reverse").onclick = () => {
+        saveSnapshot();
+        const tmpN = edge.source, tmpP = edge.sourcePort;
+        edge.source = edge.target;
+        edge.sourcePort = edge.targetPort;
+        edge.target = tmpN;
+        edge.targetPort = tmpP;
+        invalidateGeometry();
+        renderFormatPanel();
+      };
+      document.getElementById("btn-edge-reset").onclick = () => {
+        saveSnapshot();
+        edge.bend = null;
+        invalidateGeometry();
+      };
+      document.getElementById("btn-edge-delete").onclick = deleteSelected;
+    }
+  }
+}
+renderFormatPanel();
+
+// Fast coordinate sync during drag without recreating DOM nodes
+function updateArrangeInputsLive(node) {
+  if (state.activeFormatTab !== "arrange") return;
+  const xEl = document.getElementById("insp-x");
+  const yEl = document.getElementById("insp-y");
+  const wEl = document.getElementById("insp-w");
+  const hEl = document.getElementById("insp-h");
+  if (xEl) xEl.value = Math.round(node.x);
+  if (yEl) yEl.value = Math.round(node.y);
+  if (wEl) wEl.value = Math.round(node.w);
+  if (hEl) hEl.value = Math.round(node.h);
+}
+
+// ============================================================================
+// POINTER & INTERACTION HANDLERS
+// ============================================================================
 canvas.addEventListener("mousedown", (e) => {
   inlineEditor.style.display = "none";
   const rect = canvas.getBoundingClientRect();
@@ -349,7 +874,7 @@ canvas.addEventListener("mousedown", (e) => {
   const p = page();
   const handleHitRadius = 13 / Math.max(0.4, p.zoom);
 
-  // 1. If an edge is currently selected, check its Bend Handle and Endpoint Reconnect Handles first!
+  // 1. Selected Edge Bend & Endpoint Reconnect Handles
   const selectedEdge = p.edges.find((ed) => ed.id === state.selectedEdgeId);
   if (selectedEdge) {
     const geo = getEdgeGeometry(selectedEdge);
@@ -372,8 +897,8 @@ canvas.addEventListener("mousedown", (e) => {
     }
   }
 
-  // 2. Check selected node's resize handle and Draw.io quick-connect arrows
-  const selectedNode = p.nodes.find((n) => n.id === state.selectedNodeId);
+  // 2. Selected Node Resize Handle & Quick-Add Arrows
+  const selectedNode = nodeMap.get(state.selectedNodeId);
   if (selectedNode) {
     if (Math.hypot(wpt.x - (selectedNode.x + selectedNode.w), wpt.y - (selectedNode.y + selectedNode.h)) <= handleHitRadius) {
       saveSnapshot();
@@ -391,7 +916,7 @@ canvas.addEventListener("mousedown", (e) => {
           z: p.nodes.length + 1,
         };
         p.nodes.push(newNode);
-        const newEdge = {
+        p.edges.push({
           id: ++state.nextId,
           source: selectedNode.id,
           sourcePort: arrow.side,
@@ -403,17 +928,17 @@ canvas.addEventListener("mousedown", (e) => {
           color: "#818cf8",
           width: 2.2,
           bend: null,
-        };
-        p.edges.push(newEdge);
+        });
+        invalidateGeometry();
         state.selectedNodeId = newNode.id;
         state.selectedEdgeId = null;
-        syncInspector();
+        renderFormatPanel();
         return;
       }
     }
   }
 
-  // 3. Check Port Handle Click on ANY node (start dragging a connection!)
+  // 3. Port Handle Click (Drag-to-Connect)
   const portHitRadius = 15 / Math.max(0.4, p.zoom);
   for (const n of p.nodes) {
     for (const port of getNodePorts(n)) {
@@ -421,19 +946,18 @@ canvas.addEventListener("mousedown", (e) => {
         state.connectingFrom = { node: n, port };
         state.selectedNodeId = n.id;
         state.selectedEdgeId = null;
-        syncInspector();
+        renderFormatPanel();
         return;
       }
     }
   }
 
-  // 4. Check Edge Hit-Test (click to select & adjust edge!)
+  // 4. Edge Hit-Test
   const hitEdge = hitTestEdge(wpt);
   if (hitEdge) {
     state.selectedEdgeId = hitEdge.id;
     state.selectedNodeId = null;
-    syncInspector();
-    // Also allow immediate dragging of the edge bend if clicked near its midpoint
+    renderFormatPanel();
     const geo = getEdgeGeometry(hitEdge);
     if (geo && Math.hypot(wpt.x - geo.midPoint.x, wpt.y - geo.midPoint.y) <= handleHitRadius * 1.3) {
       saveSnapshot();
@@ -442,24 +966,31 @@ canvas.addEventListener("mousedown", (e) => {
     return;
   }
 
-  // 5. Check Node Body Hit-Test
-  const sorted = [...p.nodes].sort((a, b) => (a.z || 0) - (b.z || 0));
-  const hit = sorted.reverse().find((n) => wpt.x >= n.x && wpt.x <= n.x + n.w && wpt.y >= n.y && wpt.y <= n.y + n.h);
+  // 5. Node Body Hit-Test
+  let hit = null;
+  for (let i = p.nodes.length - 1; i >= 0; i--) {
+    const n = p.nodes[i];
+    if (wpt.x >= n.x && wpt.x <= n.x + n.w && wpt.y >= n.y && wpt.y <= n.y + n.h) {
+      hit = n;
+      break;
+    }
+  }
   if (hit) {
     saveSnapshot();
+    const changed = state.selectedNodeId !== hit.id || state.selectedEdgeId !== null;
     state.selectedNodeId = hit.id;
     state.selectedEdgeId = null;
     state.draggingNode = { node: hit, offsetX: wpt.x - hit.x, offsetY: wpt.y - hit.y };
-    syncInspector();
+    if (changed) renderFormatPanel();
   } else {
+    const changed = state.selectedNodeId !== null || state.selectedEdgeId !== null;
     state.selectedNodeId = null;
     state.selectedEdgeId = null;
     state.panning = { startX: sx - p.pan.x, startY: sy - p.pan.y };
-    syncInspector();
+    if (changed) renderFormatPanel();
   }
 });
 
-// Double-click node OR edge for inline editing / bend reset
 canvas.addEventListener("dblclick", (e) => {
   const rect = canvas.getBoundingClientRect();
   const wpt = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
@@ -472,7 +1003,8 @@ canvas.addEventListener("dblclick", (e) => {
     if (geo && hitEdge.bend && Math.hypot(wpt.x - geo.midPoint.x, wpt.y - geo.midPoint.y) <= 16) {
       saveSnapshot();
       hitEdge.bend = null;
-      syncInspector();
+      invalidateGeometry();
+      renderFormatPanel();
       return;
     }
     if (geo) {
@@ -488,13 +1020,13 @@ canvas.addEventListener("dblclick", (e) => {
           saveSnapshot();
           hitEdge.label = inlineEditor.value;
           inlineEditor.style.display = "none";
-          syncInspector();
+          renderFormatPanel();
         } else if (ev.key === "Escape") {
           inlineEditor.style.display = "none";
         }
       };
     }
-    syncInspector();
+    renderFormatPanel();
     return;
   }
 
@@ -513,7 +1045,7 @@ canvas.addEventListener("dblclick", (e) => {
       saveSnapshot();
       hit.title = inlineEditor.value;
       inlineEditor.style.display = "none";
-      syncInspector();
+      renderFormatPanel();
     } else if (ev.key === "Escape") {
       inlineEditor.style.display = "none";
     }
@@ -526,17 +1058,6 @@ window.addEventListener("mousemove", (e) => {
   const sy = e.clientY - rect.top;
   state.mouseWorld = screenToWorld(sx, sy);
   const p = page();
-
-  // Track hovered port for cursor & visual feedback
-  state.hoveredPort = null;
-  const portHoverRadius = 15 / Math.max(0.4, p.zoom);
-  for (const n of p.nodes) {
-    for (const port of getNodePorts(n)) {
-      if (Math.hypot(state.mouseWorld.x - port.x, state.mouseWorld.y - port.y) <= portHoverRadius) {
-        state.hoveredPort = { nodeId: n.id, side: port.side, x: port.x, y: port.y };
-      }
-    }
-  }
 
   if (state.connectingFrom) {
     state.snapTargetPort = findSnapTargetPort(state.mouseWorld, state.connectingFrom.node.id);
@@ -557,6 +1078,7 @@ window.addEventListener("mousemove", (e) => {
       x: Math.round(state.mouseWorld.x / 5) * 5,
       y: Math.round(state.mouseWorld.y / 5) * 5,
     };
+    invalidateGeometry();
     canvas.style.cursor = "grabbing";
     return;
   }
@@ -569,19 +1091,48 @@ window.addEventListener("mousemove", (e) => {
     } else {
       node.h = Math.max(48, Math.round((state.mouseWorld.y - node.y) / 10) * 10);
     }
-    syncInspector();
-  } else if (state.draggingNode) {
+    invalidateGeometry();
+    updateArrangeInputsLive(node);
+    return;
+  }
+
+  if (state.draggingNode) {
     const { node, offsetX, offsetY } = state.draggingNode;
     node.x = Math.round((state.mouseWorld.x - offsetX) / 10) * 10;
     node.y = Math.round((state.mouseWorld.y - offsetY) / 10) * 10;
     state.smartGuides = computeSmartGuides(node);
-    syncInspector();
-  } else if (state.panning) {
+    invalidateGeometry();
+    updateArrangeInputsLive(node);
+    return;
+  }
+
+  if (state.panning) {
     p.pan.x = sx - state.panning.startX;
     p.pan.y = sy - state.panning.startY;
-  } else {
-    canvas.style.cursor = state.hoveredPort ? "crosshair" : "default";
+    state.minimapDirty = true;
+    return;
   }
+
+  // Only check hovered ports when idle
+  state.hoveredPort = null;
+  const portHoverRadius = 15 / Math.max(0.4, p.zoom);
+  for (const n of p.nodes) {
+    if (
+      state.mouseWorld.x < n.x - portHoverRadius ||
+      state.mouseWorld.x > n.x + n.w + portHoverRadius ||
+      state.mouseWorld.y < n.y - portHoverRadius ||
+      state.mouseWorld.y > n.y + n.h + portHoverRadius
+    ) {
+      continue;
+    }
+    for (const port of getNodePorts(n)) {
+      if (Math.hypot(state.mouseWorld.x - port.x, state.mouseWorld.y - port.y) <= portHoverRadius) {
+        state.hoveredPort = { nodeId: n.id, side: port.side, x: port.x, y: port.y };
+        break;
+      }
+    }
+  }
+  canvas.style.cursor = state.hoveredPort ? "crosshair" : "default";
 });
 
 window.addEventListener("mouseup", (e) => {
@@ -589,7 +1140,6 @@ window.addEventListener("mouseup", (e) => {
   state.mouseWorld = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
   const p = page();
 
-  // Complete port-to-port or port-to-node connection
   if (state.connectingFrom) {
     const srcNode = state.connectingFrom.node;
     const srcPort = state.connectingFrom.port;
@@ -610,13 +1160,13 @@ window.addEventListener("mouseup", (e) => {
         bend: null,
       };
       p.edges.push(newEdge);
+      invalidateGeometry();
       state.selectedEdgeId = newEdge.id;
       state.selectedNodeId = null;
-      syncInspector();
+      renderFormatPanel();
     }
   }
 
-  // Complete edge endpoint reconnection
   if (state.reconnectingEdge) {
     const { edge, end } = state.reconnectingEdge;
     const excludeId = end === "target" ? edge.source : edge.target;
@@ -629,7 +1179,8 @@ window.addEventListener("mouseup", (e) => {
         edge.source = snap.node.id;
         edge.sourcePort = snap.port.side;
       }
-      syncInspector();
+      invalidateGeometry();
+      renderFormatPanel();
     }
   }
 
@@ -650,12 +1201,8 @@ canvas.addEventListener(
     const rect = canvas.getBoundingClientRect();
     const cx = e.clientX - rect.left;
     const cy = e.clientY - rect.top;
-    const p = page();
-    const before = screenToWorld(cx, cy);
     const factor = e.deltaY < 0 ? 1.12 : 0.89;
-    p.zoom = Math.min(8.0, Math.max(0.1, p.zoom * factor));
-    p.pan.x = cx - before.x * p.zoom;
-    p.pan.y = cy - before.y * p.zoom;
+    setZoom(page().zoom * factor, cx, cy);
   },
   { passive: false }
 );
@@ -678,9 +1225,10 @@ function addStencilToCanvas(item) {
     z: p.nodes.length + 1,
   };
   p.nodes.push(newNode);
+  invalidateGeometry();
   state.selectedNodeId = newNode.id;
   state.selectedEdgeId = null;
-  syncInspector();
+  renderFormatPanel();
 }
 
 function renderPalette(filter = "") {
@@ -718,20 +1266,25 @@ function renderPalette(filter = "") {
 document.getElementById("palette-search").addEventListener("input", (e) => renderPalette(e.target.value));
 renderPalette();
 
-function renderOutline() {
-  const list = document.getElementById("outline-list");
-  list.innerHTML = "";
-  for (const n of page().nodes) {
-    const el = document.createElement("div");
-    el.className = "outline-item" + (n.id === state.selectedNodeId ? " active" : "");
-    el.innerHTML = `<span>${n.title}</span><span style="opacity:0.6">${n.shape}</span>`;
-    el.onclick = () => {
-      state.selectedNodeId = n.id;
-      state.selectedEdgeId = null;
-      syncInspector();
-    };
-    list.appendChild(el);
-  }
+function addNewPage() {
+  const id = state.pages.length + 1;
+  state.pages.push({
+    id,
+    name: `Page-${id}`,
+    pan: { x: 80, y: 60 },
+    zoom: 1.0,
+    nodes: [],
+    edges: [],
+    undoStack: [],
+    redoStack: [],
+  });
+  state.activePageId = id;
+  state.selectedNodeId = null;
+  state.selectedEdgeId = null;
+  invalidateGeometry();
+  renderPageTabs();
+  renderFormatPanel();
+  updateZoomLabel();
 }
 
 function renderPageTabs() {
@@ -745,195 +1298,68 @@ function renderPageTabs() {
       state.activePageId = p.id;
       state.selectedNodeId = p.nodes[0]?.id || null;
       state.selectedEdgeId = null;
+      invalidateGeometry();
       renderPageTabs();
-      syncInspector();
+      renderFormatPanel();
+      updateZoomLabel();
     };
     container.appendChild(tab);
   }
   const addBtn = document.createElement("button");
   addBtn.textContent = "+ Page";
-  addBtn.onclick = () => {
-    const id = state.pages.length + 1;
-    state.pages.push({
-      id,
-      name: `Page-${id}`,
-      pan: { x: 80, y: 60 },
-      zoom: 1.0,
-      nodes: [],
-      edges: [],
-      undoStack: [],
-      redoStack: [],
-    });
-    state.activePageId = id;
-    renderPageTabs();
-    syncInspector();
-  };
+  addBtn.onclick = addNewPage;
   container.appendChild(addBtn);
 }
 renderPageTabs();
 
-function syncInspector() {
-  renderOutline();
+function bringToFront() {
   const p = page();
-  const n = p.nodes.find((item) => item.id === state.selectedNodeId);
-  const edge = p.edges.find((item) => item.id === state.selectedEdgeId);
-
-  // Sync Node Inspector
-  const titleEl = document.getElementById("insp-title");
-  const bodyEl = document.getElementById("insp-body");
-  const shapeEl = document.getElementById("insp-shape");
-  const fillEl = document.getElementById("insp-fill");
-  const strokeEl = document.getElementById("insp-stroke");
-  const xEl = document.getElementById("insp-x");
-  const yEl = document.getElementById("insp-y");
-  const wEl = document.getElementById("insp-w");
-  const hEl = document.getElementById("insp-h");
-
-  if (n) {
-    titleEl.value = n.title;
-    bodyEl.value = n.body || "";
-    shapeEl.value = n.shape || "card";
-    fillEl.value = n.fill;
-    strokeEl.value = n.stroke;
-    xEl.value = Math.round(n.x);
-    yEl.value = Math.round(n.y);
-    wEl.value = Math.round(n.w);
-    hEl.value = Math.round(n.h);
-  } else {
-    titleEl.value = "";
-    bodyEl.value = "";
-    xEl.value = "";
-    yEl.value = "";
-    wEl.value = "";
-    hEl.value = "";
-  }
-
-  // Sync Edge Inspector
-  const edgeLabelEl = document.getElementById("edge-label");
-  const edgeKindEl = document.getElementById("edge-kind");
-  const edgeAnimEl = document.getElementById("edge-anim");
-  const edgeSrcPortEl = document.getElementById("edge-src-port");
-  const edgeDstPortEl = document.getElementById("edge-dst-port");
-  const edgeColorEl = document.getElementById("edge-color");
-  const edgeWidthEl = document.getElementById("edge-width");
-
-  if (edge) {
-    edgeLabelEl.value = edge.label || "";
-    edgeKindEl.value = edge.kind || "bezier";
-    edgeAnimEl.value = edge.anim || "pulse";
-    edgeSrcPortEl.value = edge.sourcePort || "right";
-    edgeDstPortEl.value = edge.targetPort || "left";
-    edgeColorEl.value = edge.color || "#818cf8";
-    edgeWidthEl.value = edge.width || 2.2;
-  } else {
-    edgeLabelEl.value = "";
-  }
-}
-syncInspector();
-
-for (const [id, key, isNum] of [
-  ["insp-title", "title", false],
-  ["insp-body", "body", false],
-  ["insp-shape", "shape", false],
-  ["insp-fill", "fill", false],
-  ["insp-stroke", "stroke", false],
-  ["insp-x", "x", true],
-  ["insp-y", "y", true],
-  ["insp-w", "w", true],
-  ["insp-h", "h", true],
-]) {
-  document.getElementById(id).addEventListener("input", (e) => {
-    const n = page().nodes.find((item) => item.id === state.selectedNodeId);
-    if (!n) return;
-    n[key] = isNum ? Number(e.target.value) || 40 : e.target.value;
-    renderOutline();
-  });
-}
-
-// Edge Inspector Listeners
-for (const [id, key, isNum] of [
-  ["edge-label", "label", false],
-  ["edge-kind", "kind", false],
-  ["edge-anim", "anim", false],
-  ["edge-src-port", "sourcePort", false],
-  ["edge-dst-port", "targetPort", false],
-  ["edge-color", "color", false],
-  ["edge-width", "width", true],
-]) {
-  document.getElementById(id).addEventListener("input", (e) => {
-    const edge = page().edges.find((item) => item.id === state.selectedEdgeId);
-    if (!edge) return;
-    edge[key] = isNum ? Number(e.target.value) || 2 : e.target.value;
-  });
-}
-
-document.getElementById("btn-edge-reverse").onclick = () => {
-  const edge = page().edges.find((item) => item.id === state.selectedEdgeId);
-  if (!edge) return;
-  saveSnapshot();
-  const tmpNode = edge.source;
-  const tmpPort = edge.sourcePort;
-  edge.source = edge.target;
-  edge.sourcePort = edge.targetPort;
-  edge.target = tmpNode;
-  edge.targetPort = tmpPort;
-  syncInspector();
-};
-
-document.getElementById("btn-edge-reset").onclick = () => {
-  const edge = page().edges.find((item) => item.id === state.selectedEdgeId);
-  if (!edge) return;
-  saveSnapshot();
-  edge.bend = null;
-};
-
-document.getElementById("btn-edge-delete").onclick = () => {
-  deleteSelected();
-};
-
-document.getElementById("btn-front").onclick = () => {
-  const p = page();
-  const n = p.nodes.find((item) => item.id === state.selectedNodeId);
+  const n = nodeMap.get(state.selectedNodeId);
   if (!n) return;
   n.z = Math.max(0, ...p.nodes.map((x) => x.z || 0)) + 1;
-};
+  p.nodes.sort((a, b) => (a.z || 0) - (b.z || 0));
+}
 
-document.getElementById("btn-back").onclick = () => {
+function sendToBack() {
   const p = page();
-  const n = p.nodes.find((item) => item.id === state.selectedNodeId);
+  const n = nodeMap.get(state.selectedNodeId);
   if (!n) return;
   n.z = Math.min(0, ...p.nodes.map((x) => x.z || 0)) - 1;
-};
+  p.nodes.sort((a, b) => (a.z || 0) - (b.z || 0));
+}
 
 function undo() {
   const p = page();
   if (!p.undoStack.length) return;
-  p.redoStack.push(JSON.stringify({ nodes: p.nodes, edges: p.edges }));
+  p.redoStack.push(JSON.stringify({ nodes: p.nodes, edges: p.edges.map(({ _geo, _ver, ...r }) => r) }));
   const prev = JSON.parse(p.undoStack.pop());
   p.nodes = prev.nodes;
   p.edges = prev.edges;
-  syncInspector();
+  invalidateGeometry();
+  renderFormatPanel();
 }
 
 function redo() {
   const p = page();
   if (!p.redoStack.length) return;
-  p.undoStack.push(JSON.stringify({ nodes: p.nodes, edges: p.edges }));
+  p.undoStack.push(JSON.stringify({ nodes: p.nodes, edges: p.edges.map(({ _geo, _ver, ...r }) => r) }));
   const next = JSON.parse(p.redoStack.pop());
   p.nodes = next.nodes;
   p.edges = next.edges;
-  syncInspector();
+  invalidateGeometry();
+  renderFormatPanel();
 }
 
 function duplicateSelected() {
   const p = page();
-  const n = p.nodes.find((item) => item.id === state.selectedNodeId);
+  const n = nodeMap.get(state.selectedNodeId);
   if (!n) return;
   saveSnapshot();
   const copy = { ...n, id: ++state.nextId, x: n.x + 30, y: n.y + 30 };
   p.nodes.push(copy);
+  invalidateGeometry();
   state.selectedNodeId = copy.id;
-  syncInspector();
+  renderFormatPanel();
 }
 
 function deleteSelected() {
@@ -942,7 +1368,8 @@ function deleteSelected() {
     saveSnapshot();
     p.edges = p.edges.filter((e) => e.id !== state.selectedEdgeId);
     state.selectedEdgeId = null;
-    syncInspector();
+    invalidateGeometry();
+    renderFormatPanel();
     return;
   }
   if (!state.selectedNodeId) return;
@@ -950,7 +1377,8 @@ function deleteSelected() {
   p.nodes = p.nodes.filter((n) => n.id !== state.selectedNodeId);
   p.edges = p.edges.filter((e) => e.source !== state.selectedNodeId && e.target !== state.selectedNodeId);
   state.selectedNodeId = null;
-  syncInspector();
+  invalidateGeometry();
+  renderFormatPanel();
 }
 
 function runHierarchicalLayout() {
@@ -958,9 +1386,9 @@ function runHierarchicalLayout() {
   saveSnapshot();
   const layers = {};
   p.nodes.forEach((n) => (layers[n.id] = 0));
-  for (let i = 0; i < p.nodes.length; i++) {
+  for (let i = 0; i < Math.min(20, p.nodes.length); i++) {
     for (const e of p.edges) {
-      if ((layers[e.target] || 0) <= (layers[e.source] || 0)) {
+      if ((layers[e.target] || 0) <= (layers[e.source] || 0) && e.source !== e.target) {
         layers[e.target] = (layers[e.source] || 0) + 1;
       }
     }
@@ -973,37 +1401,102 @@ function runHierarchicalLayout() {
   }
   Object.entries(byLayer).forEach(([layerIdx, group]) => {
     group.forEach((n, sibIdx) => {
-      n.x = 100 + Number(layerIdx) * 260;
-      n.y = 80 + sibIdx * 125;
+      n.x = 90 + Number(layerIdx) * 250;
+      n.y = 70 + sibIdx * 125;
     });
   });
   p.edges.forEach((e) => (e.bend = null));
-  syncInspector();
+  invalidateGeometry();
+  renderFormatPanel();
 }
 
 function runGridLayout() {
   const p = page();
   saveSnapshot();
+  const cols = Math.max(3, Math.ceil(Math.sqrt(p.nodes.length)));
   p.nodes.forEach((n, idx) => {
-    const col = idx % 3;
-    const row = Math.floor(idx / 3);
-    n.x = 100 + col * 240;
-    n.y = 90 + row * 135;
+    const col = idx % cols;
+    const row = Math.floor(idx / cols);
+    n.x = 80 + col * 230;
+    n.y = 70 + row * 130;
   });
   p.edges.forEach((e) => (e.bend = null));
-  syncInspector();
+  invalidateGeometry();
+  renderFormatPanel();
+}
+
+function runRadialLayout() {
+  const p = page();
+  saveSnapshot();
+  const count = Math.max(1, p.nodes.length);
+  const radius = Math.max(180, count * 28);
+  const cx = 420, cy = 280;
+  p.nodes.forEach((n, idx) => {
+    const angle = (idx / count) * Math.PI * 2;
+    n.x = Math.round(cx + radius * Math.cos(angle) - n.w / 2);
+    n.y = Math.round(cy + radius * Math.sin(angle) - n.h / 2);
+  });
+  p.edges.forEach((e) => (e.bend = null));
+  invalidateGeometry();
+  renderFormatPanel();
+}
+
+function generateStressGraph(count) {
+  const p = page();
+  saveSnapshot();
+  p.nodes = [];
+  p.edges = [];
+  const cols = Math.ceil(Math.sqrt(count));
+  for (let i = 1; i <= count; i++) {
+    const c = (i - 1) % cols;
+    const r = Math.floor((i - 1) / cols);
+    p.nodes.push({
+      id: i,
+      title: `Service-${i}`,
+      body: `shard-${c}-${r}`,
+      x: 60 + c * 220,
+      y: 60 + r * 120,
+      w: 165,
+      h: 74,
+      fill: "#1e293b",
+      stroke: "#38bdf8",
+      shape: i % 4 === 0 ? "hexagon" : "card",
+      z: i,
+    });
+    if (i > 1) {
+      p.edges.push({
+        id: 1000 + i,
+        source: Math.max(1, i - 1),
+        sourcePort: "right",
+        target: i,
+        targetPort: "left",
+        label: "",
+        anim: i % 2 === 0 ? "ants" : "pulse",
+        kind: "bezier",
+        color: "#818cf8",
+        width: 2,
+        bend: null,
+      });
+    }
+  }
+  invalidateGeometry();
+  renderFormatPanel();
 }
 
 document.getElementById("btn-undo").onclick = undo;
 document.getElementById("btn-redo").onclick = redo;
 document.getElementById("btn-duplicate").onclick = duplicateSelected;
 document.getElementById("btn-delete").onclick = deleteSelected;
+document.getElementById("btn-zoom-in").onclick = () => setZoom(page().zoom * 1.2);
+document.getElementById("btn-zoom-out").onclick = () => setZoom(page().zoom / 1.2);
+document.getElementById("btn-layout-hier").onclick = runHierarchicalLayout;
+
 document.getElementById("select-edge-anim").onchange = (e) => {
   state.edgeAnimPreset = e.target.value;
   const selEdge = page().edges.find((ed) => ed.id === state.selectedEdgeId);
   if (selEdge) {
     selEdge.anim = state.edgeAnimPreset;
-    syncInspector();
+    renderFormatPanel();
   }
 };
 document.getElementById("select-edge-kind").onchange = (e) => {
@@ -1011,15 +1504,10 @@ document.getElementById("select-edge-kind").onchange = (e) => {
   const selEdge = page().edges.find((ed) => ed.id === state.selectedEdgeId);
   if (selEdge) {
     selEdge.kind = state.edgeKindPreset;
-    syncInspector();
+    invalidateGeometry();
+    renderFormatPanel();
   }
 };
-document.getElementById("select-theme").onchange = (e) => {
-  state.theme = e.target.value;
-  document.documentElement.setAttribute("data-theme", state.theme);
-};
-document.getElementById("btn-layout-hier").onclick = runHierarchicalLayout;
-document.getElementById("btn-layout-grid").onclick = runGridLayout;
 
 function downloadFile(filename, content, mime) {
   const blob = new Blob([content], { type: mime });
@@ -1059,22 +1547,21 @@ function exportAnimatedSvg() {
   downloadFile("diagram-animated.svg", svg, "image/svg+xml");
 }
 
-document.getElementById("btn-export-drawio").onclick = exportDrawioXml;
-document.getElementById("btn-export-svg").onclick = exportAnimatedSvg;
-
-// Developer Command Palette (Ctrl+K)
+// Command Palette (Ctrl+K)
 const cmdOverlay = document.getElementById("cmd-overlay");
 const cmdInput = document.getElementById("cmd-input");
 const cmdList = document.getElementById("cmd-list");
 
 const COMMANDS = [
-  { label: "Auto-Layout: Sugiyama Hierarchical", shortcut: "Layout", run: runHierarchicalLayout },
-  { label: "Auto-Layout: Uniform Grid", shortcut: "Layout", run: runGridLayout },
-  { label: "Theme: Switch to Dark Mode", shortcut: "Theme", run: () => { document.getElementById("select-theme").value = "dark"; document.documentElement.setAttribute("data-theme", "dark"); } },
-  { label: "Theme: Switch to Light Mode", shortcut: "Theme", run: () => { document.getElementById("select-theme").value = "light"; document.documentElement.setAttribute("data-theme", "light"); } },
-  { label: "Theme: Switch to High Contrast", shortcut: "Theme", run: () => { document.getElementById("select-theme").value = "contrast"; document.documentElement.setAttribute("data-theme", "contrast"); } },
-  { label: "Export: Download .drawio XML", shortcut: "IO", run: exportDrawioXml },
-  { label: "Export: Download Animated SVG", shortcut: "IO", run: exportAnimatedSvg },
+  { label: "Auto-Layout: Sugiyama Hierarchical", shortcut: "Arrange", run: runHierarchicalLayout },
+  { label: "Auto-Layout: Uniform Grid", shortcut: "Arrange", run: runGridLayout },
+  { label: "Auto-Layout: Radial Ring", shortcut: "Arrange", run: runRadialLayout },
+  { label: "Theme: Dark Mode", shortcut: "View", run: () => handleMenuAction("theme-dark") },
+  { label: "Theme: Light Mode", shortcut: "View", run: () => handleMenuAction("theme-light") },
+  { label: "Theme: High Contrast", shortcut: "View", run: () => handleMenuAction("theme-contrast") },
+  { label: "Export: Download .drawio XML", shortcut: "File", run: exportDrawioXml },
+  { label: "Export: Download Animated SVG", shortcut: "File", run: exportAnimatedSvg },
+  { label: "Benchmark: Generate 100-Node Graph", shortcut: "Extras", run: () => generateStressGraph(100) },
   ...STENCILS.map((s) => ({ label: `Add ${s.icon} ${s.label}`, shortcut: s.category, run: () => addStencilToCanvas(s) })),
 ];
 
@@ -1121,6 +1608,7 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeCommandPalette();
     inlineEditor.style.display = "none";
+    menuItems.forEach((m) => m.classList.remove("open"));
     return;
   }
   if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
@@ -1136,7 +1624,7 @@ window.addEventListener("keydown", (e) => {
   } else if (e.key === "Delete" || e.key === "Backspace") {
     deleteSelected();
   } else if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-    const n = page().nodes.find((item) => item.id === state.selectedNodeId);
+    const n = nodeMap.get(state.selectedNodeId);
     if (!n) return;
     e.preventDefault();
     const step = e.shiftKey ? 20 : 5;
@@ -1144,19 +1632,56 @@ window.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown") n.y += step;
     if (e.key === "ArrowLeft") n.x -= step;
     if (e.key === "ArrowRight") n.x += step;
-    syncInspector();
+    invalidateGeometry();
+    updateArrangeInputsLive(n);
   }
 });
 
-function evalBezier(p0, p1, p2, p3, t) {
-  const u = 1 - t;
-  return {
-    x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
-    y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y,
-  };
+// ============================================================================
+// 3. ULTRA-FAST O(1) OFFSCREEN GRID PATTERN & FRUSTUM-CULLED RENDERER
+// ============================================================================
+function drawInfiniteGridFast(p) {
+  if (state.gridStyle === "off") return;
+  const step = Math.round(state.gridSize * p.zoom);
+  if (step < 6) return;
+
+  const key = `${state.theme}:${state.gridStyle}:${step}`;
+  if (key !== cachedGridKey) {
+    cachedGridKey = key;
+    const tile = document.createElement("canvas");
+    tile.width = step;
+    tile.height = step;
+    const tctx = tile.getContext("2d");
+    const color =
+      state.theme === "light" ? "#cbd5e1" : state.theme === "contrast" ? "#404040" : "#263346";
+
+    if (state.gridStyle === "dots") {
+      tctx.fillStyle = color;
+      tctx.fillRect(0, 0, 2, 2);
+    } else {
+      tctx.strokeStyle = color;
+      tctx.lineWidth = 1;
+      tctx.beginPath();
+      tctx.moveTo(0, 0);
+      tctx.lineTo(step, 0);
+      tctx.moveTo(0, 0);
+      tctx.lineTo(0, step);
+      tctx.stroke();
+    }
+    cachedGridPattern = ctx.createPattern(tile, "repeat");
+  }
+
+  if (cachedGridPattern) {
+    ctx.save();
+    const ox = ((p.pan.x % step) + step) % step;
+    const oy = ((p.pan.y % step) + step) % step;
+    ctx.translate(ox, oy);
+    ctx.fillStyle = cachedGridPattern;
+    ctx.fillRect(-ox, -oy, canvas.width, canvas.height);
+    ctx.restore();
+  }
 }
 
-// Draw all 24+ specialized vector shapes & symbols
 function drawNodeShape(ctx, n, textColor) {
   const { x, y, w, h, shape } = n;
 
@@ -1382,7 +1907,6 @@ function drawNodeShape(ctx, n, textColor) {
     ctx.stroke();
   }
 
-  // Labels
   ctx.fillStyle = textColor;
   ctx.font = "600 13px Inter, sans-serif";
   ctx.textAlign = "center";
@@ -1407,7 +1931,6 @@ function drawNodeShape(ctx, n, textColor) {
 function drawArrowhead(ctx, fromPt, toPt, color) {
   const angle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x);
   const headLen = 10;
-  ctx.save();
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.moveTo(toPt.x, toPt.y);
@@ -1415,8 +1938,9 @@ function drawArrowhead(ctx, fromPt, toPt, color) {
   ctx.lineTo(toPt.x - headLen * Math.cos(angle + Math.PI / 6), toPt.y - headLen * Math.sin(angle + Math.PI / 6));
   ctx.closePath();
   ctx.fill();
-  ctx.restore();
 }
+
+let statusFrameCounter = 0;
 
 function renderLoop(timestamp) {
   const dt = Math.max(1, timestamp - state.lastFrameTime);
@@ -1425,46 +1949,54 @@ function renderLoop(timestamp) {
 
   const timeSec = timestamp * 0.001;
   const p = page();
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 1. Infinite pan-zoom dot grid
-  const gridStep = 20 * p.zoom;
-  if (gridStep >= 6) {
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--grid-dot").trim() || "#334155";
-    const startX = ((p.pan.x % gridStep) + gridStep) % gridStep;
-    const startY = ((p.pan.y % gridStep) + gridStep) % gridStep;
-    for (let x = startX; x < canvas.width; x += gridStep) {
-      for (let y = startY; y < canvas.height; y += gridStep) {
-        ctx.fillRect(x - 1, y - 1, 2, 2);
-      }
-    }
-  }
+  // Clear background without DOM getComputedStyle
+  ctx.fillStyle = state.theme === "light" ? "#f8fafc" : state.theme === "contrast" ? "#000000" : "#0b0f19";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 1. O(1) Cached Pattern Grid
+  drawInfiniteGridFast(p);
+
+  // Compute visible world frustum for culling off-screen nodes/edges
+  const viewTL = screenToWorld(0, 0);
+  const viewBR = screenToWorld(canvas.width, canvas.height);
 
   ctx.save();
   ctx.translate(p.pan.x, p.pan.y);
   ctx.scale(p.zoom, p.zoom);
 
   // 2. Smart Alignment Guides
-  ctx.strokeStyle = "#f43f5e";
-  ctx.lineWidth = 1.2 / p.zoom;
-  ctx.setLineDash([4 / p.zoom, 4 / p.zoom]);
-  for (const g of state.smartGuides) {
+  if (state.smartGuides.length) {
+    ctx.strokeStyle = "#f43f5e";
+    ctx.lineWidth = 1.2 / p.zoom;
+    ctx.setLineDash([4 / p.zoom, 4 / p.zoom]);
     ctx.beginPath();
-    if (g.type === "v") {
-      ctx.moveTo(g.x, g.y1);
-      ctx.lineTo(g.x, g.y2);
-    } else {
-      ctx.moveTo(g.x1, g.y);
-      ctx.lineTo(g.x2, g.y);
+    for (const g of state.smartGuides) {
+      if (g.type === "v") {
+        ctx.moveTo(g.x, g.y1);
+        ctx.lineTo(g.x, g.y2);
+      } else {
+        ctx.moveTo(g.x1, g.y);
+        ctx.lineTo(g.x2, g.y);
+      }
     }
     ctx.stroke();
+    ctx.setLineDash([]);
   }
-  ctx.setLineDash([]);
 
-  // 3. Edges, Animations & Adjustable Control Handles
+  // 3. Frustum-Culled Edges & Zero-ShadowBlur Animations
   for (const e of p.edges) {
     const geo = getEdgeGeometry(e);
     if (!geo) continue;
+    if (
+      geo.bounds.maxX < viewTL.x ||
+      geo.bounds.minX > viewBR.x ||
+      geo.bounds.maxY < viewTL.y ||
+      geo.bounds.minY > viewBR.y
+    ) {
+      continue;
+    }
+
     const isSelected = e.id === state.selectedEdgeId;
     const strokeColor = isSelected ? "#38bdf8" : e.color || "#818cf8";
 
@@ -1485,36 +2017,33 @@ function renderLoop(timestamp) {
     if (e.anim === "ants") {
       ctx.setLineDash([9, 5]);
       ctx.lineDashOffset = -timeSec * 36;
-    } else {
-      ctx.setLineDash([]);
     }
     ctx.stroke();
-    ctx.setLineDash([]);
+    if (e.anim === "ants") ctx.setLineDash([]);
 
-    // Arrowhead
     const prevPt = geo.samples[Math.max(0, geo.samples.length - 2)];
     drawArrowhead(ctx, prevPt, geo.p3, strokeColor);
 
-    // Pulse particles
+    // Fast dual-circle glow pulse (no expensive Gaussian shadowBlur!)
     if (e.anim === "pulse") {
       for (const offset of [0, 0.5]) {
         const t = (timeSec * 0.55 + offset) % 1;
         const idx = Math.min(geo.samples.length - 1, Math.floor(t * (geo.samples.length - 1)));
         const pt = geo.samples[idx];
+        ctx.fillStyle = "rgba(56, 189, 248, 0.28)";
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
-        ctx.fillStyle = "#38bdf8";
-        ctx.shadowColor = "#38bdf8";
-        ctx.shadowBlur = 12;
+        ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
         ctx.fill();
-        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#38bdf8";
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
-    // Edge Label pill
     if (e.label) {
       ctx.font = "600 11px Inter, sans-serif";
-      const textW = ctx.measureText(e.label).width + 12;
+      const textW = e.label.length * 7 + 14;
       ctx.fillStyle = state.theme === "light" ? "#ffffff" : "#0f172a";
       ctx.strokeStyle = strokeColor;
       ctx.lineWidth = 1;
@@ -1527,9 +2056,7 @@ function renderLoop(timestamp) {
       ctx.fillText(e.label, geo.midPoint.x, geo.midPoint.y + 4);
     }
 
-    // Interactive Bend & Endpoint Handles when Edge is Selected!
     if (isSelected) {
-      // Guide lines from endpoints to bend knob
       ctx.strokeStyle = "rgba(251, 191, 36, 0.45)";
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
@@ -1539,7 +2066,6 @@ function renderLoop(timestamp) {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Center Bend Knob (Yellow/Amber circle)
       ctx.beginPath();
       ctx.arc(geo.midPoint.x, geo.midPoint.y, 7, 0, Math.PI * 2);
       ctx.fillStyle = "#fbbf24";
@@ -1548,7 +2074,6 @@ function renderLoop(timestamp) {
       ctx.fill();
       ctx.stroke();
 
-      // Source & Target Reconnect Knobs (Cyan circles)
       for (const ep of [geo.p0, geo.p3]) {
         ctx.beginPath();
         ctx.arc(ep.x, ep.y, 6.5, 0, Math.PI * 2);
@@ -1561,7 +2086,7 @@ function renderLoop(timestamp) {
     }
   }
 
-  // Active connection drag preview line + Magnetic Target Port Snap Ring!
+  // Active connection drag preview line + Magnetic Target Port Snap Ring
   if (state.connectingFrom || state.reconnectingEdge) {
     let startPt = { x: 0, y: 0 };
     if (state.connectingFrom) {
@@ -1589,14 +2114,24 @@ function renderLoop(timestamp) {
     }
   }
 
-  // 4. Nodes, Ports, Resize Handle & Quick-Add Arrows
-  const sortedNodes = [...p.nodes].sort((a, b) => (a.z || 0) - (b.z || 0));
-  for (const n of sortedNodes) {
+  // 4. Frustum-Culled Nodes (Zero shadowBlur!)
+  for (const n of p.nodes) {
+    if (
+      n.x + n.w + 35 < viewTL.x ||
+      n.x - 35 > viewBR.x ||
+      n.y + n.h + 35 < viewTL.y ||
+      n.y - 35 > viewBR.y
+    ) {
+      continue;
+    }
     const selected = n.id === state.selectedNodeId;
-    ctx.save();
-    ctx.shadowColor = selected ? "rgba(56, 189, 248, 0.35)" : "rgba(0, 0, 0, 0.25)";
-    ctx.shadowBlur = selected ? 18 : 10;
-    ctx.shadowOffsetY = 4;
+
+    // Fast selection halo
+    if (selected) {
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.28)";
+      ctx.lineWidth = 6;
+      ctx.strokeRect(n.x - 2, n.y - 2, n.w + 4, n.h + 4);
+    }
 
     ctx.fillStyle = n.fill;
     ctx.strokeStyle = selected ? "#38bdf8" : n.stroke;
@@ -1604,14 +2139,12 @@ function renderLoop(timestamp) {
 
     const textColor = state.theme === "light" && n.fill === "#ffffff" ? "#0f172a" : "#f8fafc";
     drawNodeShape(ctx, n, textColor);
-    ctx.restore();
 
-    // Ports / Handles (larger and glowing on hover so dragging connections is effortless!)
     for (const port of getNodePorts(n)) {
       const isHovered =
         state.hoveredPort && state.hoveredPort.nodeId === n.id && state.hoveredPort.side === port.side;
       ctx.beginPath();
-      ctx.arc(port.x, port.y, isHovered ? 7.5 : 5.5, 0, Math.PI * 2);
+      ctx.arc(port.x, port.y, isHovered ? 7.5 : 5, 0, Math.PI * 2);
       ctx.fillStyle = isHovered ? "#34d399" : "#0b0f19";
       ctx.strokeStyle = isHovered ? "#ffffff" : "#818cf8";
       ctx.lineWidth = 2;
@@ -1620,11 +2153,9 @@ function renderLoop(timestamp) {
     }
 
     if (selected) {
-      // Bottom-right resize handle
       ctx.fillStyle = "#38bdf8";
       ctx.fillRect(n.x + n.w - 5, n.y + n.h - 5, 10, 10);
 
-      // Draw.io Quick-Add Directional Arrows
       for (const arrow of getQuickArrows(n)) {
         ctx.beginPath();
         ctx.arc(arrow.x, arrow.y, 9.5, 0, Math.PI * 2);
@@ -1643,24 +2174,28 @@ function renderLoop(timestamp) {
 
   ctx.restore();
 
-  // 5. Render Minimap
-  minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
-  const scale = 0.14;
-  minimapCtx.save();
-  minimapCtx.translate(14, 14);
-  minimapCtx.scale(scale, scale);
-  for (const n of p.nodes) {
-    minimapCtx.fillStyle = n.id === state.selectedNodeId ? "#38bdf8" : "#64748b";
-    minimapCtx.fillRect(n.x, n.y, n.w, n.h);
+  // 5. Dirty-Checked Minimap (only redraws when nodes, pan, or zoom change!)
+  if (state.minimapDirty) {
+    state.minimapDirty = false;
+    minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+    const scale = 0.13;
+    minimapCtx.save();
+    minimapCtx.translate(14, 14);
+    minimapCtx.scale(scale, scale);
+    for (const n of p.nodes) {
+      minimapCtx.fillStyle = n.id === state.selectedNodeId ? "#38bdf8" : "#64748b";
+      minimapCtx.fillRect(n.x, n.y, n.w, n.h);
+    }
+    minimapCtx.strokeStyle = "#818cf8";
+    minimapCtx.lineWidth = 10;
+    minimapCtx.strokeRect(viewTL.x, viewTL.y, viewBR.x - viewTL.x, viewBR.y - viewTL.y);
+    minimapCtx.restore();
   }
-  const tl = screenToWorld(0, 0);
-  const br = screenToWorld(canvas.width, canvas.height);
-  minimapCtx.strokeStyle = "#818cf8";
-  minimapCtx.lineWidth = 10;
-  minimapCtx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
-  minimapCtx.restore();
 
-  document.getElementById("status-bar").textContent = `FPS: ${state.fps} | Zoom: ${Math.round(p.zoom * 100)}% | Nodes: ${p.nodes.length} | Edges: ${p.edges.length}`;
+  // Update status bar text every 10 frames to avoid DOM churn
+  if (++statusFrameCounter % 10 === 0) {
+    document.getElementById("status-bar").textContent = `FPS: ${state.fps} | Zoom: ${Math.round(p.zoom * 100)}% | Nodes: ${p.nodes.length} | Edges: ${p.edges.length}`;
+  }
   requestAnimationFrame(renderLoop);
 }
 requestAnimationFrame(renderLoop);

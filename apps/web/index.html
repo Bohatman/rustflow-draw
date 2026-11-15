@@ -9,41 +9,44 @@
         --bg-canvas: #f8fafc;
         --bg-panel: #ffffff;
         --bg-subtle: #f1f5f9;
+        --bg-hover: #e2e8f0;
         --border-color: #cbd5e1;
         --text-primary: #0f172a;
         --text-muted: #64748b;
         --accent: #4f46e5;
-        --accent-hover: #4338ca;
+        --accent-soft: rgba(79, 70, 229, 0.12);
         --grid-dot: #cbd5e1;
       }
       :root[data-theme="dark"] {
         --bg-canvas: #0b0f19;
         --bg-panel: #111827;
         --bg-subtle: #1e293b;
-        --border-color: #334155;
+        --bg-hover: #334155;
+        --border-color: #283548;
         --text-primary: #f8fafc;
         --text-muted: #94a3b8;
-        --accent: #818cf8;
-        --accent-hover: #6366f1;
-        --grid-dot: #334155;
+        --accent: #38bdf8;
+        --accent-soft: rgba(56, 189, 248, 0.14);
+        --grid-dot: #263346;
       }
       :root[data-theme="contrast"] {
         --bg-canvas: #000000;
         --bg-panel: #0a0a0a;
         --bg-subtle: #171717;
+        --bg-hover: #262626;
         --border-color: #facc15;
         --text-primary: #ffffff;
         --text-muted: #fef08a;
         --accent: #22d3ee;
-        --accent-hover: #06b6d4;
-        --grid-dot: #525252;
+        --accent-soft: rgba(34, 211, 238, 0.2);
+        --grid-dot: #404040;
       }
       * {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
         user-select: none;
-        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       }
       body {
         width: 100vw;
@@ -54,72 +57,136 @@
         background: var(--bg-canvas);
         color: var(--text-primary);
       }
-      header {
-        height: 48px;
+
+      /* 1. Draw.io Style Top Dropdown Menubar */
+      .menubar {
+        height: 32px;
         background: var(--bg-panel);
         border-bottom: 1px solid var(--border-color);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 14px;
-        z-index: 10;
+        padding: 0 12px;
+        z-index: 50;
       }
-      .brand {
+      .menubar-left {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 4px;
+      }
+      .brand-logo {
         font-weight: 700;
-        font-size: 14px;
-      }
-      .badge {
-        background: var(--bg-subtle);
+        font-size: 13px;
         color: var(--accent);
-        border: 1px solid var(--border-color);
-        font-size: 11px;
-        padding: 2px 8px;
-        border-radius: 999px;
-        font-weight: 600;
-      }
-      .toolbar-actions {
+        margin-right: 10px;
         display: flex;
         align-items: center;
         gap: 6px;
-        flex-wrap: wrap;
+      }
+      .menu-item {
+        position: relative;
+        padding: 4px 10px;
+        font-size: 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--text-primary);
+      }
+      .menu-item:hover,
+      .menu-item.open {
+        background: var(--bg-subtle);
+        color: var(--accent);
+      }
+      .dropdown-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        margin-top: 2px;
+        min-width: 210px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+        padding: 4px 0;
+        z-index: 100;
+      }
+      .menu-item.open .dropdown-menu {
+        display: block;
+      }
+      .dropdown-entry {
+        padding: 6px 14px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--text-primary);
+        cursor: pointer;
+      }
+      .dropdown-entry:hover {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .dropdown-shortcut {
+        font-size: 11px;
+        color: var(--text-muted);
+        font-family: monospace;
+      }
+      .dropdown-divider {
+        height: 1px;
+        background: var(--border-color);
+        margin: 4px 0;
+      }
+
+      /* 2. Compact Single-Line Quick Toolbar */
+      .quick-toolbar {
+        height: 36px;
+        background: var(--bg-panel);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 12px;
+        overflow-x: auto;
+        white-space: nowrap;
+        z-index: 40;
+      }
+      .toolbar-sep {
+        width: 1px;
+        height: 18px;
+        background: var(--border-color);
+        margin: 0 4px;
       }
       button, select, input {
         font-size: 12px;
-        border-radius: 6px;
+        border-radius: 5px;
         border: 1px solid var(--border-color);
         background: var(--bg-subtle);
         color: var(--text-primary);
-        padding: 5px 9px;
+        padding: 4px 8px;
         cursor: pointer;
-        transition: all 0.12s ease;
       }
       button:hover, select:hover {
-        border-color: var(--accent);
-      }
-      button.primary {
-        background: var(--accent);
-        color: #0b0f19;
-        font-weight: 600;
         border-color: var(--accent);
       }
       button.danger {
         border-color: #f43f5e;
         color: #f43f5e;
       }
+
+      /* Main 3-Column Workspace */
       .workspace {
         flex: 1;
         display: grid;
-        grid-template-columns: 270px 1fr 300px;
+        grid-template-columns: 250px 1fr 290px;
         overflow: hidden;
         position: relative;
       }
+
+      /* Left Sidebar: Stencil Palette */
       .sidebar-left {
         background: var(--bg-panel);
         border-right: 1px solid var(--border-color);
-        padding: 12px;
+        padding: 10px;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
@@ -127,66 +194,49 @@
       }
       .search-input {
         width: 100%;
-        padding: 7px 10px;
+        padding: 6px 9px;
         cursor: text;
       }
       .palette-section-title {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.06em;
         color: var(--text-muted);
-        margin-bottom: 6px;
+        margin-bottom: 5px;
       }
       .stencil-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 6px;
+        gap: 5px;
       }
       .stencil-card {
         border: 1px solid var(--border-color);
-        border-radius: 7px;
-        padding: 7px 6px;
+        border-radius: 6px;
+        padding: 6px 6px;
         font-size: 11px;
         font-weight: 500;
-        text-align: left;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
         background: var(--bg-subtle);
         cursor: pointer;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .stencil-card:hover {
         border-color: var(--accent);
         color: var(--accent);
       }
       .stencil-icon {
-        font-size: 14px;
-        width: 18px;
+        font-size: 13px;
+        width: 16px;
         text-align: center;
         flex-shrink: 0;
       }
-      .outline-list {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        max-height: 150px;
-        overflow-y: auto;
-      }
-      .outline-item {
-        font-size: 11px;
-        padding: 5px 8px;
-        border-radius: 5px;
-        cursor: pointer;
-        display: flex;
-        justify-content: space-between;
-        background: var(--bg-subtle);
-        border: 1px solid transparent;
-      }
-      .outline-item.active {
-        border-color: var(--accent);
-        color: var(--accent);
-      }
+
+      /* Center Canvas */
       .canvas-container {
         position: relative;
         width: 100%;
@@ -197,55 +247,111 @@
         width: 100%;
         height: 100%;
         display: block;
-        cursor: default;
       }
       .minimap {
         position: absolute;
-        right: 16px;
-        bottom: 16px;
-        width: 190px;
-        height: 125px;
+        right: 14px;
+        bottom: 14px;
+        width: 180px;
+        height: 115px;
         background: var(--bg-panel);
         border: 1px solid var(--border-color);
-        border-radius: 8px;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-        overflow: hidden;
+        border-radius: 6px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+        pointer-events: none;
       }
+
+      /* 3. Draw.io Style Right Format Panel (Context-Sensitive + Tabs) */
       .sidebar-right {
         background: var(--bg-panel);
         border-left: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .format-header {
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--bg-subtle);
+      }
+      .format-tabs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-panel);
+      }
+      .format-tab {
+        padding: 8px 4px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+      }
+      .format-tab.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .format-body {
+        flex: 1;
         padding: 12px;
+        overflow-y: auto;
         display: flex;
         flex-direction: column;
         gap: 12px;
-        overflow-y: auto;
       }
-      .inspector-group {
+      .format-section {
         display: flex;
         flex-direction: column;
         gap: 6px;
         padding-bottom: 10px;
         border-bottom: 1px solid var(--border-color);
       }
-      .inspector-group label {
+      .format-section label {
         font-size: 11px;
         color: var(--text-muted);
         font-weight: 600;
       }
-      .inspector-row {
+      .format-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 6px;
+        align-items: center;
       }
+      /* Draw.io Color Swatch Grid */
+      .swatch-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 5px;
+      }
+      .swatch {
+        height: 22px;
+        border-radius: 4px;
+        border: 2px solid transparent;
+        cursor: pointer;
+      }
+      .swatch:hover {
+        transform: scale(1.08);
+        border-color: #fff;
+      }
+
+      /* Footer Page Tabs */
       footer {
-        height: 34px;
+        height: 30px;
         background: var(--bg-panel);
         border-top: 1px solid var(--border-color);
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 0 12px;
-        font-size: 12px;
+        font-size: 11px;
       }
       .page-tabs {
         display: flex;
@@ -253,23 +359,23 @@
         gap: 4px;
       }
       .page-tab {
-        padding: 4px 12px;
+        padding: 3px 10px;
         border-radius: 4px;
         cursor: pointer;
         color: var(--text-muted);
         font-weight: 500;
       }
       .page-tab.active {
-        background: var(--bg-subtle);
+        background: var(--accent-soft);
         color: var(--accent);
-        border: 1px solid var(--border-color);
         font-weight: 600;
       }
       .status-bar {
         color: var(--text-muted);
-        font-size: 11px;
         font-family: monospace;
       }
+
+      /* Command Palette Modal */
       .cmd-overlay {
         position: fixed;
         inset: 0;
@@ -278,41 +384,41 @@
         align-items: flex-start;
         justify-content: center;
         padding-top: 12vh;
-        z-index: 100;
+        z-index: 200;
       }
       .cmd-overlay.open {
         display: flex;
       }
       .cmd-modal {
-        width: 540px;
+        width: 520px;
         background: var(--bg-panel);
         border: 1px solid var(--border-color);
-        border-radius: 10px;
+        border-radius: 8px;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
         overflow: hidden;
       }
       .cmd-input {
         width: 100%;
-        padding: 12px 14px;
-        font-size: 14px;
+        padding: 10px 14px;
+        font-size: 13px;
         border: none;
         border-bottom: 1px solid var(--border-color);
         border-radius: 0;
         outline: none;
       }
       .cmd-list {
-        max-height: 300px;
+        max-height: 280px;
         overflow-y: auto;
       }
       .cmd-item {
-        padding: 9px 14px;
+        padding: 8px 14px;
         font-size: 12px;
         display: flex;
         justify-content: space-between;
         cursor: pointer;
       }
       .cmd-item:hover {
-        background: var(--bg-subtle);
+        background: var(--accent-soft);
         color: var(--accent);
       }
       #inline-editor {
@@ -328,186 +434,129 @@
     </style>
   </head>
   <body>
-    <header>
-      <div class="brand">
-        <span>RustFlow Draw</span>
-        <span class="badge">v1.0 Dev Engine</span>
-        <button id="btn-cmd-palette" title="Command Palette (Ctrl+K)">⌘K / Ctrl+K</button>
-      </div>
-      <div class="toolbar-actions">
-        <button id="btn-undo" title="Undo (Ctrl+Z)">Undo</button>
-        <button id="btn-redo" title="Redo (Ctrl+Y)">Redo</button>
-        <button id="btn-duplicate" title="Duplicate (Ctrl+D)">Duplicate</button>
-        <button id="btn-delete" title="Delete Selected Node or Edge (Del)">Delete</button>
-        <select id="select-edge-kind" title="Default / Selected Edge Routing">
-          <option value="bezier">Route: Bezier</option>
-          <option value="smoothstep">Route: SmoothStep</option>
-          <option value="orthogonal">Route: Orthogonal</option>
-          <option value="straight">Route: Straight</option>
-        </select>
-        <select id="select-edge-anim" title="Default / Selected Edge Animation">
-          <option value="pulse">Anim: Pulse Particles</option>
-          <option value="ants">Anim: Marching Ants</option>
-          <option value="none">Anim: Static</option>
-        </select>
-        <button id="btn-layout-hier">Layout: Hierarchical</button>
-        <button id="btn-layout-grid">Layout: Grid</button>
-        <select id="select-theme" title="Developer Theme">
-          <option value="dark">Theme: Dark</option>
-          <option value="light">Theme: Light</option>
-          <option value="contrast">Theme: High Contrast</option>
-        </select>
-        <button id="btn-export-drawio" class="primary">Export .drawio</button>
-        <button id="btn-export-svg" class="primary">Export SVG</button>
-      </div>
-    </header>
+    <!-- Row 1: Draw.io Style Dropdown Menu Bar -->
+    <nav class="menubar" id="menubar">
+      <div class="menubar-left">
+        <div class="brand-logo">❖ RustFlow Draw</div>
 
+        <div class="menu-item" data-menu="file">
+          File
+          <div class="dropdown-menu">
+            <div class="dropdown-entry" data-action="new-page"><span>New Page Tab</span><span class="dropdown-shortcut">Page+</span></div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-entry" data-action="export-drawio"><span>Export .drawio (XML)</span><span class="dropdown-shortcut">.drawio</span></div>
+            <div class="dropdown-entry" data-action="export-svg"><span>Export Animated SVG</span><span class="dropdown-shortcut">.svg</span></div>
+            <div class="dropdown-entry" data-action="export-json"><span>Export Native JSON</span><span class="dropdown-shortcut">.json</span></div>
+          </div>
+        </div>
+
+        <div class="menu-item" data-menu="edit">
+          Edit
+          <div class="dropdown-menu">
+            <div class="dropdown-entry" data-action="undo"><span>Undo</span><span class="dropdown-shortcut">Ctrl+Z</span></div>
+            <div class="dropdown-entry" data-action="redo"><span>Redo</span><span class="dropdown-shortcut">Ctrl+Y</span></div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-entry" data-action="duplicate"><span>Duplicate Selected</span><span class="dropdown-shortcut">Ctrl+D</span></div>
+            <div class="dropdown-entry" data-action="delete"><span>Delete Selected</span><span class="dropdown-shortcut">Del</span></div>
+          </div>
+        </div>
+
+        <div class="menu-item" data-menu="view">
+          View
+          <div class="dropdown-menu">
+            <div class="dropdown-entry" data-action="zoom-in"><span>Zoom In</span><span class="dropdown-shortcut">+</span></div>
+            <div class="dropdown-entry" data-action="zoom-out"><span>Zoom Out</span><span class="dropdown-shortcut">-</span></div>
+            <div class="dropdown-entry" data-action="zoom-reset"><span>Reset View (100%)</span><span class="dropdown-shortcut">1:1</span></div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-entry" data-action="toggle-grid"><span>Toggle Grid (Dots / Lines / Off)</span></div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-entry" data-action="theme-dark"><span>Theme: Dark (Developer)</span></div>
+            <div class="dropdown-entry" data-action="theme-light"><span>Theme: Light</span></div>
+            <div class="dropdown-entry" data-action="theme-contrast"><span>Theme: High Contrast</span></div>
+          </div>
+        </div>
+
+        <div class="menu-item" data-menu="arrange">
+          Arrange
+          <div class="dropdown-menu">
+            <div class="dropdown-entry" data-action="layout-hier"><span>Auto-Layout: Hierarchical</span></div>
+            <div class="dropdown-entry" data-action="layout-grid"><span>Auto-Layout: Grid</span></div>
+            <div class="dropdown-entry" data-action="layout-radial"><span>Auto-Layout: Radial Ring</span></div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-entry" data-action="bring-front"><span>Bring to Front</span></div>
+            <div class="dropdown-entry" data-action="send-back"><span>Send to Back</span></div>
+          </div>
+        </div>
+
+        <div class="menu-item" data-menu="extras">
+          Extras
+          <div class="dropdown-menu">
+            <div class="dropdown-entry" data-action="cmd-palette"><span>Command Palette...</span><span class="dropdown-shortcut">Ctrl+K</span></div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-entry" data-action="stress-100"><span>Generate 100-Node Benchmark Graph</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size: 11px; color: var(--text-muted);">
+        Press <b>Ctrl+K</b> for Command Palette
+      </div>
+    </nav>
+
+    <!-- Row 2: Compact Quick Icon Toolbar -->
+    <div class="quick-toolbar">
+      <button id="btn-undo" title="Undo (Ctrl+Z)">↶ Undo</button>
+      <button id="btn-redo" title="Redo (Ctrl+Y)">↷ Redo</button>
+      <button id="btn-duplicate" title="Duplicate (Ctrl+D)">⧉ Duplicate</button>
+      <button id="btn-delete" title="Delete Selected (Del)">✕ Delete</button>
+      <div class="toolbar-sep"></div>
+      <button id="btn-zoom-out" title="Zoom Out">−</button>
+      <span id="zoom-label" style="font-size:11px; min-width:44px; text-align:center; font-family:monospace;">100%</span>
+      <button id="btn-zoom-in" title="Zoom In">+</button>
+      <div class="toolbar-sep"></div>
+      <select id="select-edge-kind" title="Edge Routing Style">
+        <option value="bezier">⤷ Bezier Curve</option>
+        <option value="orthogonal">↱ Orthogonal</option>
+        <option value="smoothstep">⤼ SmoothStep</option>
+        <option value="straight">→ Straight</option>
+      </select>
+      <select id="select-edge-anim" title="Edge Flow Animation">
+        <option value="pulse">⚡ Pulse Particles</option>
+        <option value="ants">⋯ Marching Ants</option>
+        <option value="none">─ Static</option>
+      </select>
+      <div class="toolbar-sep"></div>
+      <button id="btn-layout-hier" title="Sugiyama Layered Auto-Layout">☍ Auto-Layout</button>
+      <button id="btn-cmd-palette" title="Command Palette (Ctrl+K)">⌘K Search</button>
+    </div>
+
+    <!-- Main 3-Column Workspace -->
     <div class="workspace">
+      <!-- Left Sidebar: Shape & Symbol Stencils -->
       <aside class="sidebar-left">
-        <input id="palette-search" class="search-input" type="text" placeholder="Search 28+ shapes & symbols..." />
+        <input id="palette-search" class="search-input" type="text" placeholder="Search 27+ shapes & symbols..." />
         <div id="palette-list"></div>
-        <div class="palette-section-title" style="margin-top: 8px;">Outline / Layers</div>
-        <div id="outline-list" class="outline-list"></div>
       </aside>
 
+      <!-- Center Infinite Canvas -->
       <main class="canvas-container">
         <canvas id="rustflow-canvas"></canvas>
         <input id="inline-editor" type="text" />
-        <canvas id="minimap-canvas" class="minimap" width="190" height="125"></canvas>
+        <canvas id="minimap-canvas" class="minimap" width="180" height="115"></canvas>
       </main>
 
+      <!-- Right Sidebar: Draw.io Context-Sensitive Format Panel -->
       <aside class="sidebar-right">
-        <!-- Node Inspector Panel -->
-        <div id="node-inspector-panel">
-          <div class="palette-section-title">Node Inspector</div>
-          <div class="inspector-group">
-            <label>Node Title (or Double-Click)</label>
-            <input id="insp-title" type="text" placeholder="Select a node..." />
-            <label>Subtitle / Body</label>
-            <input id="insp-body" type="text" placeholder="Node description..." />
-            <label>Shape / Symbol Type</label>
-            <select id="insp-shape">
-              <option value="card">React Flow Card</option>
-              <option value="rounded">Terminator / Pill</option>
-              <option value="diamond">Decision Diamond</option>
-              <option value="cylinder">Database Cylinder</option>
-              <option value="parallelogram">Data I/O Parallelogram</option>
-              <option value="hexagon">Hexagon</option>
-              <option value="document">Document (Wavy)</option>
-              <option value="note">Sticky Note</option>
-              <option value="circle">Circle / Event</option>
-              <option value="actor">UML Actor (Stick Figure)</option>
-              <option value="uml_class">UML Class</option>
-              <option value="uml_interface">UML Interface «trait»</option>
-              <option value="uml_component">UML Component</option>
-              <option value="uml_package">UML Package</option>
-              <option value="gateway_xor">BPMN Exclusive Gateway (×)</option>
-              <option value="gateway_parallel">BPMN Parallel Gateway (+)</option>
-              <option value="timer">BPMN Timer Event (⏱)</option>
-              <option value="cloud">Cloud (GCP / Internet)</option>
-              <option value="queue">Message Queue (Kafka)</option>
-              <option value="server">Server Rack</option>
-              <option value="firewall">WAF / Firewall</option>
-              <option value="shield">Auth Security Shield</option>
-              <option value="browser">Browser Window</option>
-              <option value="mobile">Mobile App Screen</option>
-            </select>
-          </div>
-          <div class="inspector-group">
-            <label>Node Fill & Stroke Color</label>
-            <div class="inspector-row">
-              <input id="insp-fill" type="color" value="#1e293b" />
-              <input id="insp-stroke" type="color" value="#818cf8" />
-            </div>
-          </div>
-          <div class="inspector-group">
-            <label>Arrange (X, Y, W, H & Z-Order)</label>
-            <div class="inspector-row">
-              <input id="insp-x" type="number" placeholder="X" />
-              <input id="insp-y" type="number" placeholder="Y" />
-            </div>
-            <div class="inspector-row">
-              <input id="insp-w" type="number" placeholder="Width" />
-              <input id="insp-h" type="number" placeholder="Height" />
-            </div>
-            <div class="inspector-row">
-              <button id="btn-front">Bring to Front</button>
-              <button id="btn-back">Send to Back</button>
-            </div>
-          </div>
+        <div class="format-header">
+          <span id="format-context-title">Format Panel</span>
+          <span id="format-selection-badge" style="font-size:10px; color:var(--accent); font-family:monospace;">Diagram</span>
         </div>
-
-        <!-- Edge Inspector Panel (For Adjusting Edges) -->
-        <div id="edge-inspector-panel">
-          <div class="palette-section-title">Edge Inspector (Click Any Edge)</div>
-          <div class="inspector-group">
-            <label>Edge Label</label>
-            <input id="edge-label" type="text" placeholder="Click an edge on canvas..." />
-            <div class="inspector-row">
-              <div>
-                <label>Routing</label>
-                <select id="edge-kind" style="width:100%">
-                  <option value="bezier">Bezier Curve</option>
-                  <option value="smoothstep">SmoothStep</option>
-                  <option value="orthogonal">Orthogonal</option>
-                  <option value="straight">Straight Line</option>
-                </select>
-              </div>
-              <div>
-                <label>Animation</label>
-                <select id="edge-anim" style="width:100%">
-                  <option value="pulse">Pulse Dots</option>
-                  <option value="ants">Marching Ants</option>
-                  <option value="none">Static</option>
-                </select>
-              </div>
-            </div>
-            <div class="inspector-row">
-              <div>
-                <label>Source Port</label>
-                <select id="edge-src-port" style="width:100%">
-                  <option value="right">Right</option>
-                  <option value="bottom">Bottom</option>
-                  <option value="left">Left</option>
-                  <option value="top">Top</option>
-                </select>
-              </div>
-              <div>
-                <label>Target Port</label>
-                <select id="edge-dst-port" style="width:100%">
-                  <option value="left">Left</option>
-                  <option value="top">Top</option>
-                  <option value="right">Right</option>
-                  <option value="bottom">Bottom</option>
-                </select>
-              </div>
-            </div>
-            <div class="inspector-row">
-              <div>
-                <label>Edge Color</label>
-                <input id="edge-color" type="color" value="#818cf8" style="width:100%" />
-              </div>
-              <div>
-                <label>Stroke Width</label>
-                <input id="edge-width" type="number" min="1" max="10" step="0.5" value="2.2" style="width:100%" />
-              </div>
-            </div>
-            <div class="inspector-row" style="margin-top:4px;">
-              <button id="btn-edge-reverse">⇄ Reverse</button>
-              <button id="btn-edge-reset">↺ Reset Bend</button>
-            </div>
-            <button id="btn-edge-delete" class="danger" style="margin-top:4px;">Delete Selected Edge</button>
-          </div>
+        <div class="format-tabs" id="format-tabs">
+          <div class="format-tab active" data-tab="style">Style</div>
+          <div class="format-tab" data-tab="text">Text</div>
+          <div class="format-tab" data-tab="arrange">Arrange</div>
         </div>
-
-        <div class="inspector-group" style="border-bottom: none;">
-          <label>Connection & Edge Adjustment Tips</label>
-          <p style="font-size: 11px; color: var(--text-muted); line-height: 1.5;">
-            • <b>Connect Nodes:</b> Drag from any <b>Port circle</b> on a node and drop onto any target node or port (watch for the green magnetic snap ring!).<br/>
-            • <b>Adjust Edge Curve/Path:</b> Click any edge to select it, then drag its <b>center yellow bend handle</b> anywhere to reshape the curve!<br/>
-            • <b>Reconnect Edge Endpoints:</b> Drag the <b>cyan endpoint handles</b> of a selected edge to move it to another port or node.
-          </p>
-        </div>
+        <div class="format-body" id="format-body"></div>
       </aside>
     </div>
 
@@ -518,7 +567,7 @@
 
     <div class="cmd-overlay" id="cmd-overlay">
       <div class="cmd-modal">
-        <input id="cmd-input" class="cmd-input" type="text" placeholder="Type a command or stencil name (Esc to close)..." />
+        <input id="cmd-input" class="cmd-input" type="text" placeholder="Type a command or shape name (Esc to close)..." />
         <div id="cmd-list" class="cmd-list"></div>
       </div>
     </div>
