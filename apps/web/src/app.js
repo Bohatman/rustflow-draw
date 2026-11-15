@@ -1,67 +1,66 @@
-// High-Performance Draw.io + React Flow Web Engine
+// High-Performance Minimalist Draw.io + React Flow Web Engine
 // Features:
-// 1. Complete Keyboard Shortcut & Multi-Select System:
-//    - Ctrl+A (Select All), Ctrl+C (Copy), Ctrl+X (Cut), Ctrl+V (Paste with internal edge remapping), Ctrl+D (Duplicate)
-//    - Ctrl+Z (Undo), Ctrl+Y / Ctrl+Shift+Z (Redo), Del / Backspace (Delete selection), Esc (Deselect / Close)
-//    - Shift+Click (Toggle multi-select), Shift+Drag (Rubber-band Marquee Box Selection), Group Dragging & Group Styling
-//    - F2 / Enter (Inline label edit), Arrow Keys (Nudge 5px / Shift+Arrow 20px / Alt+Arrow 1px)
-//    - Ctrl+1 (Fit to Screen), Ctrl++ / Ctrl+- (Zoom), Ctrl+0 (Reset 100%), Ctrl+G (Toggle Grid), Ctrl+] / Ctrl+[ (Z-Order)
-//    - Ctrl+Shift+L (Auto-Layout), Ctrl+S (Save .drawio), Ctrl+E (Export SVG), Ctrl+K (Command Palette), ? (Shortcuts Modal)
-// 2. Authentic Draw.io Vector Symbols (3D Horizontal Queue Pipe, 3D Database Cylinder, Multi-Puff Cloud, BPMN/UML)
-// 3. 60-144 FPS Sub-Pixel Arc-Length Edge Animations & Zero-Reflow Interaction Loop
+// 1. Drag-and-Drop Stencil Creation from Left Panel onto Canvas:
+//    - Drag any shape from the left panel directly onto the canvas with a live translucent ghost preview & smart alignment guides
+//    - Or click any shape in the left panel to insert at viewport center
+// 2. Minimalist Monoline Design Language (Linear / Figma / Vercel / Lucide aesthetic):
+//    - Clean monoline geometric silhouettes for Queue (horizontal cylinder), Database (vertical cylinder), Cloud (flat-bottom geometric cloud), Actor (minimalist user glyph), BPMN Gateways & Timer
+//    - Sleek architecture cards with pure vector monoline icon badges for AWS Lambda, AWS S3, K8s Pod, Server Rack, and WAF Firewall
+//    - Crisp 32x24 minimalist vector thumbnails in the left stencil palette
+// 3. Complete Keyboard Shortcuts (Ctrl+A, Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D, Ctrl+Z/Y, Shift+Drag Marquee, F2, Ctrl+1, ?) & 60-144 FPS Sub-Pixel Edge Animations
 
 const STENCILS = [
   // Flowchart
-  { id: "flowchart.process", label: "Process Card", category: "Flowchart", w: 175, h: 78, shape: "card" },
-  { id: "flowchart.rounded", label: "Start / End Pill", category: "Flowchart", w: 155, h: 64, shape: "rounded" },
-  { id: "flowchart.decision", label: "Decision Diamond", category: "Flowchart", w: 145, h: 96, shape: "diamond" },
-  { id: "flowchart.database", label: "Database Cylinder", category: "Flowchart", w: 140, h: 98, shape: "cylinder" },
-  { id: "flowchart.data_io", label: "Data I/O", category: "Flowchart", w: 165, h: 76, shape: "parallelogram" },
-  { id: "flowchart.hexagon", label: "Prep Hexagon", category: "Flowchart", w: 165, h: 80, shape: "hexagon" },
-  { id: "flowchart.document", label: "Document", category: "Flowchart", w: 160, h: 86, shape: "document" },
-  { id: "flowchart.note", label: "Sticky Note", category: "Flowchart", w: 150, h: 92, shape: "note" },
-  { id: "flowchart.circle", label: "Circle / Junction", category: "Flowchart", w: 86, h: 86, shape: "circle" },
+  { id: "flowchart.process", label: "Process", category: "Flowchart", w: 170, h: 74, shape: "card" },
+  { id: "flowchart.rounded", label: "Start / End", category: "Flowchart", w: 150, h: 60, shape: "rounded" },
+  { id: "flowchart.decision", label: "Decision", category: "Flowchart", w: 136, h: 90, shape: "diamond" },
+  { id: "flowchart.database", label: "Database", category: "Flowchart", w: 136, h: 92, shape: "cylinder" },
+  { id: "flowchart.data_io", label: "Data I/O", category: "Flowchart", w: 160, h: 72, shape: "parallelogram" },
+  { id: "flowchart.hexagon", label: "Hexagon", category: "Flowchart", w: 160, h: 76, shape: "hexagon" },
+  { id: "flowchart.document", label: "Document", category: "Flowchart", w: 155, h: 82, shape: "document" },
+  { id: "flowchart.note", label: "Note", category: "Flowchart", w: 145, h: 86, shape: "note" },
+  { id: "flowchart.circle", label: "Circle", category: "Flowchart", w: 80, h: 80, shape: "circle" },
 
   // UML & BPMN
-  { id: "uml.class", label: "UML Class", category: "UML & BPMN", w: 185, h: 96, shape: "uml_class" },
-  { id: "uml.interface", label: "UML Interface", category: "UML & BPMN", w: 185, h: 92, shape: "uml_interface" },
-  { id: "uml.component", label: "UML Component", category: "UML & BPMN", w: 180, h: 86, shape: "uml_component" },
-  { id: "uml.package", label: "UML Package", category: "UML & BPMN", w: 180, h: 96, shape: "uml_package" },
-  { id: "uml.actor", label: "UML Actor", category: "UML & BPMN", w: 76, h: 96, shape: "actor" },
-  { id: "bpmn.gateway.xor", label: "XOR Gateway (×)", category: "UML & BPMN", w: 86, h: 86, shape: "gateway_xor" },
-  { id: "bpmn.gateway.par", label: "Parallel Gateway (+)", category: "UML & BPMN", w: 86, h: 86, shape: "gateway_parallel" },
-  { id: "bpmn.timer", label: "Timer Event", category: "UML & BPMN", w: 78, h: 78, shape: "timer" },
+  { id: "uml.class", label: "UML Class", category: "UML & BPMN", w: 180, h: 92, shape: "uml_class" },
+  { id: "uml.interface", label: "Interface", category: "UML & BPMN", w: 180, h: 88, shape: "uml_interface" },
+  { id: "uml.component", label: "Component", category: "UML & BPMN", w: 180, h: 78, shape: "uml_component" },
+  { id: "uml.package", label: "Package", category: "UML & BPMN", w: 175, h: 90, shape: "uml_package" },
+  { id: "uml.actor", label: "User / Actor", category: "UML & BPMN", w: 72, h: 76, shape: "actor" },
+  { id: "bpmn.gateway.xor", label: "XOR Gateway", category: "UML & BPMN", w: 80, h: 80, shape: "gateway_xor" },
+  { id: "bpmn.gateway.par", label: "Parallel (+)", category: "UML & BPMN", w: 80, h: 80, shape: "gateway_parallel" },
+  { id: "bpmn.timer", label: "Timer Event", category: "UML & BPMN", w: 74, h: 74, shape: "timer" },
 
   // Cloud & Kubernetes
-  { id: "cloud.aws.lambda", label: "AWS Lambda", category: "Cloud & K8s", w: 175, h: 80, shape: "aws_lambda" },
-  { id: "cloud.aws.s3", label: "AWS S3 Bucket", category: "Cloud & K8s", w: 145, h: 96, shape: "aws_s3" },
-  { id: "cloud.gcp.cloudrun", label: "Cloud Service", category: "Cloud & K8s", w: 180, h: 96, shape: "cloud" },
-  { id: "cloud.k8s.pod", label: "K8s Pod Replica", category: "Cloud & K8s", w: 175, h: 82, shape: "k8s_pod" },
+  { id: "cloud.aws.lambda", label: "AWS Lambda", category: "Cloud & K8s", w: 180, h: 74, shape: "aws_lambda" },
+  { id: "cloud.aws.s3", label: "S3 Storage", category: "Cloud & K8s", w: 180, h: 74, shape: "aws_s3" },
+  { id: "cloud.gcp.cloudrun", label: "Cloud Service", category: "Cloud & K8s", w: 175, h: 90, shape: "cloud" },
+  { id: "cloud.k8s.pod", label: "K8s Pod", category: "Cloud & K8s", w: 180, h: 74, shape: "k8s_pod" },
 
   // Network & Infra
-  { id: "network.queue", label: "Kafka / Queue", category: "Network & Infra", w: 185, h: 78, shape: "queue" },
-  { id: "network.server", label: "Server Rack", category: "Network & Infra", w: 170, h: 92, shape: "server" },
-  { id: "network.firewall", label: "WAF Firewall", category: "Network & Infra", w: 165, h: 88, shape: "firewall" },
-  { id: "network.shield", label: "Auth Shield", category: "Network & Infra", w: 135, h: 100, shape: "shield" },
+  { id: "network.queue", label: "Kafka / Queue", category: "Network & Infra", w: 180, h: 72, shape: "queue" },
+  { id: "network.server", label: "Server Node", category: "Network & Infra", w: 180, h: 74, shape: "server" },
+  { id: "network.firewall", label: "WAF Firewall", category: "Network & Infra", w: 180, h: 74, shape: "firewall" },
+  { id: "network.shield", label: "Auth Shield", category: "Network & Infra", w: 126, h: 94, shape: "shield" },
 
   // Wireframes
-  { id: "wireframe.browser", label: "Browser Window", category: "Wireframes", w: 230, h: 140, shape: "browser" },
-  { id: "wireframe.mobile", label: "Mobile Screen", category: "Wireframes", w: 125, h: 190, shape: "mobile" },
+  { id: "wireframe.browser", label: "Browser UI", category: "Wireframes", w: 220, h: 132, shape: "browser" },
+  { id: "wireframe.mobile", label: "Mobile UI", category: "Wireframes", w: 118, h: 180, shape: "mobile" },
 ];
 
 const STYLE_SWATCHES = [
-  { fill: "#1e293b", stroke: "#38bdf8" },
-  { fill: "#1e1b4b", stroke: "#818cf8" },
-  { fill: "#064e3b", stroke: "#34d399" },
-  { fill: "#451a03", stroke: "#fbbf24" },
-  { fill: "#4c0519", stroke: "#f43f5e" },
-  { fill: "#3b0764", stroke: "#c084fc" },
+  { fill: "#131b2e", stroke: "#38bdf8" },
+  { fill: "#161632", stroke: "#818cf8" },
+  { fill: "#0c2924", stroke: "#34d399" },
+  { fill: "#2b1c10", stroke: "#fbbf24" },
+  { fill: "#2d1220", stroke: "#f43f5e" },
+  { fill: "#241236", stroke: "#c084fc" },
   { fill: "#ffffff", stroke: "#4f46e5" },
-  { fill: "#ecfeff", stroke: "#0891b2" },
+  { fill: "#f0f9ff", stroke: "#0284c7" },
   { fill: "#f0fdf4", stroke: "#16a34a" },
   { fill: "#fffbeb", stroke: "#d97706" },
   { fill: "#fff1f2", stroke: "#e11d48" },
-  { fill: "#0f172a", stroke: "#f8fafc" },
+  { fill: "#0f172a", stroke: "#94a3b8" },
 ];
 
 function createDogfoodPages() {
@@ -72,19 +71,19 @@ function createDogfoodPages() {
       pan: { x: 50, y: 40 },
       zoom: 1.0,
       nodes: [
-        { id: 1, title: "crates/core", body: "R-Tree + Scene + CRDT", x: 70, y: 155, w: 185, h: 88, fill: "#1e293b", stroke: "#818cf8", shape: "uml_package", z: 1 },
-        { id: 2, title: "crates/renderer", body: "wgpu WGSL + Bezier", x: 355, y: 45, w: 185, h: 82, fill: "#1e293b", stroke: "#38bdf8", shape: "uml_component", z: 2 },
-        { id: 3, title: "crates/layout", body: "Sugiyama + Force + Spring", x: 355, y: 160, w: 185, h: 82, fill: "#1e293b", stroke: "#34d399", shape: "hexagon", z: 3 },
-        { id: 4, title: "crates/io-formats", body: ".drawio XML + SVG + PDF", x: 355, y: 280, w: 185, h: 86, fill: "#1e293b", stroke: "#fbbf24", shape: "document", z: 4 },
-        { id: 5, title: "crates/ui-bridge", body: "WASM & Tauri v2 Shell", x: 650, y: 155, w: 205, h: 108, fill: "#1e293b", stroke: "#f472b6", shape: "browser", z: 5 },
+        { id: 1, title: "crates/core", body: "R-Tree + Scene + CRDT", x: 70, y: 155, w: 180, h: 86, fill: "#131b2e", stroke: "#818cf8", shape: "uml_package", z: 1 },
+        { id: 2, title: "crates/renderer", body: "wgpu WGSL + Bezier", x: 355, y: 45, w: 185, h: 78, fill: "#131b2e", stroke: "#38bdf8", shape: "uml_component", z: 2 },
+        { id: 3, title: "crates/layout", body: "Sugiyama + Force + Spring", x: 355, y: 160, w: 185, h: 78, fill: "#131b2e", stroke: "#34d399", shape: "hexagon", z: 3 },
+        { id: 4, title: "crates/io-formats", body: ".drawio XML + SVG + PDF", x: 355, y: 280, w: 185, h: 82, fill: "#131b2e", stroke: "#fbbf24", shape: "document", z: 4 },
+        { id: 5, title: "crates/ui-bridge", body: "WASM & Tauri v2 Shell", x: 650, y: 155, w: 205, h: 108, fill: "#131b2e", stroke: "#f472b6", shape: "browser", z: 5 },
       ],
       edges: [
-        { id: 101, source: 1, sourcePort: "right", target: 2, targetPort: "left", label: "Frustum Query", anim: "pulse", kind: "bezier", color: "#818cf8", width: 2.2, bend: null },
-        { id: 102, source: 1, sourcePort: "right", target: 3, targetPort: "left", label: "Graph Moves", anim: "ants", kind: "bezier", color: "#34d399", width: 2.2, bend: null },
-        { id: 103, source: 1, sourcePort: "right", target: 4, targetPort: "left", label: "AST Round-Trip", anim: "pulse", kind: "bezier", color: "#fbbf24", width: 2.2, bend: null },
-        { id: 104, source: 2, sourcePort: "right", target: 5, targetPort: "left", label: "Frame Buffers", anim: "pulse", kind: "bezier", color: "#38bdf8", width: 2.2, bend: null },
-        { id: 105, source: 3, sourcePort: "right", target: 5, targetPort: "left", label: "Transitions", anim: "ants", kind: "bezier", color: "#818cf8", width: 2.2, bend: null },
-        { id: 106, source: 4, sourcePort: "right", target: 5, targetPort: "left", label: "Exporters", anim: "ants", kind: "bezier", color: "#f472b6", width: 2.2, bend: null },
+        { id: 101, source: 1, sourcePort: "right", target: 2, targetPort: "left", label: "Frustum Query", anim: "pulse", kind: "bezier", color: "#818cf8", width: 1.8, bend: null },
+        { id: 102, source: 1, sourcePort: "right", target: 3, targetPort: "left", label: "Graph Moves", anim: "ants", kind: "bezier", color: "#34d399", width: 1.8, bend: null },
+        { id: 103, source: 1, sourcePort: "right", target: 4, targetPort: "left", label: "AST Round-Trip", anim: "pulse", kind: "bezier", color: "#fbbf24", width: 1.8, bend: null },
+        { id: 104, source: 2, sourcePort: "right", target: 5, targetPort: "left", label: "Frame Buffers", anim: "pulse", kind: "bezier", color: "#38bdf8", width: 1.8, bend: null },
+        { id: 105, source: 3, sourcePort: "right", target: 5, targetPort: "left", label: "Transitions", anim: "ants", kind: "bezier", color: "#818cf8", width: 1.8, bend: null },
+        { id: 106, source: 4, sourcePort: "right", target: 5, targetPort: "left", label: "Exporters", anim: "ants", kind: "bezier", color: "#f472b6", width: 1.8, bend: null },
       ],
       undoStack: [],
       redoStack: [],
@@ -95,17 +94,17 @@ function createDogfoodPages() {
       pan: { x: 60, y: 50 },
       zoom: 1.0,
       nodes: [
-        { id: 10, title: "Client Actor", body: "HTTPS", x: 70, y: 125, w: 76, h: 96, fill: "#1e293b", stroke: "#38bdf8", shape: "actor", z: 1 },
-        { id: 11, title: "WAF Firewall", body: "Rate Limiter", x: 235, y: 130, w: 165, h: 88, fill: "#1e293b", stroke: "#f43f5e", shape: "firewall", z: 2 },
-        { id: 12, title: "Auth Check", body: "XOR Gateway", x: 485, y: 132, w: 86, h: 86, fill: "#1e293b", stroke: "#fbbf24", shape: "gateway_xor", z: 3 },
-        { id: 13, title: "Kafka Stream", body: "events-topic", x: 660, y: 78, w: 185, h: 78, fill: "#1e293b", stroke: "#34d399", shape: "queue", z: 4 },
-        { id: 14, title: "Postgres Primary", body: "pgvector", x: 675, y: 210, w: 145, h: 98, fill: "#1e293b", stroke: "#818cf8", shape: "cylinder", z: 5 },
+        { id: 10, title: "Client User", body: "HTTPS", x: 75, y: 132, w: 72, h: 76, fill: "#131b2e", stroke: "#38bdf8", shape: "actor", z: 1 },
+        { id: 11, title: "WAF Firewall", body: "Rate Limiter", x: 235, y: 133, w: 180, h: 74, fill: "#131b2e", stroke: "#f43f5e", shape: "firewall", z: 2 },
+        { id: 12, title: "Auth Check", body: "XOR", x: 495, y: 130, w: 80, h: 80, fill: "#131b2e", stroke: "#fbbf24", shape: "gateway_xor", z: 3 },
+        { id: 13, title: "Kafka Stream", body: "events-topic", x: 660, y: 80, w: 180, h: 72, fill: "#131b2e", stroke: "#34d399", shape: "queue", z: 4 },
+        { id: 14, title: "Postgres DB", body: "pgvector", x: 680, y: 210, w: 136, h: 92, fill: "#131b2e", stroke: "#818cf8", shape: "cylinder", z: 5 },
       ],
       edges: [
-        { id: 201, source: 10, sourcePort: "right", target: 11, targetPort: "left", label: "Request", anim: "pulse", kind: "bezier", color: "#38bdf8", width: 2.2, bend: null },
-        { id: 202, source: 11, sourcePort: "right", target: 12, targetPort: "left", label: "Verify", anim: "ants", kind: "bezier", color: "#fbbf24", width: 2.2, bend: null },
-        { id: 203, source: 12, sourcePort: "right", target: 13, targetPort: "left", label: "Publish", anim: "pulse", kind: "bezier", color: "#34d399", width: 2.2, bend: null },
-        { id: 204, source: 12, sourcePort: "bottom", target: 14, targetPort: "left", label: "Persist", anim: "pulse", kind: "smoothstep", color: "#818cf8", width: 2.2, bend: null },
+        { id: 201, source: 10, sourcePort: "right", target: 11, targetPort: "left", label: "Request", anim: "pulse", kind: "bezier", color: "#38bdf8", width: 1.8, bend: null },
+        { id: 202, source: 11, sourcePort: "right", target: 12, targetPort: "left", label: "Verify", anim: "ants", kind: "bezier", color: "#fbbf24", width: 1.8, bend: null },
+        { id: 203, source: 12, sourcePort: "right", target: 13, targetPort: "left", label: "Publish", anim: "pulse", kind: "bezier", color: "#34d399", width: 1.8, bend: null },
+        { id: 204, source: 12, sourcePort: "bottom", target: 14, targetPort: "left", label: "Persist", anim: "pulse", kind: "smoothstep", color: "#818cf8", width: 1.8, bend: null },
       ],
       undoStack: [],
       redoStack: [],
@@ -127,11 +126,12 @@ const state = {
   snapToGrid: false,
   hoveredPort: null,
   snapTargetPort: null,
-  draggingNode: null,       // { leadNode, offsetX, offsetY, initialPositions: Map<id, {x,y}> }
+  draggingNode: null,
   resizingNode: null,
   draggingEdgeBend: null,
   reconnectingEdge: null,
-  marqueeBox: null,         // { startX, startY, endX, endY } in world coords
+  draggingStencil: null,    // { item, startX, startY, active, overCanvas, ghostX, ghostY }
+  marqueeBox: null,
   panning: null,
   connectingFrom: null,
   mouseWorld: { x: 0, y: 0 },
@@ -169,7 +169,6 @@ function showToast(msg) {
   }, 1600);
 }
 
-// Sync primary selectedNodeId / selectedEdgeId with multi-selection sets
 function setSingleNodeSelection(nodeId) {
   state.selectedNodeIds.clear();
   state.selectedEdgeIds.clear();
@@ -192,7 +191,7 @@ function syncPrimarySelectionFromSets() {
     state.selectedNodeIds.size === 0 && state.selectedEdgeIds.size === 1 ? [...state.selectedEdgeIds][0] : null;
 }
 
-let canvasRect = { left: 0, top: 0, width: 800, height: 600 };
+let canvasRect = { left: 0, top: 0, right: 800, bottom: 600, width: 800, height: 600 };
 let currentCursor = "default";
 let nodeMap = new Map();
 let cachedGridPattern = null;
@@ -348,7 +347,7 @@ function findSnapTargetPort(worldPt, excludeNodeId) {
 }
 
 function getQuickArrows(n) {
-  const pad = 24;
+  const pad = 22;
   return [
     { dir: "up", side: "top", targetSide: "bottom", x: n.x + n.w / 2, y: n.y - pad, dx: 0, dy: -(n.h + 75), label: "↑" },
     { dir: "right", side: "right", targetSide: "left", x: n.x + n.w + pad, y: n.y + n.h / 2, dx: n.w + 95, dy: 0, label: "→" },
@@ -477,7 +476,7 @@ function getEdgeGeometry(e) {
     cumLen[i] = totalLen;
   }
 
-  const labelWidth = e.label ? e.label.length * 6.8 + 14 : 0;
+  const labelWidth = e.label ? e.label.length * 6.6 + 14 : 0;
 
   e._geo = {
     p0,
@@ -544,13 +543,13 @@ function hitTestEdge(worldPt) {
   return null;
 }
 
-function computeSmartGuides(movingNode) {
+function computeSmartGuides(movingNode, ignoreSelection = false) {
   const guides = [];
   const threshold = 4.5;
   const nodes = page().nodes;
   for (let i = 0; i < nodes.length; i++) {
     const other = nodes[i];
-    if (other.id === movingNode.id || state.selectedNodeIds.has(other.id)) continue;
+    if (other.id === movingNode.id || (!ignoreSelection && state.selectedNodeIds.has(other.id))) continue;
     const checksX = [
       [movingNode.x, other.x],
       [movingNode.x + movingNode.w * 0.5, other.x + other.w * 0.5],
@@ -795,7 +794,7 @@ function updateZoomLabel() {
 }
 
 // ============================================================================
-// 2. DRAW.IO CONTEXT-SENSITIVE RIGHT FORMAT PANEL (Style / Text / Arrange)
+// 2. DRAW.IO MINIMALIST CONTEXT-SENSITIVE RIGHT FORMAT PANEL
 // ============================================================================
 const formatTabsEl = document.getElementById("format-tabs");
 const formatBodyEl = document.getElementById("format-body");
@@ -812,30 +811,30 @@ const SHAPE_OPTIONS = [
   ["card", "Process Card"],
   ["rounded", "Start / End Pill"],
   ["diamond", "Decision Diamond"],
-  ["cylinder", "Database Cylinder (3D)"],
-  ["queue", "Kafka / FIFO Queue Pipe (3D)"],
+  ["cylinder", "Database Cylinder"],
+  ["queue", "Kafka / Queue Pipe"],
   ["parallelogram", "Data I/O Parallelogram"],
-  ["hexagon", "Prep Hexagon"],
-  ["document", "Document (Wavy)"],
-  ["note", "Sticky Note"],
-  ["circle", "Circle / Junction"],
-  ["actor", "UML Stickman Actor"],
+  ["hexagon", "Hexagon"],
+  ["document", "Document"],
+  ["note", "Note"],
+  ["circle", "Circle"],
+  ["actor", "User / Actor"],
   ["uml_class", "UML Class"],
   ["uml_interface", "UML Interface"],
   ["uml_component", "UML Component"],
   ["uml_package", "UML Package"],
-  ["gateway_xor", "BPMN XOR Gateway (×)"],
-  ["gateway_parallel", "BPMN Parallel Gateway (+)"],
-  ["timer", "BPMN Timer Event (⏱)"],
-  ["aws_lambda", "AWS Lambda (λ)"],
-  ["aws_s3", "AWS S3 Bucket"],
+  ["gateway_xor", "XOR Gateway (×)"],
+  ["gateway_parallel", "Parallel Gateway (+)"],
+  ["timer", "Timer Event"],
+  ["aws_lambda", "AWS Lambda"],
+  ["aws_s3", "S3 Storage"],
   ["cloud", "Cloud Service"],
-  ["k8s_pod", "Kubernetes Pod (☸)"],
-  ["server", "Server Rack"],
-  ["firewall", "WAF Brick Firewall"],
+  ["k8s_pod", "K8s Pod"],
+  ["server", "Server Node"],
+  ["firewall", "WAF Firewall"],
   ["shield", "Auth Shield"],
-  ["browser", "Browser Window"],
-  ["mobile", "Mobile Screen"],
+  ["browser", "Browser UI"],
+  ["mobile", "Mobile UI"],
 ];
 
 function renderFormatPanel() {
@@ -848,7 +847,6 @@ function renderFormatPanel() {
     t.classList.toggle("active", t.getAttribute("data-tab") === state.activeFormatTab);
   });
 
-  // CASE A: Multiple items selected (e.g. Ctrl+A or Shift+Click / Box Select)
   if (totalSelected > 1) {
     formatBadgeEl.textContent = `${state.selectedNodeIds.size}N · ${state.selectedEdgeIds.size}E`;
     formatTabsEl.style.display = "none";
@@ -860,10 +858,10 @@ function renderFormatPanel() {
       <div class="format-section">
         <label>Selection Actions</label>
         <div class="format-row">
-          <button id="btn-multi-copy">⎘ Copy (Ctrl+C)</button>
-          <button id="btn-multi-dup">⧉ Duplicate (Ctrl+D)</button>
+          <button id="btn-multi-copy">Copy (Ctrl+C)</button>
+          <button id="btn-multi-dup">Duplicate (Ctrl+D)</button>
         </div>
-        <button id="btn-multi-del" class="danger" style="width:100%; margin-top:4px;">✕ Delete All Selected (Del)</button>
+        <button id="btn-multi-del" class="danger" style="width:100%; margin-top:4px;">Delete Selected (Del)</button>
       </div>
     `;
     const swatchContainer = document.getElementById("multi-swatches");
@@ -890,7 +888,6 @@ function renderFormatPanel() {
     return;
   }
 
-  // CASE B: Nothing selected -> Diagram Inspector
   if (!node && !edge) {
     formatBadgeEl.textContent = "Diagram";
     formatTabsEl.style.display = "none";
@@ -919,19 +916,19 @@ function renderFormatPanel() {
         </div>
       </div>
       <div class="format-section">
-        <label>Theme Preset</label>
+        <label>Theme</label>
         <select id="diag-theme">
-          <option value="dark" ${state.theme === "dark" ? "selected" : ""}>Dark (Developer)</option>
-          <option value="light" ${state.theme === "light" ? "selected" : ""}>Light</option>
+          <option value="dark" ${state.theme === "dark" ? "selected" : ""}>Dark Minimal</option>
+          <option value="light" ${state.theme === "light" ? "selected" : ""}>Light Minimal</option>
           <option value="contrast" ${state.theme === "contrast" ? "selected" : ""}>High Contrast</option>
         </select>
       </div>
       <div class="format-section" style="border-bottom:none;">
-        <label>Quick Shortcuts</label>
+        <label>Quick Guide</label>
         <p style="font-size:11px; color:var(--text-muted); line-height:1.6;">
-          <b>Ctrl+A</b> Select All · <b>Ctrl+C/V</b> Copy/Paste<br/>
-          <b>Shift+Drag</b> Marquee Box Select<br/>
-          <b>Ctrl+D</b> Duplicate · <b>Ctrl+Z/Y</b> Undo/Redo
+          <b>Drag</b> any symbol from the left panel onto the canvas.<br/>
+          <b>Shift+Drag</b> to box-select multiple items.<br/>
+          <b>Ctrl+A / C / V / D / Z</b> supported.
         </p>
       </div>
     `;
@@ -960,23 +957,22 @@ function renderFormatPanel() {
 
   formatTabsEl.style.display = "grid";
 
-  // CASE C: Single Node Selected
   if (node) {
     formatBadgeEl.textContent = `Node #${node.id}`;
     if (state.activeFormatTab === "style") {
       formatBodyEl.innerHTML = `
         <div class="format-section">
-          <label>Draw.io Style Presets</label>
+          <label>Minimalist Style Presets</label>
           <div class="swatch-grid" id="node-swatches"></div>
         </div>
         <div class="format-section">
-          <label>Shape / Symbol</label>
+          <label>Symbol</label>
           <select id="insp-shape">
             ${SHAPE_OPTIONS.map(([val, lbl]) => `<option value="${val}" ${node.shape === val ? "selected" : ""}>${lbl}</option>`).join("")}
           </select>
         </div>
         <div class="format-section">
-          <label>Fill & Stroke Colors</label>
+          <label>Colors</label>
           <div class="format-row">
             <span>Fill</span>
             <input id="insp-fill" type="color" value="${node.fill}" style="width:100%" />
@@ -1014,7 +1010,7 @@ function renderFormatPanel() {
     } else if (state.activeFormatTab === "text") {
       formatBodyEl.innerHTML = `
         <div class="format-section">
-          <label>Title Label</label>
+          <label>Title</label>
           <input id="insp-title" type="text" value="${node.title}" />
           <label style="margin-top:6px;">Subtitle / Metadata</label>
           <input id="insp-body" type="text" value="${node.body || ""}" />
@@ -1041,15 +1037,15 @@ function renderFormatPanel() {
           </div>
         </div>
         <div class="format-section">
-          <label>Z-Order Layering</label>
+          <label>Layering</label>
           <div class="format-row">
-            <button id="btn-front">Bring to Front</button>
-            <button id="btn-back">Send to Back</button>
+            <button id="btn-front">Bring Front</button>
+            <button id="btn-back">Send Back</button>
           </div>
         </div>
         <div class="format-section" style="border-bottom:none;">
-          <button id="btn-node-dup" style="width:100%">⧉ Duplicate Node (Ctrl+D)</button>
-          <button id="btn-node-del" class="danger" style="width:100%; margin-top:4px;">✕ Delete Node (Del)</button>
+          <button id="btn-node-dup" style="width:100%">Duplicate (Ctrl+D)</button>
+          <button id="btn-node-del" class="danger" style="width:100%; margin-top:4px;">Delete (Del)</button>
         </div>
       `;
       for (const [id, key] of [
@@ -1071,31 +1067,30 @@ function renderFormatPanel() {
     return;
   }
 
-  // CASE D: Single Edge Selected
   if (edge) {
     formatBadgeEl.textContent = `Edge #${edge.id}`;
     if (state.activeFormatTab === "style") {
       formatBodyEl.innerHTML = `
         <div class="format-section">
-          <label>Edge Routing Style</label>
+          <label>Routing</label>
           <select id="edge-kind">
             <option value="bezier" ${edge.kind === "bezier" ? "selected" : ""}>Bezier Curve</option>
-            <option value="orthogonal" ${edge.kind === "orthogonal" ? "selected" : ""}>Orthogonal</option>
             <option value="smoothstep" ${edge.kind === "smoothstep" ? "selected" : ""}>SmoothStep</option>
+            <option value="orthogonal" ${edge.kind === "orthogonal" ? "selected" : ""}>Orthogonal</option>
             <option value="straight" ${edge.kind === "straight" ? "selected" : ""}>Straight Line</option>
           </select>
           <label style="margin-top:6px;">Flow Animation</label>
           <select id="edge-anim">
             <option value="pulse" ${edge.anim === "pulse" ? "selected" : ""}>Pulse Particles</option>
-            <option value="ants" ${edge.anim === "ants" ? "selected" : ""}>Marching Ants</option>
-            <option value="none" ${edge.anim === "none" ? "selected" : ""}>Static Line</option>
+            <option value="ants" ${edge.anim === "ants" ? "selected" : ""}>Dashed Flow</option>
+            <option value="none" ${edge.anim === "none" ? "selected" : ""}>Static</option>
           </select>
         </div>
         <div class="format-section">
-          <label>Line Color & Width</label>
+          <label>Color & Width</label>
           <div class="format-row">
             <input id="edge-color" type="color" value="${edge.color || "#818cf8"}" style="width:100%" />
-            <input id="edge-width" type="number" min="1" max="10" step="0.5" value="${edge.width || 2.2}" />
+            <input id="edge-width" type="number" min="1" max="10" step="0.5" value="${edge.width || 1.8}" />
           </div>
         </div>
       `;
@@ -1110,7 +1105,7 @@ function renderFormatPanel() {
         edge.color = e.target.value;
       };
       document.getElementById("edge-width").oninput = (e) => {
-        edge.width = Number(e.target.value) || 2;
+        edge.width = Number(e.target.value) || 1.8;
       };
     } else if (state.activeFormatTab === "text") {
       formatBodyEl.innerHTML = `
@@ -1126,7 +1121,7 @@ function renderFormatPanel() {
     } else {
       formatBodyEl.innerHTML = `
         <div class="format-section">
-          <label>Port Attachment Sides</label>
+          <label>Port Sides</label>
           <div class="format-row">
             <span>Source</span>
             <select id="edge-src-port">
@@ -1146,10 +1141,10 @@ function renderFormatPanel() {
         </div>
         <div class="format-section" style="border-bottom:none;">
           <div class="format-row">
-            <button id="btn-edge-reverse">⇄ Reverse</button>
-            <button id="btn-edge-reset">↺ Reset Bend</button>
+            <button id="btn-edge-reverse">Reverse</button>
+            <button id="btn-edge-reset">Reset Bend</button>
           </div>
-          <button id="btn-edge-delete" class="danger" style="width:100%; margin-top:6px;">✕ Delete Edge</button>
+          <button id="btn-edge-delete" class="danger" style="width:100%; margin-top:6px;">Delete Edge</button>
         </div>
       `;
       document.getElementById("edge-src-port").onchange = (e) => {
@@ -1198,8 +1193,82 @@ function syncArrangeInputsIfDirty() {
 }
 
 // ============================================================================
-// POINTER & INTERACTION HANDLERS (Supports Multi-Select, Group Drag & Shift+Drag Marquee)
+// POINTER, DRAG-AND-DROP STENCIL & INTERACTION HANDLERS
 // ============================================================================
+function createNodeFromStencil(item, worldX, worldY) {
+  saveSnapshot();
+  const p = page();
+  const newNode = {
+    id: ++state.nextId,
+    title: item.label,
+    body: item.id.split(".").pop(),
+    x: Math.round(worldX),
+    y: Math.round(worldY),
+    w: item.w,
+    h: item.h,
+    fill: state.theme === "light" ? "#ffffff" : "#131b2e",
+    stroke: "#38bdf8",
+    shape: item.shape,
+    z: p.nodes.length + 1,
+  };
+  p.nodes.push(newNode);
+  invalidateGeometry();
+  setSingleNodeSelection(newNode.id);
+  renderFormatPanel();
+  showToast(`Added ${item.label}`);
+}
+
+function addStencilToCanvasCenter(item) {
+  const center = screenToWorld(canvas.width / 2 - item.w / 2, canvas.height / 2 - item.h / 2);
+  createNodeFromStencil(item, Math.round(center.x / 20) * 20, Math.round(center.y / 20) * 20);
+}
+
+// HTML5 Drag & Drop support on Canvas
+canvas.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+  if (state.draggingStencil) {
+    const sx = e.clientX - canvasRect.left;
+    const sy = e.clientY - canvasRect.top;
+    const wpt = screenToWorld(sx, sy);
+    const item = state.draggingStencil.item;
+    const ghost = {
+      id: -999,
+      x: state.snapToGrid ? Math.round((wpt.x - item.w * 0.5) / state.gridSize) * state.gridSize : wpt.x - item.w * 0.5,
+      y: state.snapToGrid ? Math.round((wpt.y - item.h * 0.5) / state.gridSize) * state.gridSize : wpt.y - item.h * 0.5,
+      w: item.w,
+      h: item.h,
+    };
+    state.smartGuides = computeSmartGuides(ghost, true);
+    state.draggingStencil.active = true;
+    state.draggingStencil.overCanvas = true;
+    state.draggingStencil.ghostX = ghost.x;
+    state.draggingStencil.ghostY = ghost.y;
+  }
+});
+
+canvas.addEventListener("dragleave", () => {
+  if (state.draggingStencil) {
+    state.draggingStencil.overCanvas = false;
+    state.smartGuides = [];
+  }
+});
+
+canvas.addEventListener("drop", (e) => {
+  e.preventDefault();
+  if (state.draggingStencil) {
+    const item = state.draggingStencil.item;
+    const sx = e.clientX - canvasRect.left;
+    const sy = e.clientY - canvasRect.top;
+    const wpt = screenToWorld(sx, sy);
+    const dropX = state.draggingStencil.overCanvas ? state.draggingStencil.ghostX : wpt.x - item.w * 0.5;
+    const dropY = state.draggingStencil.overCanvas ? state.draggingStencil.ghostY : wpt.y - item.h * 0.5;
+    state.draggingStencil = null;
+    state.smartGuides = [];
+    createNodeFromStencil(item, dropX, dropY);
+  }
+});
+
 canvas.addEventListener("mousedown", (e) => {
   inlineEditor.style.display = "none";
   state.layoutAnim = null;
@@ -1212,7 +1281,6 @@ canvas.addEventListener("mousedown", (e) => {
   const p = page();
   const handleHitRadius = 13 / Math.max(0.4, p.zoom);
 
-  // 1. Selected Edge Bend & Endpoint Reconnect Handles
   const selectedEdge = p.edges.find((ed) => ed.id === state.selectedEdgeId);
   if (selectedEdge) {
     const geo = getEdgeGeometry(selectedEdge);
@@ -1235,9 +1303,8 @@ canvas.addEventListener("mousedown", (e) => {
     }
   }
 
-  // 2. Selected Node Resize Handle & Quick-Add Arrows
   const selectedNode = nodeMap.get(state.selectedNodeId);
-  if (selectedNode) {
+  if (selectedNode && state.selectedNodeIds.size === 1) {
     if (Math.hypot(wpt.x - (selectedNode.x + selectedNode.w), wpt.y - (selectedNode.y + selectedNode.h)) <= handleHitRadius) {
       saveSnapshot();
       state.resizingNode = { node: selectedNode, aspect: selectedNode.w / Math.max(1, selectedNode.h) };
@@ -1264,7 +1331,7 @@ canvas.addEventListener("mousedown", (e) => {
           anim: state.edgeAnimPreset,
           kind: state.edgeKindPreset,
           color: "#818cf8",
-          width: 2.2,
+          width: 1.8,
           bend: null,
         });
         invalidateGeometry();
@@ -1275,7 +1342,6 @@ canvas.addEventListener("mousedown", (e) => {
     }
   }
 
-  // 3. Port Handle Click (Drag-to-Connect)
   const portHitRadius = 15 / Math.max(0.4, p.zoom);
   for (let i = 0; i < p.nodes.length; i++) {
     const n = p.nodes[i];
@@ -1289,7 +1355,6 @@ canvas.addEventListener("mousedown", (e) => {
     }
   }
 
-  // 4. Edge Hit-Test
   const hitEdge = hitTestEdge(wpt);
   if (hitEdge) {
     if (e.shiftKey) {
@@ -1308,7 +1373,6 @@ canvas.addEventListener("mousedown", (e) => {
     return;
   }
 
-  // 5. Node Body Hit-Test
   let hit = null;
   for (let i = p.nodes.length - 1; i >= 0; i--) {
     const n = p.nodes[i];
@@ -1341,7 +1405,6 @@ canvas.addEventListener("mousedown", (e) => {
       initialPositions,
     };
   } else {
-    // Shift + Drag on empty canvas -> Rubber-Band Marquee Box Selection!
     if (e.shiftKey) {
       state.marqueeBox = { startX: wpt.x, startY: wpt.y, endX: wpt.x, endY: wpt.y };
       return;
@@ -1440,6 +1503,33 @@ window.addEventListener(
     state.mouseWorld.x = wx;
     state.mouseWorld.y = wy;
 
+    // 0. Pointer Drag-and-Drop of Stencil from Left Panel
+    if (state.draggingStencil) {
+      const dist = Math.hypot(e.clientX - state.draggingStencil.startX, e.clientY - state.draggingStencil.startY);
+      if (dist > 4) state.draggingStencil.active = true;
+      if (state.draggingStencil.active) {
+        const over = sx >= 0 && sx <= canvasRect.width && sy >= 0 && sy <= canvasRect.height;
+        state.draggingStencil.overCanvas = over;
+        if (over) {
+          const item = state.draggingStencil.item;
+          const ghost = {
+            id: -999,
+            x: state.snapToGrid ? Math.round((wx - item.w * 0.5) / state.gridSize) * state.gridSize : wx - item.w * 0.5,
+            y: state.snapToGrid ? Math.round((wy - item.h * 0.5) / state.gridSize) * state.gridSize : wy - item.h * 0.5,
+            w: item.w,
+            h: item.h,
+          };
+          state.smartGuides = computeSmartGuides(ghost, true);
+          state.draggingStencil.ghostX = ghost.x;
+          state.draggingStencil.ghostY = ghost.y;
+          setCanvasCursor("copy");
+        } else {
+          state.smartGuides = [];
+        }
+      }
+      return;
+    }
+
     if (state.marqueeBox) {
       state.marqueeBox.endX = wx;
       state.marqueeBox.endY = wy;
@@ -1491,7 +1581,7 @@ window.addEventListener(
 
     if (state.resizingNode) {
       const { node, aspect } = state.resizingNode;
-      const rawW = Math.max(70, wx - node.x);
+      const rawW = Math.max(68, wx - node.x);
       node.w = state.snapToGrid ? Math.round(rawW / state.gridSize) * state.gridSize : rawW;
       if (e.shiftKey) {
         node.h = Math.max(48, node.w / aspect);
@@ -1504,7 +1594,6 @@ window.addEventListener(
       return;
     }
 
-    // Group Dragging (Moves all selected nodes smoothly together!)
     if (state.draggingNode) {
       const { leadNode, offsetX, offsetY, initialPositions } = state.draggingNode;
       const leadStart = initialPositions.get(leadNode.id) || { x: leadNode.x, y: leadNode.y };
@@ -1566,6 +1655,20 @@ window.addEventListener("mouseup", (e) => {
   state.mouseWorld = screenToWorld(e.clientX - canvasRect.left, e.clientY - canvasRect.top);
   const p = page();
 
+  // Complete Drag-and-Drop or Click from Left Stencil Palette
+  if (state.draggingStencil) {
+    const st = state.draggingStencil;
+    state.draggingStencil = null;
+    state.smartGuides = [];
+    if (st.active && st.overCanvas) {
+      createNodeFromStencil(st.item, st.ghostX, st.ghostY);
+    } else if (!st.active) {
+      addStencilToCanvasCenter(st.item);
+    }
+    setCanvasCursor("default");
+    return;
+  }
+
   if (state.marqueeBox) {
     state.marqueeBox = null;
     renderFormatPanel();
@@ -1587,7 +1690,7 @@ window.addEventListener("mouseup", (e) => {
         anim: state.edgeAnimPreset,
         kind: state.edgeKindPreset,
         color: "#818cf8",
-        width: 2.2,
+        width: 1.8,
         bend: null,
       };
       p.edges.push(newEdge);
@@ -1654,33 +1757,81 @@ canvas.addEventListener(
   { passive: false }
 );
 
-function addStencilToCanvas(item) {
-  saveSnapshot();
-  const p = page();
-  const center = screenToWorld(canvas.width / 2 - item.w / 2, canvas.height / 2 - item.h / 2);
-  const newNode = {
-    id: ++state.nextId,
-    title: item.label,
-    body: item.id,
-    x: Math.round(center.x / 20) * 20,
-    y: Math.round(center.y / 20) * 20,
-    w: item.w,
-    h: item.h,
-    fill: state.theme === "light" ? "#ffffff" : "#1e293b",
-    stroke: "#818cf8",
-    shape: item.shape,
-    z: p.nodes.length + 1,
-  };
-  p.nodes.push(newNode);
-  invalidateGeometry();
-  setSingleNodeSelection(newNode.id);
-  renderFormatPanel();
-  showToast(`Added ${item.label}`);
+// ============================================================================
+// MINIMALIST MONOLINE VECTOR SYMBOL SYSTEM (Main Canvas + Palette Previews)
+// ============================================================================
+function drawMinimalistBadgeGlyph(ctx, shape, cx, cy, s, strokeCol) {
+  ctx.save();
+  ctx.strokeStyle = strokeCol;
+  ctx.lineWidth = 1.65;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+
+  if (shape === "aws_lambda") {
+    // Minimalist vector Lambda (λ)
+    ctx.moveTo(cx - s * 0.45, cy - s * 0.65);
+    ctx.lineTo(cx - s * 0.1, cy - s * 0.65);
+    ctx.lineTo(cx + s * 0.5, cy + s * 0.65);
+    ctx.moveTo(cx + s * 0.08, cy - s * 0.1);
+    ctx.lineTo(cx - s * 0.48, cy + s * 0.65);
+  } else if (shape === "aws_s3") {
+    // Minimalist isometric storage cube / bucket
+    ctx.moveTo(cx, cy - s * 0.7);
+    ctx.lineTo(cx + s * 0.65, cy - s * 0.35);
+    ctx.lineTo(cx + s * 0.65, cy + s * 0.35);
+    ctx.lineTo(cx, cy + s * 0.7);
+    ctx.lineTo(cx - s * 0.65, cy + s * 0.35);
+    ctx.lineTo(cx - s * 0.65, cy - s * 0.35);
+    ctx.closePath();
+    ctx.moveTo(cx - s * 0.65, cy - s * 0.35);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx + s * 0.65, cy - s * 0.35);
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx, cy + s * 0.7);
+  } else if (shape === "k8s_pod") {
+    // Minimalist Kubernetes helm wheel / pod hexagon
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 - Math.PI * 0.5;
+      const px = cx + Math.cos(a) * s * 0.7;
+      const py = cy + Math.sin(a) * s * 0.7;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.moveTo(cx + s * 0.28, cy);
+    ctx.arc(cx, cy, s * 0.28, 0, Math.PI * 2);
+  } else if (shape === "server") {
+    // Minimalist stacked dual server blades (Lucide server style)
+    ctx.roundRect(cx - s * 0.7, cy - s * 0.65, s * 1.4, s * 0.52, 2);
+    ctx.roundRect(cx - s * 0.7, cy + s * 0.13, s * 1.4, s * 0.52, 2);
+    ctx.moveTo(cx - s * 0.4, cy - s * 0.39);
+    ctx.lineTo(cx - s * 0.35, cy - s * 0.39);
+    ctx.moveTo(cx - s * 0.4, cy + s * 0.39);
+    ctx.lineTo(cx - s * 0.35, cy + s * 0.39);
+  } else if (shape === "firewall") {
+    // Minimalist security shield-grid glyph
+    ctx.moveTo(cx, cy - s * 0.72);
+    ctx.lineTo(cx + s * 0.62, cy - s * 0.42);
+    ctx.bezierCurveTo(cx + s * 0.62, cy + s * 0.2, cx + s * 0.15, cy + s * 0.6, cx, cy + s * 0.72);
+    ctx.bezierCurveTo(cx - s * 0.15, cy + s * 0.6, cx - s * 0.62, cy + s * 0.2, cx - s * 0.62, cy - s * 0.42);
+    ctx.closePath();
+    ctx.moveTo(cx, cy - s * 0.3);
+    ctx.lineTo(cx, cy + s * 0.32);
+    ctx.moveTo(cx - s * 0.28, cy);
+    ctx.lineTo(cx + s * 0.28, cy);
+  } else if (shape === "uml_component") {
+    // Minimalist UML component glyph (box + 2 left pins)
+    ctx.roundRect(cx - s * 0.45, cy - s * 0.65, s * 1.05, s * 1.3, 2);
+    ctx.moveTo(cx - s * 0.7, cy - s * 0.28);
+    ctx.lineTo(cx - s * 0.2, cy - s * 0.28);
+    ctx.moveTo(cx - s * 0.7, cy + s * 0.28);
+    ctx.lineTo(cx - s * 0.2, cy + s * 0.28);
+  }
+  ctx.stroke();
+  ctx.restore();
 }
 
-// ============================================================================
-// AUTHENTIC DRAW.IO VECTOR SHAPE RENDERER
-// ============================================================================
 function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
   const { x, y, w, h, shape } = n;
   const strokeCol = ctx.strokeStyle;
@@ -1688,6 +1839,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
 
   ctx.beginPath();
 
+  // 1. Minimalist Diamond & BPMN Gateways
   if (shape === "diamond" || shape === "gateway_xor" || shape === "gateway_parallel") {
     const cx = x + w * 0.5;
     const cy = y + h * 0.5;
@@ -1700,18 +1852,10 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.stroke();
 
     if (shape === "gateway_xor" || shape === "gateway_parallel") {
-      const inset = Math.min(w, h) * 0.08;
-      ctx.beginPath();
-      ctx.moveTo(cx, y + inset);
-      ctx.lineTo(x + w - inset, cy);
-      ctx.lineTo(cx, y + h - inset);
-      ctx.lineTo(x + inset, cy);
-      ctx.closePath();
-      ctx.stroke();
-
       ctx.save();
-      ctx.lineWidth = isMiniPreview ? 1.6 : 2.6;
-      const s = Math.min(w, h) * 0.19;
+      ctx.lineWidth = isMiniPreview ? 1.5 : 2.0;
+      ctx.lineCap = "round";
+      const s = Math.min(w, h) * 0.17;
       ctx.beginPath();
       if (shape === "gateway_xor") {
         ctx.moveTo(cx - s, cy - s);
@@ -1719,19 +1863,23 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
         ctx.moveTo(cx + s, cy - s);
         ctx.lineTo(cx - s, cy + s);
       } else {
-        ctx.moveTo(cx - s * 1.15, cy);
-        ctx.lineTo(cx + s * 1.15, cy);
-        ctx.moveTo(cx, cy - s * 1.15);
-        ctx.lineTo(cx, cy + s * 1.15);
+        ctx.moveTo(cx - s * 1.2, cy);
+        ctx.lineTo(cx + s * 1.2, cy);
+        ctx.moveTo(cx, cy - s * 1.2);
+        ctx.lineTo(cx, cy + s * 1.2);
       }
       ctx.stroke();
       ctx.restore();
     }
-  } else if (shape === "rounded") {
+  }
+  // 2. Minimalist Capsule Pill
+  else if (shape === "rounded") {
     ctx.roundRect(x, y, w, h, Math.min(w, h) * 0.5);
     ctx.fill();
     ctx.stroke();
-  } else if (shape === "circle" || shape === "timer") {
+  }
+  // 3. Minimalist Circle & Timer Event
+  else if (shape === "circle" || shape === "timer") {
     const r = Math.min(w, h) * 0.5;
     const cx = x + w * 0.5;
     const cy = y + h * 0.5;
@@ -1741,22 +1889,16 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
 
     if (shape === "timer") {
       ctx.beginPath();
-      ctx.arc(cx, cy, r * 0.82, 0, Math.PI * 2);
-      for (let tick = 0; tick < 12; tick++) {
-        const ang = (tick / 12) * Math.PI * 2;
-        const r1 = r * 0.66;
-        const r2 = r * 0.8;
-        ctx.moveTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
-        ctx.lineTo(cx + Math.cos(ang) * r2, cy + Math.sin(ang) * r2);
-      }
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx, cy - r * 0.48);
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + r * 0.36, cy + r * 0.12);
+      ctx.arc(cx, cy, r * 0.76, 0, Math.PI * 2);
+      ctx.moveTo(cx, cy - r * 0.45);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx + r * 0.34, cy + r * 0.15);
       ctx.stroke();
     }
-  } else if (shape === "cylinder" || shape === "aws_s3") {
-    const ry = Math.min(14, h * 0.16);
+  }
+  // 4. Minimalist Monoline Vertical Database Cylinder
+  else if (shape === "cylinder") {
+    const ry = Math.min(11, h * 0.14);
     const rx = w * 0.5;
     const cx = x + rx;
 
@@ -1767,23 +1909,18 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.fill();
     ctx.stroke();
 
+    // Crisp single elliptical top rim
     ctx.beginPath();
     ctx.ellipse(cx, y + ry, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
-    ctx.fill();
     ctx.stroke();
-
-    if (!isMiniPreview) {
-      ctx.beginPath();
-      ctx.ellipse(cx, y + ry + 8, rx, ry * 0.88, 0, 0.08, Math.PI - 0.08);
-      ctx.stroke();
-    }
-    ctx.fillStyle = fillCol;
-  } else if (shape === "queue") {
-    const rx = Math.min(13, w * 0.085);
+  }
+  // 5. Minimalist Monoline Horizontal Cylinder (Kafka / Queue)
+  else if (shape === "queue") {
+    const rx = Math.min(11, w * 0.075);
     const ry = h * 0.5;
     const cy = y + ry;
 
+    // Clean horizontal cylinder silhouette
     ctx.ellipse(x + rx, cy, rx, ry, 0, Math.PI * 0.5, Math.PI * 1.5, false);
     ctx.lineTo(x + w - rx, y);
     ctx.ellipse(x + w - rx, cy, rx, ry, 0, -Math.PI * 0.5, Math.PI * 0.5, false);
@@ -1791,24 +1928,14 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.fill();
     ctx.stroke();
 
+    // Single clean monoline elliptical right cap
     ctx.beginPath();
     ctx.ellipse(x + w - rx, cy, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
-    ctx.fill();
     ctx.stroke();
-
-    if (!isMiniPreview) {
-      ctx.beginPath();
-      ctx.ellipse(x + w - rx, cy, rx * 0.45, ry * 0.48, 0, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.ellipse(x + rx + 10, cy, rx * 0.85, ry, 0, Math.PI * 0.56, Math.PI * 1.44, false);
-      ctx.stroke();
-    }
-    ctx.fillStyle = fillCol;
-  } else if (shape === "parallelogram") {
-    const skew = Math.min(20, w * 0.16);
+  }
+  // 6. Minimalist Parallelogram
+  else if (shape === "parallelogram") {
+    const skew = Math.min(16, w * 0.14);
     ctx.moveTo(x + skew, y);
     ctx.lineTo(x + w, y);
     ctx.lineTo(x + w - skew, y + h);
@@ -1816,8 +1943,10 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  } else if (shape === "hexagon" || shape === "aws_lambda" || shape === "k8s_pod") {
-    const cut = Math.min(20, w * 0.14);
+  }
+  // 7. Minimalist Hexagon
+  else if (shape === "hexagon") {
+    const cut = Math.min(18, w * 0.13);
     ctx.moveTo(x + cut, y);
     ctx.lineTo(x + w - cut, y);
     ctx.lineTo(x + w, y + h * 0.5);
@@ -1827,39 +1956,28 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-
-    if (!isMiniPreview && (shape === "aws_lambda" || shape === "k8s_pod")) {
-      const bx = x + 26;
-      const by = y + h * 0.5;
-      ctx.beginPath();
-      ctx.arc(bx, by, 12, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(56, 189, 248, 0.15)";
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = strokeCol;
-      ctx.font = "700 13px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(shape === "aws_lambda" ? "λ" : "☸", bx, by + 4.5);
-      ctx.fillStyle = fillCol;
-    }
-  } else if (shape === "document") {
-    const wave = Math.min(12, h * 0.15);
+  }
+  // 8. Minimalist Document
+  else if (shape === "document") {
+    const wave = Math.min(10, h * 0.13);
     ctx.moveTo(x, y);
     ctx.lineTo(x + w, y);
     ctx.lineTo(x + w, y + h - wave);
     ctx.bezierCurveTo(
-      x + w * 0.72,
-      y + h + wave * 0.85,
-      x + w * 0.28,
-      y + h - wave * 2.1,
+      x + w * 0.7,
+      y + h + wave * 0.75,
+      x + w * 0.3,
+      y + h - wave * 1.9,
       x,
-      y + h - wave * 0.6
+      y + h - wave * 0.5
     );
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  } else if (shape === "note") {
-    const fold = Math.min(18, w * 0.18, h * 0.22);
+  }
+  // 9. Minimalist Note
+  else if (shape === "note") {
+    const fold = Math.min(15, w * 0.16, h * 0.2);
     ctx.moveTo(x, y);
     ctx.lineTo(x + w - fold, y);
     ctx.lineTo(x + w, y + fold);
@@ -1873,82 +1991,62 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.moveTo(x + w - fold, y);
     ctx.lineTo(x + w - fold, y + fold);
     ctx.lineTo(x + w, y + fold);
-    ctx.closePath();
-    ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
-    ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = fillCol;
-  } else if (shape === "cloud") {
-    const l = x + w * 0.06;
-    const r = x + w * 0.94;
-    const t = y + h * 0.12;
-    const b = y + h * 0.88;
+  }
+  // 10. Minimalist Geometric Cloud (Flat base + clean smooth arcs)
+  else if (shape === "cloud") {
+    const l = x + w * 0.08;
+    const r = x + w * 0.92;
+    const t = y + h * 0.16;
+    const b = y + h * 0.86;
     const cw = r - l;
     const ch = b - t;
 
-    ctx.moveTo(l + cw * 0.2, b);
-    ctx.bezierCurveTo(l - cw * 0.06, b, l - cw * 0.06, t + ch * 0.42, l + cw * 0.15, t + ch * 0.36);
-    ctx.bezierCurveTo(l + cw * 0.16, t - ch * 0.06, l + cw * 0.46, t - ch * 0.08, l + cw * 0.54, t + ch * 0.16);
-    ctx.bezierCurveTo(l + cw * 0.68, t - ch * 0.04, l + cw * 0.92, t + ch * 0.08, l + cw * 0.88, t + ch * 0.38);
-    ctx.bezierCurveTo(r + cw * 0.08, t + ch * 0.42, r + cw * 0.06, b, l + cw * 0.8, b);
+    ctx.moveTo(l + cw * 0.18, b);
+    ctx.lineTo(l + cw * 0.82, b);
+    ctx.bezierCurveTo(r + cw * 0.04, b, r + cw * 0.04, t + ch * 0.42, l + cw * 0.82, t + ch * 0.42);
+    ctx.bezierCurveTo(l + cw * 0.82, t - ch * 0.05, l + cw * 0.36, t - ch * 0.08, l + cw * 0.32, t + ch * 0.32);
+    ctx.bezierCurveTo(l - cw * 0.04, t + ch * 0.32, l - cw * 0.04, b, l + cw * 0.18, b);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  } else if (shape === "actor") {
+  }
+  // 11. Minimalist User / Actor Glyph (Lucide User style: head circle + smooth shoulder arc)
+  else if (shape === "actor") {
     const cx = x + w * 0.5;
-    const headR = Math.min(w, h) * 0.15;
-    const headY = y + headR + 4;
-    const neckY = headY + headR;
-    const hipY = y + h * 0.64;
-    const footY = y + h - 4;
-    const armSpan = w * 0.34;
-    const legSpan = w * 0.28;
+    const cy = y + h * 0.5;
+    const r = Math.min(w, h) * 0.46;
 
-    ctx.arc(cx, headY, headR, 0, Math.PI * 2);
+    // Outer minimalist avatar circle
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner head circle + shoulder arc
+    const headR = r * 0.28;
+    ctx.beginPath();
+    ctx.arc(cx, cy - r * 0.2, headR, 0, Math.PI * 2);
+    ctx.moveTo(cx - r * 0.54, cy + r * 0.62);
+    ctx.bezierCurveTo(cx - r * 0.45, cy + r * 0.16, cx + r * 0.45, cy + r * 0.16, cx + r * 0.54, cy + r * 0.62);
+    ctx.stroke();
+  }
+  // 12. Minimalist UML Package
+  else if (shape === "uml_package") {
+    const tabW = Math.min(64, w * 0.4);
+    const tabH = Math.min(14, h * 0.2);
+    ctx.roundRect(x, y, tabW, tabH, [4, 4, 0, 0]);
     ctx.fill();
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(cx, neckY);
-    ctx.lineTo(cx, hipY);
-    ctx.moveTo(cx - armSpan, neckY + (hipY - neckY) * 0.35);
-    ctx.lineTo(cx + armSpan, neckY + (hipY - neckY) * 0.35);
-    ctx.moveTo(cx, hipY);
-    ctx.lineTo(cx - legSpan, footY);
-    ctx.moveTo(cx, hipY);
-    ctx.lineTo(cx + legSpan, footY);
-    ctx.stroke();
-  } else if (shape === "uml_package") {
-    const tabW = Math.min(76, w * 0.45);
-    const tabH = Math.min(18, h * 0.22);
-    ctx.roundRect(x, y, tabW, tabH, [5, 5, 0, 0]);
+    ctx.roundRect(x, y + tabH, w, h - tabH, [0, 7, 7, 7]);
     ctx.fill();
     ctx.stroke();
-
-    ctx.beginPath();
-    ctx.roundRect(x, y + tabH, w, h - tabH, [0, 8, 8, 8]);
-    ctx.fill();
-    ctx.stroke();
-  } else if (shape === "uml_component") {
-    ctx.roundRect(x, y, w, h, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    if (!isMiniPreview) {
-      const ix = x + w - 24;
-      const iy = y + 8;
-      ctx.beginPath();
-      ctx.rect(ix, iy, 14, 18);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillRect(ix - 4, iy + 3, 8, 4);
-      ctx.strokeRect(ix - 4, iy + 3, 8, 4);
-      ctx.fillRect(ix - 4, iy + 11, 8, 4);
-      ctx.strokeRect(ix - 4, iy + 11, 8, 4);
-    }
-  } else if (shape === "uml_class" || shape === "uml_interface") {
-    const headerH = isMiniPreview ? h * 0.38 : 34;
-    ctx.roundRect(x, y, w, h, 8);
+  }
+  // 13. Minimalist UML Class & Interface
+  else if (shape === "uml_class" || shape === "uml_interface") {
+    const headerH = isMiniPreview ? h * 0.4 : 30;
+    ctx.roundRect(x, y, w, h, isMiniPreview ? 3 : 7);
     ctx.fill();
     ctx.stroke();
 
@@ -1956,74 +2054,22 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.moveTo(x, y + headerH);
     ctx.lineTo(x + w, y + headerH);
     ctx.stroke();
-  } else if (shape === "shield") {
+  }
+  // 14. Minimalist Auth Shield
+  else if (shape === "shield") {
     const cx = x + w * 0.5;
     ctx.moveTo(cx, y);
-    ctx.lineTo(x + w, y + h * 0.18);
-    ctx.bezierCurveTo(x + w, y + h * 0.68, cx + w * 0.12, y + h * 0.92, cx, y + h);
-    ctx.bezierCurveTo(cx - w * 0.12, y + h * 0.92, x, y + h * 0.68, x, y + h * 0.18);
+    ctx.lineTo(x + w, y + h * 0.2);
+    ctx.bezierCurveTo(x + w, y + h * 0.66, cx + w * 0.1, y + h * 0.9, cx, y + h);
+    ctx.bezierCurveTo(cx - w * 0.1, y + h * 0.9, x, y + h * 0.66, x, y + h * 0.2);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  } else if (shape === "firewall") {
-    const headerH = isMiniPreview ? h * 0.45 : 24;
-    ctx.roundRect(x, y, w, h, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, headerH, [8, 8, 0, 0]);
-    ctx.fillStyle = "rgba(244, 63, 94, 0.18)";
-    ctx.fill();
-    ctx.restore();
-
-    ctx.beginPath();
-    const midY = y + headerH * 0.5;
-    ctx.moveTo(x, midY);
-    ctx.lineTo(x + w, midY);
-    ctx.moveTo(x, y + headerH);
-    ctx.lineTo(x + w, y + headerH);
-    for (const f of [0.25, 0.5, 0.75]) {
-      ctx.moveTo(x + w * f, y);
-      ctx.lineTo(x + w * f, midY);
-    }
-    for (const f of [0.125, 0.375, 0.625, 0.875]) {
-      ctx.moveTo(x + w * f, midY);
-      ctx.lineTo(x + w * f, y + headerH);
-    }
-    ctx.stroke();
-  } else if (shape === "server") {
-    const headerH = isMiniPreview ? h * 0.35 : 22;
-    ctx.roundRect(x, y, w, h, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(x, y + headerH);
-    ctx.lineTo(x + w, y + headerH);
-    if (!isMiniPreview) {
-      for (let i = 0; i < 4; i++) {
-        const vx = x + w - 14 - i * 6;
-        ctx.moveTo(vx, y + 6);
-        ctx.lineTo(vx, y + headerH - 6);
-      }
-    }
-    ctx.stroke();
-
-    if (!isMiniPreview) {
-      const leds = ["#34d399", "#38bdf8"];
-      for (let i = 0; i < 2; i++) {
-        ctx.beginPath();
-        ctx.arc(x + 14 + i * 11, y + headerH * 0.5, 3.2, 0, Math.PI * 2);
-        ctx.fillStyle = leds[i];
-        ctx.fill();
-      }
-      ctx.fillStyle = fillCol;
-    }
-  } else if (shape === "browser") {
-    const headerH = isMiniPreview ? h * 0.3 : 26;
-    ctx.roundRect(x, y, w, h, 10);
+  }
+  // 15. Minimalist Browser UI Wireframe
+  else if (shape === "browser") {
+    const headerH = isMiniPreview ? h * 0.3 : 22;
+    ctx.roundRect(x, y, w, h, isMiniPreview ? 3 : 8);
     ctx.fill();
     ctx.stroke();
     ctx.beginPath();
@@ -2031,27 +2077,55 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.lineTo(x + w, y + headerH);
     ctx.stroke();
     if (!isMiniPreview) {
-      const colors = ["#f43f5e", "#fbbf24", "#34d399"];
       for (let i = 0; i < 3; i++) {
         ctx.beginPath();
-        ctx.arc(x + 14 + i * 12, y + 13, 3.8, 0, Math.PI * 2);
-        ctx.fillStyle = colors[i];
-        ctx.fill();
+        ctx.arc(x + 12 + i * 9, y + 11, 2.4, 0, Math.PI * 2);
+        ctx.stroke();
       }
-      ctx.fillStyle = fillCol;
     }
-  } else if (shape === "mobile") {
-    ctx.roundRect(x, y, w, h, isMiniPreview ? 6 : 18);
+  }
+  // 16. Minimalist Mobile UI Wireframe
+  else if (shape === "mobile") {
+    ctx.roundRect(x, y, w, h, isMiniPreview ? 5 : 14);
     ctx.fill();
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(x + w * 0.35, y + (isMiniPreview ? 4 : 10));
-    ctx.lineTo(x + w * 0.65, y + (isMiniPreview ? 4 : 10));
-    ctx.moveTo(x + w * 0.3, y + h - (isMiniPreview ? 4 : 10));
-    ctx.lineTo(x + w * 0.7, y + h - (isMiniPreview ? 4 : 10));
+    ctx.moveTo(x + w * 0.38, y + (isMiniPreview ? 3.5 : 8));
+    ctx.lineTo(x + w * 0.62, y + (isMiniPreview ? 3.5 : 8));
+    ctx.moveTo(x + w * 0.35, y + h - (isMiniPreview ? 3.5 : 8));
+    ctx.lineTo(x + w * 0.65, y + h - (isMiniPreview ? 3.5 : 8));
     ctx.stroke();
-  } else {
-    ctx.roundRect(x, y, w, h, isMiniPreview ? 4 : 10);
+  }
+  // 17. Minimalist Architecture Cards with Left Monoline Badge (AWS Lambda, S3, K8s, Server, Firewall, UML Component)
+  else if (
+    shape === "aws_lambda" ||
+    shape === "aws_s3" ||
+    shape === "k8s_pod" ||
+    shape === "server" ||
+    shape === "firewall" ||
+    shape === "uml_component"
+  ) {
+    ctx.roundRect(x, y, w, h, isMiniPreview ? 3 : 8);
+    ctx.fill();
+    ctx.stroke();
+
+    if (isMiniPreview) {
+      drawMinimalistBadgeGlyph(ctx, shape, x + w * 0.5, y + h * 0.5, Math.min(w, h) * 0.42, strokeCol);
+    } else {
+      const bx = x + 26;
+      const by = y + h * 0.5;
+      ctx.beginPath();
+      ctx.roundRect(bx - 13, by - 13, 26, 26, 6);
+      ctx.fillStyle = "rgba(148, 163, 184, 0.08)";
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = fillCol;
+      drawMinimalistBadgeGlyph(ctx, shape, bx, by, 9, strokeCol);
+    }
+  }
+  // 18. Standard Minimalist Process Card
+  else {
+    ctx.roundRect(x, y, w, h, isMiniPreview ? 3 : 8);
     ctx.fill();
     ctx.stroke();
   }
@@ -2064,56 +2138,63 @@ function getNodeTextPlacement(n) {
   if (shape === "actor" || shape === "gateway_xor" || shape === "gateway_parallel" || shape === "timer") {
     return {
       cx,
-      titleY: y + h + 16,
-      bodyY: y + h + 31,
+      titleY: y + h + 15,
+      bodyY: y + h + 29,
       external: true,
     };
   }
-  if (shape === "cylinder" || shape === "aws_s3") {
-    const bodyCenterY = y + 20 + (h - 20) * 0.5;
-    return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 13, external: false };
+  if (shape === "cylinder") {
+    const bodyCenterY = y + 16 + (h - 16) * 0.5;
+    return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 12, external: false };
   }
   if (shape === "uml_package") {
-    const bodyCenterY = y + 18 + (h - 18) * 0.5;
-    return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 13, external: false };
+    const bodyCenterY = y + 14 + (h - 14) * 0.5;
+    return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 12, external: false };
   }
-  if (shape === "firewall" || shape === "server" || shape === "browser") {
-    const topBar = shape === "browser" ? 26 : 23;
-    const bodyCenterY = y + topBar + (h - topBar) * 0.5;
-    return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 13, external: false };
+  if (shape === "browser") {
+    const bodyCenterY = y + 22 + (h - 22) * 0.5;
+    return { cx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 12, external: false };
   }
   if (shape === "uml_class" || shape === "uml_interface") {
     return {
       cx,
-      titleY: y + 22,
-      bodyY: y + 34 + (h - 34) * 0.5 + 4,
+      titleY: y + 19,
+      bodyY: y + 30 + (h - 30) * 0.5 + 4,
       external: false,
     };
   }
   if (shape === "queue") {
     return {
-      cx: x + w * 0.5 - 5,
+      cx: x + w * 0.5 - 4,
       titleY: y + h * 0.5 - (n.body ? 5 : -4),
-      bodyY: y + h * 0.5 + 14,
+      bodyY: y + h * 0.5 + 12,
       external: false,
     };
   }
-  if (shape === "aws_lambda" || shape === "k8s_pod") {
+  if (
+    shape === "aws_lambda" ||
+    shape === "aws_s3" ||
+    shape === "k8s_pod" ||
+    shape === "server" ||
+    shape === "firewall" ||
+    shape === "uml_component"
+  ) {
     return {
-      cx: x + w * 0.5 + 10,
+      cx: x + 44 + (w - 44) * 0.5,
       titleY: y + h * 0.5 - (n.body ? 5 : -4),
-      bodyY: y + h * 0.5 + 14,
+      bodyY: y + h * 0.5 + 12,
       external: false,
     };
   }
   return {
     cx,
     titleY: y + h * 0.5 - (n.body ? 5 : -4),
-    bodyY: y + h * 0.5 + 14,
+    bodyY: y + h * 0.5 + 12,
     external: false,
   };
 }
 
+// Render Left Stencil Palette with Drag-and-Drop + Minimalist Monoline Thumbnails
 function renderPalette(filter = "") {
   const container = document.getElementById("palette-list");
   container.innerHTML = "";
@@ -2138,16 +2219,18 @@ function renderPalette(filter = "") {
     for (const item of items) {
       const card = document.createElement("div");
       card.className = "stencil-card";
+      card.draggable = true;
+      card.title = `Drag "${item.label}" onto canvas or click to add`;
 
       const thumb = document.createElement("canvas");
       thumb.width = 30;
       thumb.height = 22;
       thumb.style.flexShrink = "0";
       const tctx = thumb.getContext("2d");
-      tctx.fillStyle = "#1e293b";
+      tctx.fillStyle = "rgba(56, 189, 248, 0.08)";
       tctx.strokeStyle = "#38bdf8";
-      tctx.lineWidth = 1.4;
-      drawNodeShapeGeometry(tctx, { x: 2, y: 2, w: 26, h: 18, shape: item.shape }, true);
+      tctx.lineWidth = 1.35;
+      drawNodeShapeGeometry(tctx, { x: 2.5, y: 2.5, w: 25, h: 17, shape: item.shape }, true);
 
       const labelSpan = document.createElement("span");
       labelSpan.textContent = item.label;
@@ -2156,7 +2239,43 @@ function renderPalette(filter = "") {
 
       card.appendChild(thumb);
       card.appendChild(labelSpan);
-      card.onclick = () => addStencilToCanvas(item);
+
+      // Pointer drag-and-drop initiation
+      card.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) return;
+        state.draggingStencil = {
+          item,
+          startX: e.clientX,
+          startY: e.clientY,
+          active: false,
+          overCanvas: false,
+          ghostX: 0,
+          ghostY: 0,
+        };
+      });
+
+      // HTML5 dragstart fallback
+      card.addEventListener("dragstart", (e) => {
+        state.draggingStencil = {
+          item,
+          startX: e.clientX,
+          startY: e.clientY,
+          active: true,
+          overCanvas: false,
+          ghostX: 0,
+          ghostY: 0,
+        };
+        if (e.dataTransfer) {
+          e.dataTransfer.setData("text/plain", item.id);
+          e.dataTransfer.effectAllowed = "copy";
+        }
+      });
+
+      card.addEventListener("dragend", () => {
+        state.draggingStencil = null;
+        state.smartGuides = [];
+      });
+
       grid.appendChild(card);
     }
     section.appendChild(grid);
@@ -2487,8 +2606,8 @@ function generateStressGraph(count) {
       x: 60 + c * 220,
       y: 60 + r * 120,
       w: 165,
-      h: 74,
-      fill: "#1e293b",
+      h: 72,
+      fill: "#131b2e",
       stroke: "#38bdf8",
       shape: i % 4 === 0 ? "queue" : i % 3 === 0 ? "cylinder" : "card",
       z: i,
@@ -2504,7 +2623,7 @@ function generateStressGraph(count) {
         anim: i % 2 === 0 ? "ants" : "pulse",
         kind: "bezier",
         color: "#818cf8",
-        width: 2,
+        width: 1.8,
         bend: null,
       });
     }
@@ -2576,10 +2695,10 @@ function exportAnimatedSvg() {
     const geo = getEdgeGeometry(e);
     if (!geo) continue;
     const d = `M ${geo.p0.x} ${geo.p0.y} C ${geo.p1.x} ${geo.p1.y}, ${geo.p2.x} ${geo.p2.y}, ${geo.p3.x} ${geo.p3.y}`;
-    svg += `  <path d="${d}" fill="none" stroke="${e.color || "#818cf8"}" stroke-width="${e.width || 2.2}" class="${e.anim === "ants" ? "ants" : ""}"/>\n`;
+    svg += `  <path d="${d}" fill="none" stroke="${e.color || "#818cf8"}" stroke-width="${e.width || 1.8}" class="${e.anim === "ants" ? "ants" : ""}"/>\n`;
   }
   for (const n of p.nodes) {
-    svg += `  <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="10" fill="${n.fill}" stroke="${n.stroke}" stroke-width="2"/>\n`;
+    svg += `  <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="8" fill="${n.fill}" stroke="${n.stroke}" stroke-width="1.8"/>\n`;
     svg += `  <text x="${n.x + n.w / 2}" y="${n.y + n.h / 2}" text-anchor="middle" dominant-baseline="middle">${n.title}</text>\n`;
   }
   svg += `</svg>`;
@@ -2619,14 +2738,14 @@ const COMMANDS = [
   { label: "Auto-Layout: Sugiyama Hierarchical", shortcut: "Ctrl+Shift+L", run: runHierarchicalLayout },
   { label: "Auto-Layout: Uniform Grid", shortcut: "Arrange", run: runGridLayout },
   { label: "Auto-Layout: Radial Ring", shortcut: "Arrange", run: runRadialLayout },
-  { label: "Theme: Dark Mode", shortcut: "View", run: () => handleMenuAction("theme-dark") },
-  { label: "Theme: Light Mode", shortcut: "View", run: () => handleMenuAction("theme-light") },
+  { label: "Theme: Dark Minimal", shortcut: "View", run: () => handleMenuAction("theme-dark") },
+  { label: "Theme: Light Minimal", shortcut: "View", run: () => handleMenuAction("theme-light") },
   { label: "Theme: High Contrast", shortcut: "View", run: () => handleMenuAction("theme-contrast") },
   { label: "Export: Save .drawio XML", shortcut: "Ctrl+S", run: exportDrawioXml },
   { label: "Export: Animated SVG", shortcut: "Ctrl+E", run: exportAnimatedSvg },
   { label: "Keyboard Shortcuts Cheat-Sheet", shortcut: "?", run: openShortcutsModal },
   { label: "Benchmark: Generate 100-Node Graph", shortcut: "Extras", run: () => generateStressGraph(100) },
-  ...STENCILS.map((s) => ({ label: `Add ${s.label}`, shortcut: s.category, run: () => addStencilToCanvas(s) })),
+  ...STENCILS.map((s) => ({ label: `Add ${s.label}`, shortcut: s.category, run: () => addStencilToCanvasCenter(s) })),
 ];
 
 function openCommandPalette() {
@@ -2669,7 +2788,6 @@ window.addEventListener("keydown", (e) => {
   const mod = e.ctrlKey || e.metaKey;
   const key = e.key.toLowerCase();
 
-  // Command Palette (Ctrl+K) works anywhere
   if (mod && key === "k") {
     e.preventDefault();
     if (cmdOverlay.classList.contains("open")) closeCommandPalette();
@@ -2677,22 +2795,21 @@ window.addEventListener("keydown", (e) => {
     return;
   }
 
-  // Escape closes modals, inline editor, menus, or clears selection
   if (e.key === "Escape") {
     closeCommandPalette();
     closeShortcutsModal();
     inlineEditor.style.display = "none";
+    state.draggingStencil = null;
+    state.smartGuides = [];
     menuItems.forEach((m) => m.classList.remove("open"));
     clearSelection();
     return;
   }
 
-  // Do not intercept typing when inside an input or select element
   if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") {
     return;
   }
 
-  // Help / Shortcuts Modal (? or F1)
   if (e.key === "?" || e.key === "F1") {
     e.preventDefault();
     if (shortcutsOverlay.classList.contains("open")) closeShortcutsModal();
@@ -2700,7 +2817,6 @@ window.addEventListener("keydown", (e) => {
     return;
   }
 
-  // Inline Label Edit (F2 or Enter when 1 item selected)
   if (e.key === "F2" || (e.key === "Enter" && !mod)) {
     if (state.selectedNodeId || state.selectedEdgeId) {
       e.preventDefault();
@@ -2709,7 +2825,6 @@ window.addEventListener("keydown", (e) => {
     }
   }
 
-  // Modifier Shortcuts (Ctrl / Cmd + ...)
   if (mod) {
     if (key === "a") {
       e.preventDefault();
@@ -2767,14 +2882,12 @@ window.addEventListener("keydown", (e) => {
     return;
   }
 
-  // Delete / Backspace
   if (e.key === "Delete" || e.key === "Backspace") {
     e.preventDefault();
     deleteSelected(true);
     return;
   }
 
-  // Arrow Key Nudge (5px normal, 20px with Shift, 1px with Alt) for ALL selected nodes
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
     if (!state.selectedNodeIds.size) return;
     e.preventDefault();
@@ -2810,13 +2923,13 @@ function drawInfiniteGridFast(p) {
     tile.height = macro;
     const tctx = tile.getContext("2d");
     const color =
-      state.theme === "light" ? "#cbd5e1" : state.theme === "contrast" ? "#404040" : "#263346";
+      state.theme === "light" ? "#cbd5e1" : state.theme === "contrast" ? "#333333" : "#1e293b";
 
     if (state.gridStyle === "dots") {
       tctx.fillStyle = color;
       for (let gx = 0; gx < macro; gx += step) {
         for (let gy = 0; gy < macro; gy += step) {
-          tctx.fillRect(gx, gy, 2, 2);
+          tctx.fillRect(gx, gy, 1.5, 1.5);
         }
       }
     } else {
@@ -2847,12 +2960,12 @@ function drawInfiniteGridFast(p) {
 
 function drawArrowhead(ctx, fromPt, toPt, color) {
   const angle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x);
-  const headLen = 10;
+  const headLen = 9;
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.moveTo(toPt.x, toPt.y);
-  ctx.lineTo(toPt.x - headLen * Math.cos(angle - Math.PI / 6), toPt.y - headLen * Math.sin(angle - Math.PI / 6));
-  ctx.lineTo(toPt.x - headLen * Math.cos(angle + Math.PI / 6), toPt.y - headLen * Math.sin(angle + Math.PI / 6));
+  ctx.lineTo(toPt.x - headLen * Math.cos(angle - Math.PI / 6.5), toPt.y - headLen * Math.sin(angle - Math.PI / 6.5));
+  ctx.lineTo(toPt.x - headLen * Math.cos(angle + Math.PI / 6.5), toPt.y - headLen * Math.sin(angle + Math.PI / 6.5));
   ctx.closePath();
   ctx.fill();
 }
@@ -2897,7 +3010,7 @@ function renderLoop(timestamp) {
     }
   }
 
-  ctx.fillStyle = state.theme === "light" ? "#f8fafc" : state.theme === "contrast" ? "#000000" : "#0b0f19";
+  ctx.fillStyle = state.theme === "light" ? "#f8fafc" : state.theme === "contrast" ? "#000000" : "#090d16";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   drawInfiniteGridFast(p);
@@ -2911,7 +3024,7 @@ function renderLoop(timestamp) {
 
   if (state.smartGuides.length) {
     ctx.strokeStyle = "#f43f5e";
-    ctx.lineWidth = 1.2 / p.zoom;
+    ctx.lineWidth = 1.1 / p.zoom;
     ctx.setLineDash([4 / p.zoom, 4 / p.zoom]);
     ctx.beginPath();
     for (let i = 0; i < state.smartGuides.length; i++) {
@@ -2928,7 +3041,7 @@ function renderLoop(timestamp) {
     ctx.setLineDash([]);
   }
 
-  ctx.font = "600 11px Inter, sans-serif";
+  ctx.font = "500 11px Inter, sans-serif";
   ctx.textAlign = "center";
 
   for (let i = 0; i < p.edges.length; i++) {
@@ -2959,11 +3072,11 @@ function renderLoop(timestamp) {
     }
 
     ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = isSelected ? (e.width || 2.2) + 1.2 : e.width || 2.2;
+    ctx.lineWidth = isSelected ? (e.width || 1.8) + 1.0 : e.width || 1.8;
 
     if (e.anim === "ants") {
-      ctx.setLineDash([9, 5]);
-      ctx.lineDashOffset = -timeSec * 42;
+      ctx.setLineDash([7, 5]);
+      ctx.lineDashOffset = -timeSec * 38;
     }
     ctx.stroke();
     if (e.anim === "ants") ctx.setLineDash([]);
@@ -2972,51 +3085,46 @@ function renderLoop(timestamp) {
     drawArrowhead(ctx, prevPt, geo.p3, strokeColor);
 
     if (e.anim === "pulse") {
-      const speedPxPerSec = 145;
+      const speedPxPerSec = 140;
       const spacing = geo.totalLen * 0.5;
       for (let pIdx = 0; pIdx < 2; pIdx++) {
         const headDist = (timeSec * speedPxPerSec + pIdx * spacing) % geo.totalLen;
-        const tail1 = getPointAtArcDistance(geo, headDist - 12);
-        const tail2 = getPointAtArcDistance(geo, headDist - 6);
+        const tail1 = getPointAtArcDistance(geo, headDist - 10);
+        const tail2 = getPointAtArcDistance(geo, headDist - 5);
         const head = getPointAtArcDistance(geo, headDist);
 
-        ctx.fillStyle = "rgba(56, 189, 248, 0.18)";
+        ctx.fillStyle = "rgba(56, 189, 248, 0.16)";
         ctx.beginPath();
-        ctx.arc(tail1.x, tail1.y, 4.2, 0, Math.PI * 2);
+        ctx.arc(tail1.x, tail1.y, 3.6, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = "rgba(56, 189, 248, 0.35)";
+        ctx.fillStyle = "rgba(56, 189, 248, 0.32)";
         ctx.beginPath();
-        ctx.arc(tail2.x, tail2.y, 5.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = "rgba(56, 189, 248, 0.25)";
-        ctx.beginPath();
-        ctx.arc(head.x, head.y, 7.5, 0, Math.PI * 2);
+        ctx.arc(tail2.x, tail2.y, 4.6, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.fillStyle = "#e0f2fe";
         ctx.beginPath();
-        ctx.arc(head.x, head.y, 3.6, 0, Math.PI * 2);
+        ctx.arc(head.x, head.y, 3.2, 0, Math.PI * 2);
         ctx.fill();
       }
     }
 
     if (e.label) {
       const textW = geo.labelWidth;
-      ctx.fillStyle = state.theme === "light" ? "#ffffff" : "#0f172a";
+      ctx.fillStyle = state.theme === "light" ? "#ffffff" : "#0f1420";
       ctx.strokeStyle = strokeColor;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(geo.midPoint.x - textW * 0.5, geo.midPoint.y - 10, textW, 20, 6);
+      ctx.roundRect(geo.midPoint.x - textW * 0.5, geo.midPoint.y - 9.5, textW, 19, 5);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = state.theme === "light" ? "#0f172a" : "#f8fafc";
-      ctx.fillText(e.label, geo.midPoint.x, geo.midPoint.y + 4);
+      ctx.fillStyle = state.theme === "light" ? "#0f172a" : "#e2e8f0";
+      ctx.fillText(e.label, geo.midPoint.x, geo.midPoint.y + 3.5);
     }
 
     if (e.id === state.selectedEdgeId) {
-      ctx.strokeStyle = "rgba(251, 191, 36, 0.45)";
+      ctx.strokeStyle = "rgba(251, 191, 36, 0.4)";
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.moveTo(geo.p0.x, geo.p0.y);
@@ -3026,19 +3134,19 @@ function renderLoop(timestamp) {
       ctx.setLineDash([]);
 
       ctx.beginPath();
-      ctx.arc(geo.midPoint.x, geo.midPoint.y, 7, 0, Math.PI * 2);
+      ctx.arc(geo.midPoint.x, geo.midPoint.y, 6, 0, Math.PI * 2);
       ctx.fillStyle = "#fbbf24";
-      ctx.strokeStyle = "#0b0f19";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#090d16";
+      ctx.lineWidth = 1.8;
       ctx.fill();
       ctx.stroke();
 
       for (const ep of [geo.p0, geo.p3]) {
         ctx.beginPath();
-        ctx.arc(ep.x, ep.y, 6.5, 0, Math.PI * 2);
+        ctx.arc(ep.x, ep.y, 5.5, 0, Math.PI * 2);
         ctx.fillStyle = "#22d3ee";
-        ctx.strokeStyle = "#0b0f19";
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#090d16";
+        ctx.lineWidth = 1.8;
         ctx.fill();
         ctx.stroke();
       }
@@ -3058,21 +3166,21 @@ function renderLoop(timestamp) {
     ctx.moveTo(startPt.x, startPt.y);
     ctx.lineTo(endPt.x, endPt.y);
     ctx.strokeStyle = state.snapTargetPort ? "#34d399" : "#38bdf8";
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([6, 4]);
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
     ctx.stroke();
     ctx.setLineDash([]);
 
     if (state.snapTargetPort) {
       ctx.beginPath();
-      ctx.arc(state.snapTargetPort.port.x, state.snapTargetPort.port.y, 11, 0, Math.PI * 2);
+      ctx.arc(state.snapTargetPort.port.x, state.snapTargetPort.port.y, 10, 0, Math.PI * 2);
       ctx.strokeStyle = "#34d399";
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
     }
   }
 
-  // Frustum-Culled Nodes
+  // Frustum-Culled Minimalist Nodes
   const visibleNodes = [];
   for (let i = 0; i < p.nodes.length; i++) {
     const n = p.nodes[i];
@@ -3088,31 +3196,31 @@ function renderLoop(timestamp) {
 
     const selected = state.selectedNodeIds.has(n.id);
     if (selected) {
-      ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
-      ctx.lineWidth = 5;
-      ctx.strokeRect(n.x - 3, n.y - 3, n.w + 6, n.h + 6);
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.22)";
+      ctx.lineWidth = 4;
+      ctx.strokeRect(n.x - 2.5, n.y - 2.5, n.w + 5, n.h + 5);
     }
 
     ctx.fillStyle = n.fill;
     ctx.strokeStyle = selected ? "#38bdf8" : n.stroke;
-    ctx.lineWidth = selected ? 2.4 : 1.8;
+    ctx.lineWidth = selected ? 2.0 : 1.5;
     drawNodeShapeGeometry(ctx, n, false);
 
     for (const port of getNodePorts(n)) {
       const isHovered =
         state.hoveredPort && state.hoveredPort.nodeId === n.id && state.hoveredPort.side === port.side;
       ctx.beginPath();
-      ctx.arc(port.x, port.y, isHovered ? 7.5 : 5, 0, Math.PI * 2);
-      ctx.fillStyle = isHovered ? "#34d399" : "#0b0f19";
-      ctx.strokeStyle = isHovered ? "#ffffff" : "#818cf8";
-      ctx.lineWidth = 2;
+      ctx.arc(port.x, port.y, isHovered ? 6.5 : 4, 0, Math.PI * 2);
+      ctx.fillStyle = isHovered ? "#34d399" : "#090d16";
+      ctx.strokeStyle = isHovered ? "#ffffff" : "#64748b";
+      ctx.lineWidth = 1.6;
       ctx.fill();
       ctx.stroke();
     }
   }
 
   // Batched Title Text Pass
-  ctx.font = "600 13px Inter, sans-serif";
+  ctx.font = "600 12.5px Inter, sans-serif";
   ctx.textAlign = "center";
   for (let i = 0; i < visibleNodes.length; i++) {
     const n = visibleNodes[i];
@@ -3121,16 +3229,16 @@ function renderLoop(timestamp) {
       pos.external
         ? state.theme === "light"
           ? "#0f172a"
-          : "#f8fafc"
+          : "#f1f5f9"
         : state.theme === "light" && n.fill === "#ffffff"
         ? "#0f172a"
-        : "#f8fafc";
+        : "#f1f5f9";
     ctx.fillText(n.title, pos.cx, pos.titleY);
   }
 
   // Batched Subtitle Text Pass
-  ctx.font = "400 11px monospace";
-  ctx.fillStyle = "#94a3b8";
+  ctx.font = "400 10.5px monospace";
+  ctx.fillStyle = "#8b9bb4";
   for (let i = 0; i < visibleNodes.length; i++) {
     const n = visibleNodes[i];
     if (!n.body) continue;
@@ -3142,20 +3250,52 @@ function renderLoop(timestamp) {
   const selectedNode = nodeMap.get(state.selectedNodeId);
   if (selectedNode && state.selectedNodeIds.size === 1) {
     ctx.fillStyle = "#38bdf8";
-    ctx.fillRect(selectedNode.x + selectedNode.w - 5, selectedNode.y + selectedNode.h - 5, 10, 10);
+    ctx.fillRect(selectedNode.x + selectedNode.w - 4.5, selectedNode.y + selectedNode.h - 4.5, 9, 9);
 
-    ctx.font = "700 11px sans-serif";
+    ctx.font = "600 10.5px sans-serif";
     for (const arrow of getQuickArrows(selectedNode)) {
       ctx.beginPath();
-      ctx.arc(arrow.x, arrow.y, 9.5, 0, Math.PI * 2);
-      ctx.fillStyle = "#1e293b";
+      ctx.arc(arrow.x, arrow.y, 8.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#0f1420";
       ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.3;
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = "#38bdf8";
-      ctx.fillText(arrow.label, arrow.x, arrow.y + 4);
+      ctx.fillText(arrow.label, arrow.x, arrow.y + 3.5);
     }
+  }
+
+  // Live Ghost Preview When Dragging a Stencil from the Left Panel onto the Canvas
+  if (state.draggingStencil && state.draggingStencil.active && state.draggingStencil.overCanvas) {
+    const { item, ghostX, ghostY } = state.draggingStencil;
+    const ghostNode = {
+      x: ghostX,
+      y: ghostY,
+      w: item.w,
+      h: item.h,
+      shape: item.shape,
+      title: item.label,
+      body: item.id.split(".").pop(),
+    };
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = state.theme === "light" ? "#ffffff" : "#131b2e";
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 2;
+    drawNodeShapeGeometry(ctx, ghostNode, false);
+
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.55)";
+    ctx.strokeRect(ghostX - 4, ghostY - 4, item.w + 8, item.h + 8);
+    ctx.setLineDash([]);
+
+    const pos = getNodeTextPlacement(ghostNode);
+    ctx.font = "600 12.5px Inter, sans-serif";
+    ctx.fillStyle = state.theme === "light" ? "#0f172a" : "#f1f5f9";
+    ctx.textAlign = "center";
+    ctx.fillText(ghostNode.title, pos.cx, pos.titleY);
+    ctx.restore();
   }
 
   // Rubber-Band Marquee Selection Box
@@ -3164,9 +3304,9 @@ function renderLoop(timestamp) {
     const my = Math.min(state.marqueeBox.startY, state.marqueeBox.endY);
     const mw = Math.abs(state.marqueeBox.endX - state.marqueeBox.startX);
     const mh = Math.abs(state.marqueeBox.endY - state.marqueeBox.startY);
-    ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
+    ctx.fillStyle = "rgba(56, 189, 248, 0.1)";
     ctx.strokeStyle = "#38bdf8";
-    ctx.lineWidth = 1.5 / p.zoom;
+    ctx.lineWidth = 1.4 / p.zoom;
     ctx.setLineDash([5 / p.zoom, 3 / p.zoom]);
     ctx.fillRect(mx, my, mw, mh);
     ctx.strokeRect(mx, my, mw, mh);
@@ -3185,7 +3325,7 @@ function renderLoop(timestamp) {
     minimapCtx.scale(scale, scale);
     for (let i = 0; i < p.nodes.length; i++) {
       const n = p.nodes[i];
-      minimapCtx.fillStyle = state.selectedNodeIds.has(n.id) ? "#38bdf8" : "#64748b";
+      minimapCtx.fillStyle = state.selectedNodeIds.has(n.id) ? "#38bdf8" : "#475569";
       minimapCtx.fillRect(n.x, n.y, n.w, n.h);
     }
     minimapCtx.strokeStyle = "#818cf8";

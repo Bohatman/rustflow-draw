@@ -3,43 +3,46 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RustFlow Draw — Developer Diagramming Engine</title>
+    <title>RustFlow Draw — Minimalist Developer Diagramming Engine</title>
     <style>
       :root[data-theme="light"] {
         --bg-canvas: #f8fafc;
         --bg-panel: #ffffff;
         --bg-subtle: #f1f5f9;
         --bg-hover: #e2e8f0;
-        --border-color: #cbd5e1;
+        --border-color: #e2e8f0;
+        --border-strong: #cbd5e1;
         --text-primary: #0f172a;
         --text-muted: #64748b;
         --accent: #4f46e5;
-        --accent-soft: rgba(79, 70, 229, 0.12);
+        --accent-soft: rgba(79, 70, 229, 0.1);
         --grid-dot: #cbd5e1;
       }
       :root[data-theme="dark"] {
-        --bg-canvas: #0b0f19;
-        --bg-panel: #111827;
-        --bg-subtle: #1e293b;
-        --bg-hover: #334155;
-        --border-color: #283548;
-        --text-primary: #f8fafc;
-        --text-muted: #94a3b8;
+        --bg-canvas: #090d16;
+        --bg-panel: #0f1420;
+        --bg-subtle: #161d2e;
+        --bg-hover: #1e293b;
+        --border-color: #1e293b;
+        --border-strong: #334155;
+        --text-primary: #f1f5f9;
+        --text-muted: #8b9bb4;
         --accent: #38bdf8;
-        --accent-soft: rgba(56, 189, 248, 0.14);
-        --grid-dot: #263346;
+        --accent-soft: rgba(56, 189, 248, 0.12);
+        --grid-dot: #1e293b;
       }
       :root[data-theme="contrast"] {
         --bg-canvas: #000000;
         --bg-panel: #0a0a0a;
-        --bg-subtle: #171717;
+        --bg-subtle: #141414;
         --bg-hover: #262626;
-        --border-color: #facc15;
+        --border-color: #404040;
+        --border-strong: #facc15;
         --text-primary: #ffffff;
-        --text-muted: #fef08a;
+        --text-muted: #d4d4d4;
         --accent: #22d3ee;
         --accent-soft: rgba(34, 211, 238, 0.2);
-        --grid-dot: #404040;
+        --grid-dot: #333333;
       }
       * {
         box-sizing: border-box;
@@ -58,7 +61,19 @@
         color: var(--text-primary);
       }
 
-      /* 1. Draw.io Style Top Dropdown Menubar */
+      /* Minimalist SVG Icon Helper */
+      .icon-svg {
+        width: 14px;
+        height: 14px;
+        stroke: currentColor;
+        stroke-width: 1.75;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        fill: none;
+        flex-shrink: 0;
+      }
+
+      /* 1. Minimalist Top Dropdown Menubar */
       .menubar {
         height: 32px;
         background: var(--bg-panel);
@@ -72,50 +87,60 @@
       .menubar-left {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 2px;
       }
       .brand-logo {
-        font-weight: 700;
-        font-size: 13px;
-        color: var(--accent);
+        font-weight: 600;
+        font-size: 12.5px;
+        letter-spacing: -0.01em;
+        color: var(--text-primary);
         margin-right: 10px;
         display: flex;
         align-items: center;
         gap: 6px;
       }
+      .brand-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--accent);
+        display: inline-block;
+      }
       .menu-item {
         position: relative;
-        padding: 4px 10px;
+        padding: 4px 9px;
         font-size: 12px;
-        border-radius: 4px;
+        border-radius: 5px;
         cursor: pointer;
-        color: var(--text-primary);
+        color: var(--text-muted);
+        transition: background 0.12s, color 0.12s;
       }
       .menu-item:hover,
       .menu-item.open {
         background: var(--bg-subtle);
-        color: var(--accent);
+        color: var(--text-primary);
       }
       .dropdown-menu {
         display: none;
         position: absolute;
         top: 100%;
         left: 0;
-        margin-top: 2px;
-        min-width: 210px;
+        margin-top: 4px;
+        min-width: 215px;
         background: var(--bg-panel);
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
-        padding: 4px 0;
+        border: 1px solid var(--border-strong);
+        border-radius: 7px;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+        padding: 4px;
         z-index: 100;
       }
       .menu-item.open .dropdown-menu {
         display: block;
       }
       .dropdown-entry {
-        padding: 6px 14px;
+        padding: 6px 10px;
         font-size: 12px;
+        border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -134,17 +159,17 @@
       .dropdown-divider {
         height: 1px;
         background: var(--border-color);
-        margin: 4px 0;
+        margin: 4px 2px;
       }
 
-      /* 2. Compact Single-Line Quick Toolbar */
+      /* 2. Minimalist Single-Line Quick Toolbar */
       .quick-toolbar {
-        height: 36px;
+        height: 38px;
         background: var(--bg-panel);
         border-bottom: 1px solid var(--border-color);
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
         padding: 0 12px;
         overflow-x: auto;
         white-space: nowrap;
@@ -152,7 +177,7 @@
       }
       .toolbar-sep {
         width: 1px;
-        height: 18px;
+        height: 16px;
         background: var(--border-color);
         margin: 0 4px;
       }
@@ -164,11 +189,16 @@
         color: var(--text-primary);
         padding: 4px 8px;
         cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: border-color 0.12s, background 0.12s;
       }
       button:hover, select:hover {
-        border-color: var(--accent);
+        border-color: var(--border-strong);
+        background: var(--bg-hover);
       }
-      button.danger {
+      button.danger:hover {
         border-color: #f43f5e;
         color: #f43f5e;
       }
@@ -177,12 +207,12 @@
       .workspace {
         flex: 1;
         display: grid;
-        grid-template-columns: 250px 1fr 290px;
+        grid-template-columns: 248px 1fr 280px;
         overflow: hidden;
         position: relative;
       }
 
-      /* Left Sidebar: Stencil Palette */
+      /* Left Sidebar: Minimalist Drag-and-Drop Stencil Palette */
       .sidebar-left {
         background: var(--bg-panel);
         border-right: 1px solid var(--border-color);
@@ -192,6 +222,14 @@
         flex-direction: column;
         gap: 10px;
       }
+      .palette-hint {
+        font-size: 10.5px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 2px;
+      }
       .search-input {
         width: 100%;
         padding: 6px 9px;
@@ -199,41 +237,40 @@
       }
       .palette-section-title {
         font-size: 10px;
-        font-weight: 700;
+        font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.06em;
         color: var(--text-muted);
-        margin-bottom: 5px;
+        margin-bottom: 6px;
       }
       .stencil-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 5px;
+        gap: 6px;
       }
       .stencil-card {
         border: 1px solid var(--border-color);
         border-radius: 6px;
-        padding: 6px 6px;
+        padding: 6px 7px;
         font-size: 11px;
         font-weight: 500;
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 7px;
         background: var(--bg-subtle);
-        cursor: pointer;
+        cursor: grab;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        transition: border-color 0.12s, transform 0.1s, background 0.12s;
       }
       .stencil-card:hover {
         border-color: var(--accent);
-        color: var(--accent);
+        background: var(--bg-hover);
       }
-      .stencil-icon {
-        font-size: 13px;
-        width: 16px;
-        text-align: center;
-        flex-shrink: 0;
+      .stencil-card:active {
+        cursor: grabbing;
+        transform: scale(0.97);
       }
 
       /* Center Canvas */
@@ -252,8 +289,8 @@
         position: absolute;
         right: 14px;
         bottom: 14px;
-        width: 180px;
-        height: 115px;
+        width: 176px;
+        height: 112px;
         background: var(--bg-panel);
         border: 1px solid var(--border-color);
         border-radius: 6px;
@@ -261,7 +298,7 @@
         pointer-events: none;
       }
 
-      /* 3. Draw.io Style Right Format Panel (Context-Sensitive + Tabs) */
+      /* 3. Draw.io Minimalist Right Format Panel */
       .sidebar-right {
         background: var(--bg-panel);
         border-left: 1px solid var(--border-color);
@@ -270,14 +307,14 @@
         overflow: hidden;
       }
       .format-header {
-        padding: 8px 12px;
+        padding: 9px 12px;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 600;
         border-bottom: 1px solid var(--border-color);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: var(--bg-subtle);
+        background: var(--bg-panel);
       }
       .format-tabs {
         display: grid;
@@ -288,8 +325,8 @@
       .format-tab {
         padding: 8px 4px;
         text-align: center;
-        font-size: 12px;
-        font-weight: 600;
+        font-size: 11.5px;
+        font-weight: 500;
         color: var(--text-muted);
         cursor: pointer;
         border-bottom: 2px solid transparent;
@@ -317,7 +354,7 @@
       .format-section label {
         font-size: 11px;
         color: var(--text-muted);
-        font-weight: 600;
+        font-weight: 500;
       }
       .format-row {
         display: grid;
@@ -325,7 +362,6 @@
         gap: 6px;
         align-items: center;
       }
-      /* Draw.io Color Swatch Grid */
       .swatch-grid {
         display: grid;
         grid-template-columns: repeat(6, 1fr);
@@ -334,17 +370,17 @@
       .swatch {
         height: 22px;
         border-radius: 4px;
-        border: 2px solid transparent;
+        border: 1.5px solid transparent;
         cursor: pointer;
       }
       .swatch:hover {
-        transform: scale(1.08);
-        border-color: #fff;
+        transform: scale(1.06);
+        border-color: var(--text-primary);
       }
 
       /* Footer Page Tabs */
       footer {
-        height: 30px;
+        height: 28px;
         background: var(--bg-panel);
         border-top: 1px solid var(--border-color);
         display: flex;
@@ -368,14 +404,13 @@
       .page-tab.active {
         background: var(--accent-soft);
         color: var(--accent);
-        font-weight: 600;
       }
       .status-bar {
         color: var(--text-muted);
         font-family: monospace;
       }
 
-      /* Command Palette Modal */
+      /* Command Palette & Modals */
       .cmd-overlay {
         position: fixed;
         inset: 0;
@@ -392,7 +427,7 @@
       .cmd-modal {
         width: 520px;
         background: var(--bg-panel);
-        border: 1px solid var(--border-color);
+        border: 1px solid var(--border-strong);
         border-radius: 8px;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
         overflow: hidden;
@@ -427,21 +462,21 @@
         z-index: 30;
         padding: 4px 8px;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 500;
         text-align: center;
-        border: 2px solid var(--accent);
+        border: 1.5px solid var(--accent);
       }
       .toast-badge {
         position: absolute;
         left: 16px;
         bottom: 16px;
         background: var(--bg-panel);
-        border: 1px solid var(--accent);
+        border: 1px solid var(--border-strong);
         color: var(--text-primary);
         padding: 6px 12px;
         border-radius: 6px;
         font-size: 12px;
-        font-weight: 600;
+        font-weight: 500;
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
         pointer-events: none;
         opacity: 0;
@@ -479,17 +514,17 @@
     </style>
   </head>
   <body>
-    <!-- Row 1: Draw.io Style Dropdown Menu Bar -->
+    <!-- Row 1: Minimalist Dropdown Menu Bar -->
     <nav class="menubar" id="menubar">
       <div class="menubar-left">
-        <div class="brand-logo">❖ RustFlow Draw</div>
+        <div class="brand-logo"><span class="brand-dot"></span>RustFlow</div>
 
         <div class="menu-item" data-menu="file">
           File
           <div class="dropdown-menu">
             <div class="dropdown-entry" data-action="new-page"><span>New Page Tab</span><span class="dropdown-shortcut">Page+</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="export-drawio"><span>Save / Export .drawio</span><span class="dropdown-shortcut">Ctrl+S</span></div>
+            <div class="dropdown-entry" data-action="export-drawio"><span>Save .drawio XML</span><span class="dropdown-shortcut">Ctrl+S</span></div>
             <div class="dropdown-entry" data-action="export-svg"><span>Export Animated SVG</span><span class="dropdown-shortcut">Ctrl+E</span></div>
             <div class="dropdown-entry" data-action="export-json"><span>Export Native JSON</span><span class="dropdown-shortcut">.json</span></div>
           </div>
@@ -521,9 +556,9 @@
             <div class="dropdown-entry" data-action="zoom-out"><span>Zoom Out</span><span class="dropdown-shortcut">Ctrl+-</span></div>
             <div class="dropdown-entry" data-action="zoom-reset"><span>Reset View (100%)</span><span class="dropdown-shortcut">Ctrl+0</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="toggle-grid"><span>Toggle Grid (Dots / Lines / Off)</span><span class="dropdown-shortcut">Ctrl+G</span></div>
+            <div class="dropdown-entry" data-action="toggle-grid"><span>Toggle Grid</span><span class="dropdown-shortcut">Ctrl+G</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="theme-dark"><span>Theme: Dark (Developer)</span></div>
+            <div class="dropdown-entry" data-action="theme-dark"><span>Theme: Dark</span></div>
             <div class="dropdown-entry" data-action="theme-light"><span>Theme: Light</span></div>
             <div class="dropdown-entry" data-action="theme-contrast"><span>Theme: High Contrast</span></div>
           </div>
@@ -544,57 +579,93 @@
         <div class="menu-item" data-menu="extras">
           Extras
           <div class="dropdown-menu">
-            <div class="dropdown-entry" data-action="shortcuts"><span>Keyboard Shortcuts...</span><span class="dropdown-shortcut">?</span></div>
-            <div class="dropdown-entry" data-action="cmd-palette"><span>Command Palette...</span><span class="dropdown-shortcut">Ctrl+K</span></div>
+            <div class="dropdown-entry" data-action="shortcuts"><span>Keyboard Shortcuts</span><span class="dropdown-shortcut">?</span></div>
+            <div class="dropdown-entry" data-action="cmd-palette"><span>Command Palette</span><span class="dropdown-shortcut">Ctrl+K</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="stress-100"><span>Generate 100-Node Benchmark Graph</span></div>
+            <div class="dropdown-entry" data-action="stress-100"><span>Benchmark 100-Node Graph</span></div>
           </div>
         </div>
       </div>
 
       <div style="font-size: 11px; color: var(--text-muted);">
-        <b>Shift+Drag</b> Box Select · <b>Ctrl+A</b> Select All · <b>Ctrl+C/V</b> Copy/Paste · <b>?</b> Shortcuts
+        Drag shapes from left panel · <b>Shift+Drag</b> Box Select · <b>?</b> Shortcuts
       </div>
     </nav>
 
-    <!-- Row 2: Compact Quick Icon Toolbar -->
+    <!-- Row 2: Minimalist Monoline SVG Quick Toolbar -->
     <div class="quick-toolbar">
-      <button id="btn-undo" title="Undo (Ctrl+Z)">↶ Undo</button>
-      <button id="btn-redo" title="Redo (Ctrl+Y)">↷ Redo</button>
+      <button id="btn-undo" title="Undo (Ctrl+Z)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
+        Undo
+      </button>
+      <button id="btn-redo" title="Redo (Ctrl+Y)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>
+        Redo
+      </button>
       <div class="toolbar-sep"></div>
-      <button id="btn-copy" title="Copy Selected (Ctrl+C)">⎘ Copy</button>
-      <button id="btn-paste" title="Paste (Ctrl+V)">📋 Paste</button>
-      <button id="btn-duplicate" title="Duplicate (Ctrl+D)">⧉ Duplicate</button>
-      <button id="btn-select-all" title="Select All (Ctrl+A)">▣ Select All</button>
-      <button id="btn-delete" title="Delete Selected (Del)">✕ Delete</button>
+      <button id="btn-copy" title="Copy (Ctrl+C)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy
+      </button>
+      <button id="btn-paste" title="Paste (Ctrl+V)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+        Paste
+      </button>
+      <button id="btn-duplicate" title="Duplicate (Ctrl+D)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+        Duplicate
+      </button>
+      <button id="btn-select-all" title="Select All (Ctrl+A)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4 3"/></svg>
+        Select All
+      </button>
+      <button id="btn-delete" class="danger" title="Delete Selected (Del)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Delete
+      </button>
       <div class="toolbar-sep"></div>
       <button id="btn-zoom-out" title="Zoom Out (Ctrl+-)">−</button>
-      <span id="zoom-label" style="font-size:11px; min-width:44px; text-align:center; font-family:monospace;">100%</span>
+      <span id="zoom-label" style="font-size:11px; min-width:42px; text-align:center; font-family:monospace;">100%</span>
       <button id="btn-zoom-in" title="Zoom In (Ctrl++)">+</button>
-      <button id="btn-fit-view" title="Fit Diagram to Screen (Ctrl+1)">⊡ Fit</button>
+      <button id="btn-fit-view" title="Fit Diagram to Screen (Ctrl+1)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        Fit
+      </button>
       <div class="toolbar-sep"></div>
       <select id="select-edge-kind" title="Edge Routing Style">
-        <option value="bezier">⤷ Bezier Curve</option>
-        <option value="orthogonal">↱ Orthogonal</option>
-        <option value="smoothstep">⤼ SmoothStep</option>
-        <option value="straight">→ Straight</option>
+        <option value="bezier">Curve: Bezier</option>
+        <option value="smoothstep">Curve: SmoothStep</option>
+        <option value="orthogonal">Curve: Orthogonal</option>
+        <option value="straight">Curve: Straight</option>
       </select>
       <select id="select-edge-anim" title="Edge Flow Animation">
-        <option value="pulse">⚡ Pulse Particles</option>
-        <option value="ants">⋯ Marching Ants</option>
-        <option value="none">─ Static</option>
+        <option value="pulse">Flow: Pulse</option>
+        <option value="ants">Flow: Dashed</option>
+        <option value="none">Flow: Static</option>
       </select>
       <div class="toolbar-sep"></div>
-      <button id="btn-layout-hier" title="Sugiyama Layered Auto-Layout (Ctrl+Shift+L)">☍ Auto-Layout</button>
-      <button id="btn-shortcuts" title="Keyboard Shortcuts (?)">⌨ Shortcuts</button>
-      <button id="btn-cmd-palette" title="Command Palette (Ctrl+K)">⌘K</button>
+      <button id="btn-layout-hier" title="Sugiyama Auto-Layout (Ctrl+Shift+L)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="9" y="15" width="6" height="6" rx="1"/><path d="M6 9v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9"/></svg>
+        Layout
+      </button>
+      <button id="btn-shortcuts" title="Keyboard Shortcuts (?)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg>
+      </button>
+      <button id="btn-cmd-palette" title="Command Palette (Ctrl+K)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        Ctrl+K
+      </button>
     </div>
 
     <!-- Main 3-Column Workspace -->
     <div class="workspace">
-      <!-- Left Sidebar: Shape & Symbol Stencils -->
+      <!-- Left Sidebar: Minimalist Drag-and-Drop Stencil Palette -->
       <aside class="sidebar-left">
-        <input id="palette-search" class="search-input" type="text" placeholder="Search 27+ shapes & symbols..." />
+        <input id="palette-search" class="search-input" type="text" placeholder="Filter 27 minimalist symbols..." />
+        <div class="palette-hint">
+          <span>Drag onto canvas or click</span>
+          <span style="font-family:monospace;">27 shapes</span>
+        </div>
         <div id="palette-list"></div>
       </aside>
 
@@ -603,13 +674,13 @@
         <canvas id="rustflow-canvas"></canvas>
         <input id="inline-editor" type="text" />
         <div id="toast-badge" class="toast-badge"></div>
-        <canvas id="minimap-canvas" class="minimap" width="180" height="115"></canvas>
+        <canvas id="minimap-canvas" class="minimap" width="176" height="112"></canvas>
       </main>
 
-      <!-- Right Sidebar: Draw.io Context-Sensitive Format Panel -->
+      <!-- Right Sidebar: Minimalist Context-Sensitive Format Panel -->
       <aside class="sidebar-right">
         <div class="format-header">
-          <span id="format-context-title">Format Panel</span>
+          <span id="format-context-title">Format</span>
           <span id="format-selection-badge" style="font-size:10px; color:var(--accent); font-family:monospace;">Diagram</span>
         </div>
         <div class="format-tabs" id="format-tabs">
@@ -623,7 +694,7 @@
 
     <footer>
       <div class="page-tabs" id="page-tabs"></div>
-      <div class="status-bar" id="status-bar">FPS: 60 | Zoom: 100% | Nodes: 0 | Edges: 0</div>
+      <div class="status-bar" id="status-bar">FPS: 60 | Zoom: 100% | Selected: 1 | Nodes: 5 | Edges: 6</div>
     </footer>
 
     <div class="cmd-overlay" id="cmd-overlay">
@@ -636,7 +707,7 @@
     <div class="cmd-overlay" id="shortcuts-overlay">
       <div class="cmd-modal" style="width: 600px;">
         <div class="format-header" style="padding: 10px 14px;">
-          <span>⌨ Keyboard Shortcuts</span>
+          <span>Keyboard Shortcuts</span>
           <button id="btn-close-shortcuts" style="padding: 2px 8px;">Esc</button>
         </div>
         <div class="shortcuts-grid">
@@ -664,6 +735,6 @@
       </div>
     </div>
 
-    <script type="module" src="/src/app.js?v=4"></script>
+    <script type="module" src="/src/app.js?v=5"></script>
   </body>
 </html>
