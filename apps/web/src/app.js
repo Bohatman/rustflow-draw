@@ -1,8 +1,11 @@
 // High-Performance Draw.io + React Flow Web Engine
-// Fixes:
-// 1. Draw.io Dropdown Menu Bar (File, Edit, View, Arrange, Extras) + compact quick toolbar
-// 2. Draw.io Context-Sensitive Right Format Panel (Diagram vs Node [Style/Text/Arrange] vs Edge [Style/Text/Arrange])
-// 3. 60-120 FPS Performance Optimization: Offscreen cached grid pattern (O(1) draw), zero shadowBlur, O(1) node map, cached edge geometry, frustum culling, and dirty-checked minimap
+// Major Performance & Smooth Animation Overhaul:
+// 1. Sub-pixel Arc-Length Parameterized Edge Animations (continuous linear interpolation + comet trail along Bezier, SmoothStep, Orthogonal, and Straight edges at 60-144 FPS)
+// 2. Smooth 1:1 Sub-Pixel Dragging, Resizing & Edge Bending (eliminated 10px stair-stepping deadzone during mousemove)
+// 3. Zero Layout Thrashing: Cached canvas bounding rect (zero getBoundingClientRect() in mousemove/wheel), cached cursor state, and RAF-throttled inspector DOM updates
+// 4. Selective O(deg) Edge Geometry Invalidation: Moving a node only invalidates edges connected to that node; nodeMap only rebuilds when nodes are added/removed
+// 5. 240x240 Macro-Tile Offscreen Grid Pattern Cache (reduces pattern repetitions by 95% per frame)
+// 6. Smooth Cubic-Out Animated Transitions for Auto-Layout (Hierarchical, Grid, Radial) and Zoom/Fit actions
 
 const STENCILS = [
   // Flowchart
@@ -99,7 +102,7 @@ function createDogfoodPages() {
         { id: 201, source: 10, sourcePort: "right", target: 11, targetPort: "left", label: "Request", anim: "pulse", kind: "bezier", color: "#38bdf8", width: 2.2, bend: null },
         { id: 202, source: 11, sourcePort: "right", target: 12, targetPort: "left", label: "Verify", anim: "ants", kind: "bezier", color: "#fbbf24", width: 2.2, bend: null },
         { id: 203, source: 12, sourcePort: "right", target: 13, targetPort: "left", label: "Publish", anim: "pulse", kind: "bezier", color: "#34d399", width: 2.2, bend: null },
-        { id: 204, source: 12, sourcePort: "bottom", target: 14, targetPort: "left", label: "Persist", anim: "pulse", kind: "orthogonal", color: "#818cf8", width: 2.2, bend: null },
+        { id: 204, source: 12, sourcePort: "bottom", target: 14, targetPort: "left", label: "Persist", anim: "pulse", kind: "smoothstep", color: "#818cf8", width: 2.2, bend: null },
       ],
       undoStack: [],
       redoStack: [],
@@ -115,6 +118,7 @@ const state = {
   activeFormatTab: "style", // "style" | "text" | "arrange"
   gridStyle: "dots",        // "dots" | "lines" | "off"
   gridSize: 20,
+  snapToGrid: false,        // Smooth 1:1 drag by default; optional grid snap
   hoveredPort: null,
   snapTargetPort: null,
   draggingNode: null,
@@ -133,29 +137,65 @@ const state = {
   lastFrameTime: performance.now(),
   geometryVersion: 1,
   minimapDirty: true,
+  arrangeDirty: false,
+  layoutAnim: null,         // Smooth spring/cubic layout transition state
+  viewAnim: null,           // Smooth zoom/pan transition state
 };
 
-// Performance Cache: O(1) Node Lookup Map & Offscreen Grid Pattern Cache
+// Cached DOM References & Layout Bounds (Zero DOM queries in hot loops)
+const canvas = document.getElementById("rustflow-canvas");
+const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true }) || canvas.getContext("2d", { alpha: false });
+const minimapCanvas = document.getElementById("minimap-canvas");
+const minimapCtx = minimapCanvas.getContext("2d");
+const inlineEditor = document.getElementById("inline-editor");
+const statusBarEl = document.getElementById("status-bar");
+const zoomLabelEl = document.getElementById("zoom-label");
+
+let canvasRect = { left: 0, top: 0, width: 800, height: 600 };
+let currentCursor = "default";
 let nodeMap = new Map();
 let cachedGridPattern = null;
 let cachedGridKey = "";
+let cachedGridMacroStep = 240;
+
+function setCanvasCursor(cursor) {
+  if (cursor !== currentCursor) {
+    currentCursor = cursor;
+    canvas.style.cursor = cursor;
+  }
+}
+
+function page() {
+  return state.pages.find((p) => p.id === state.activePageId) || state.pages[0];
+}
 
 function rebuildNodeMap() {
   const p = page();
   nodeMap.clear();
-  for (const n of p.nodes) {
+  for (let i = 0; i < p.nodes.length; i++) {
+    const n = p.nodes[i];
     nodeMap.set(n.id, n);
   }
 }
 
+// Full geometry invalidation (when adding/removing nodes or switching pages)
 function invalidateGeometry() {
   state.geometryVersion++;
   state.minimapDirty = true;
   rebuildNodeMap();
 }
 
-function page() {
-  return state.pages.find((p) => p.id === state.activePageId) || state.pages[0];
+// Fast O(deg) selective invalidation when a single node moves or resizes
+function invalidateNodeEdges(nodeId) {
+  const edges = page().edges;
+  for (let i = 0; i < edges.length; i++) {
+    const e = edges[i];
+    if (e.source === nodeId || e.target === nodeId) {
+      e._ver = -1;
+    }
+  }
+  state.minimapDirty = true;
+  state.arrangeDirty = true;
 }
 
 function saveSnapshot() {
@@ -170,19 +210,18 @@ function saveSnapshot() {
   p.redoStack = [];
 }
 
-const canvas = document.getElementById("rustflow-canvas");
-const ctx = canvas.getContext("2d", { alpha: false });
-const minimapCanvas = document.getElementById("minimap-canvas");
-const minimapCtx = minimapCanvas.getContext("2d");
-const inlineEditor = document.getElementById("inline-editor");
-
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width = rect.width;
-  canvas.height = rect.height;
+  canvasRect = rect;
+  canvas.width = Math.max(1, Math.floor(rect.width));
+  canvas.height = Math.max(1, Math.floor(rect.height));
+  cachedGridKey = "";
   state.minimapDirty = true;
 }
 window.addEventListener("resize", resizeCanvas);
+window.addEventListener("scroll", () => {
+  canvasRect = canvas.parentElement.getBoundingClientRect();
+}, true);
 resizeCanvas();
 rebuildNodeMap();
 
@@ -217,7 +256,8 @@ function findSnapTargetPort(worldPt, excludeNodeId) {
   const portSnapRadius = 22 / Math.max(0.4, p.zoom);
 
   let best = null;
-  for (const n of p.nodes) {
+  for (let i = 0; i < p.nodes.length; i++) {
+    const n = p.nodes[i];
     if (n.id === excludeNodeId) continue;
     for (const port of getNodePorts(n)) {
       const d = Math.hypot(worldPt.x - port.x, worldPt.y - port.y);
@@ -265,13 +305,49 @@ function getQuickArrows(n) {
 
 function evalBezier(p0, p1, p2, p3, t) {
   const u = 1 - t;
+  const uu = u * u;
+  const tt = t * t;
   return {
-    x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
-    y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y,
+    x: uu * u * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + tt * t * p3.x,
+    y: uu * u * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + tt * t * p3.y,
   };
 }
 
-// Cached O(1) Edge Geometry Lookup — only recomputes when geometryVersion changes!
+// Build smooth rounded corners for SmoothStep routing
+function buildSmoothStepSamples(p0, c1, c2, p3) {
+  const pts = [p0];
+  const corners = [
+    [p0, c1, c2],
+    [c1, c2, p3],
+  ];
+  for (const [prev, curr, next] of corners) {
+    const dx1 = prev.x - curr.x;
+    const dy1 = prev.y - curr.y;
+    const len1 = Math.hypot(dx1, dy1);
+    const dx2 = next.x - curr.x;
+    const dy2 = next.y - curr.y;
+    const len2 = Math.hypot(dx2, dy2);
+    const r = Math.min(14, len1 * 0.45, len2 * 0.45);
+    if (r < 1.5) {
+      pts.push(curr);
+      continue;
+    }
+    const start = { x: curr.x + (dx1 / len1) * r, y: curr.y + (dy1 / len1) * r };
+    const end = { x: curr.x + (dx2 / len2) * r, y: curr.y + (dy2 / len2) * r };
+    for (let s = 0; s <= 6; s++) {
+      const t = s / 6;
+      const u = 1 - t;
+      pts.push({
+        x: u * u * start.x + 2 * u * t * curr.x + t * t * end.x,
+        y: u * u * start.y + 2 * u * t * curr.y + t * t * end.y,
+      });
+    }
+  }
+  pts.push(p3);
+  return pts;
+}
+
+// Cached Edge Geometry with Cumulative Arc-Length Table for Sub-Pixel 120 FPS Animation
 function getEdgeGeometry(e) {
   if (e._geo && e._ver === state.geometryVersion) {
     return e._geo;
@@ -307,33 +383,90 @@ function getEdgeGeometry(e) {
     midPoint = evalBezier(p0, p1, p2, p3, 0.5);
   }
 
-  const samples = [];
+  let samples = [];
   if (e.kind === "straight") {
     if (e.bend) {
-      samples.push(p0, midPoint, p3);
+      samples = [p0, midPoint, p3];
     } else {
-      samples.push(p0, p3);
-      midPoint = { x: (p0.x + p3.x) / 2, y: (p0.y + p3.y) / 2 };
+      samples = [p0, p3];
+      midPoint = { x: (p0.x + p3.x) * 0.5, y: (p0.y + p3.y) * 0.5 };
     }
-  } else if (e.kind === "orthogonal" || e.kind === "smoothstep") {
+  } else if (e.kind === "orthogonal") {
     const bendX = e.bend ? e.bend.x : (p0.x + p3.x) * 0.5;
     const bendY = e.bend ? e.bend.y : (p0.y + p3.y) * 0.5;
     midPoint = { x: bendX, y: bendY };
-    samples.push(p0, { x: bendX, y: p0.y }, { x: bendX, y: p3.y }, p3);
+    samples = [p0, { x: bendX, y: p0.y }, { x: bendX, y: p3.y }, p3];
+  } else if (e.kind === "smoothstep") {
+    const bendX = e.bend ? e.bend.x : (p0.x + p3.x) * 0.5;
+    const bendY = e.bend ? e.bend.y : (p0.y + p3.y) * 0.5;
+    midPoint = { x: bendX, y: bendY };
+    samples = buildSmoothStepSamples(p0, { x: bendX, y: p0.y }, { x: bendX, y: p3.y }, p3);
   } else {
-    for (let i = 0; i <= 20; i++) {
-      samples.push(evalBezier(p0, p1, p2, p3, i / 20));
+    const steps = 36;
+    for (let i = 0; i <= steps; i++) {
+      samples.push(evalBezier(p0, p1, p2, p3, i / steps));
     }
   }
 
-  const minX = Math.min(p0.x, p3.x, midPoint.x) - 20;
-  const maxX = Math.max(p0.x, p3.x, midPoint.x) + 20;
-  const minY = Math.min(p0.y, p3.y, midPoint.y) - 20;
-  const maxY = Math.max(p0.y, p3.y, midPoint.y) + 20;
+  // Precompute Cumulative Arc-Length Table for Continuous Sub-Pixel Interpolation
+  const cumLen = new Float32Array(samples.length);
+  let totalLen = 0;
+  let minX = p0.x, maxX = p0.x, minY = p0.y, maxY = p0.y;
 
-  e._geo = { p0, p1, p2, p3, midPoint, samples, bounds: { minX, maxX, minY, maxY } };
+  for (let i = 0; i < samples.length; i++) {
+    const pt = samples[i];
+    if (pt.x < minX) minX = pt.x;
+    if (pt.x > maxX) maxX = pt.x;
+    if (pt.y < minY) minY = pt.y;
+    if (pt.y > maxY) maxY = pt.y;
+    if (i > 0) {
+      const prev = samples[i - 1];
+      totalLen += Math.hypot(pt.x - prev.x, pt.y - prev.y);
+    }
+    cumLen[i] = totalLen;
+  }
+
+  const labelWidth = e.label ? e.label.length * 6.8 + 14 : 0;
+
+  e._geo = {
+    p0,
+    p1,
+    p2,
+    p3,
+    midPoint,
+    samples,
+    cumLen,
+    totalLen: Math.max(1, totalLen),
+    labelWidth,
+    bounds: { minX: minX - 24, maxX: maxX + 24, minY: minY - 24, maxY: maxY + 24 },
+  };
   e._ver = state.geometryVersion;
   return e._geo;
+}
+
+// Exact Sub-Pixel Linear Interpolation Along Edge Arc-Length (O(log N) lookup)
+function getPointAtArcDistance(geo, dist) {
+  const { samples, cumLen, totalLen } = geo;
+  const n = samples.length;
+  if (n < 2) return samples[0] || { x: 0, y: 0 };
+
+  const d = ((dist % totalLen) + totalLen) % totalLen;
+  let lo = 0;
+  let hi = n - 1;
+  while (lo + 1 < hi) {
+    const mid = (lo + hi) >> 1;
+    if (cumLen[mid] <= d) lo = mid;
+    else hi = mid;
+  }
+  const segStart = cumLen[lo];
+  const segLen = cumLen[hi] - segStart;
+  const frac = segLen > 1e-4 ? (d - segStart) / segLen : 0;
+  const a = samples[lo];
+  const b = samples[hi];
+  return {
+    x: a.x + (b.x - a.x) * frac,
+    y: a.y + (b.y - a.y) * frac,
+  };
 }
 
 function distToSegment(pt, a, b) {
@@ -363,15 +496,18 @@ function hitTestEdge(worldPt) {
 
 function computeSmartGuides(movingNode) {
   const guides = [];
-  const threshold = 6;
-  for (const other of page().nodes) {
+  const threshold = 4.5;
+  const nodes = page().nodes;
+  for (let i = 0; i < nodes.length; i++) {
+    const other = nodes[i];
     if (other.id === movingNode.id) continue;
     const checksX = [
       [movingNode.x, other.x],
-      [movingNode.x + movingNode.w / 2, other.x + other.w / 2],
+      [movingNode.x + movingNode.w * 0.5, other.x + other.w * 0.5],
       [movingNode.x + movingNode.w, other.x + other.w],
     ];
-    for (const [mx, ox] of checksX) {
+    for (let k = 0; k < 3; k++) {
+      const [mx, ox] = checksX[k];
       if (Math.abs(mx - ox) <= threshold) {
         movingNode.x += ox - mx;
         guides.push({ type: "v", x: ox, y1: Math.min(movingNode.y, other.y) - 24, y2: Math.max(movingNode.y + movingNode.h, other.y + other.h) + 24 });
@@ -380,10 +516,11 @@ function computeSmartGuides(movingNode) {
     }
     const checksY = [
       [movingNode.y, other.y],
-      [movingNode.y + movingNode.h / 2, other.y + other.h / 2],
+      [movingNode.y + movingNode.h * 0.5, other.y + other.h * 0.5],
       [movingNode.y + movingNode.h, other.y + other.h],
     ];
-    for (const [my, oy] of checksY) {
+    for (let k = 0; k < 3; k++) {
+      const [my, oy] = checksY[k];
       if (Math.abs(my - oy) <= threshold) {
         movingNode.y += oy - my;
         guides.push({ type: "h", y: oy, x1: Math.min(movingNode.x, other.x) - 24, x2: Math.max(movingNode.x + movingNode.w, other.x + other.w) + 24 });
@@ -459,25 +596,24 @@ function handleMenuAction(action) {
       deleteSelected();
       break;
     case "zoom-in":
-      setZoom(p.zoom * 1.2);
+      animateZoom(p.zoom * 1.25);
       break;
     case "zoom-out":
-      setZoom(p.zoom / 1.2);
+      animateZoom(p.zoom / 1.25);
       break;
     case "zoom-reset":
-      p.zoom = 1.0;
-      p.pan = { x: 60, y: 50 };
-      state.minimapDirty = true;
-      updateZoomLabel();
+      animateViewTo(60, 50, 1.0);
       break;
     case "toggle-grid":
       state.gridStyle = state.gridStyle === "dots" ? "lines" : state.gridStyle === "lines" ? "off" : "dots";
+      cachedGridKey = "";
       renderFormatPanel();
       break;
     case "theme-dark":
     case "theme-light":
     case "theme-contrast":
       state.theme = action.replace("theme-", "");
+      cachedGridKey = "";
       document.documentElement.setAttribute("data-theme", state.theme);
       renderFormatPanel();
       break;
@@ -505,8 +641,9 @@ function handleMenuAction(action) {
   }
 }
 
-function setZoom(targetZoom, cx = canvas.width / 2, cy = canvas.height / 2) {
+function setZoomImmediate(targetZoom, cx = canvas.width / 2, cy = canvas.height / 2) {
   const p = page();
+  state.viewAnim = null;
   const before = screenToWorld(cx, cy);
   p.zoom = Math.min(8.0, Math.max(0.1, targetZoom));
   p.pan.x = cx - before.x * p.zoom;
@@ -515,8 +652,47 @@ function setZoom(targetZoom, cx = canvas.width / 2, cy = canvas.height / 2) {
   updateZoomLabel();
 }
 
+function animateZoom(targetZoom, cx = canvas.width / 2, cy = canvas.height / 2) {
+  const p = page();
+  const clampedZoom = Math.min(8.0, Math.max(0.1, targetZoom));
+  const before = screenToWorld(cx, cy);
+  const targetPanX = cx - before.x * clampedZoom;
+  const targetPanY = cy - before.y * clampedZoom;
+  animateViewTo(targetPanX, targetPanY, clampedZoom);
+}
+
+function animateViewTo(targetPanX, targetPanY, targetZoom) {
+  const p = page();
+  state.viewAnim = {
+    startTime: performance.now(),
+    duration: 200,
+    startPanX: p.pan.x,
+    startPanY: p.pan.y,
+    startZoom: p.zoom,
+    targetPanX,
+    targetPanY,
+    targetZoom,
+  };
+}
+
+function animateNodesToTargets(targetsMap) {
+  const p = page();
+  const entries = [];
+  for (const n of p.nodes) {
+    const tgt = targetsMap.get(n.id);
+    if (tgt) {
+      entries.push({ node: n, sx: n.x, sy: n.y, tx: tgt.x, ty: tgt.y });
+    }
+  }
+  state.layoutAnim = {
+    startTime: performance.now(),
+    duration: 320,
+    entries,
+  };
+}
+
 function updateZoomLabel() {
-  document.getElementById("zoom-label").textContent = `${Math.round(page().zoom * 100)}%`;
+  zoomLabelEl.textContent = `${Math.round(page().zoom * 100)}%`;
 }
 
 // ============================================================================
@@ -565,6 +741,10 @@ function renderFormatPanel() {
           <span>Grid Size (px)</span>
           <input id="diag-grid-size" type="number" min="10" max="60" step="5" value="${state.gridSize}" />
         </div>
+        <div class="format-row">
+          <span>Snap to Grid</span>
+          <input id="diag-snap-grid" type="checkbox" ${state.snapToGrid ? "checked" : ""} />
+        </div>
       </div>
       <div class="format-section">
         <label>Theme Preset</label>
@@ -587,12 +767,18 @@ function renderFormatPanel() {
     };
     document.getElementById("diag-grid-style").onchange = (e) => {
       state.gridStyle = e.target.value;
+      cachedGridKey = "";
     };
     document.getElementById("diag-grid-size").oninput = (e) => {
       state.gridSize = Math.max(10, Math.min(80, Number(e.target.value) || 20));
+      cachedGridKey = "";
+    };
+    document.getElementById("diag-snap-grid").onchange = (e) => {
+      state.snapToGrid = e.target.checked;
     };
     document.getElementById("diag-theme").onchange = (e) => {
       state.theme = e.target.value;
+      cachedGridKey = "";
       document.documentElement.setAttribute("data-theme", state.theme);
     };
     return;
@@ -694,7 +880,6 @@ function renderFormatPanel() {
         node.body = e.target.value;
       };
     } else {
-      // Arrange tab
       formatBodyEl.innerHTML = `
         <div class="format-section">
           <label>Position (X, Y)</label>
@@ -728,7 +913,7 @@ function renderFormatPanel() {
       ]) {
         document.getElementById(id).oninput = (e) => {
           node[key] = Number(e.target.value) || 40;
-          invalidateGeometry();
+          invalidateNodeEdges(node.id);
         };
       }
       document.getElementById("btn-front").onclick = bringToFront;
@@ -769,7 +954,7 @@ function renderFormatPanel() {
       `;
       document.getElementById("edge-kind").onchange = (e) => {
         edge.kind = e.target.value;
-        invalidateGeometry();
+        edge._ver = -1;
       };
       document.getElementById("edge-anim").onchange = (e) => {
         edge.anim = e.target.value;
@@ -789,6 +974,7 @@ function renderFormatPanel() {
       `;
       document.getElementById("edge-label").oninput = (e) => {
         edge.label = e.target.value;
+        edge._ver = -1;
       };
     } else {
       formatBodyEl.innerHTML = `
@@ -821,11 +1007,11 @@ function renderFormatPanel() {
       `;
       document.getElementById("edge-src-port").onchange = (e) => {
         edge.sourcePort = e.target.value;
-        invalidateGeometry();
+        edge._ver = -1;
       };
       document.getElementById("edge-dst-port").onchange = (e) => {
         edge.targetPort = e.target.value;
-        invalidateGeometry();
+        edge._ver = -1;
       };
       document.getElementById("btn-edge-reverse").onclick = () => {
         saveSnapshot();
@@ -834,13 +1020,13 @@ function renderFormatPanel() {
         edge.sourcePort = edge.targetPort;
         edge.target = tmpN;
         edge.targetPort = tmpP;
-        invalidateGeometry();
+        edge._ver = -1;
         renderFormatPanel();
       };
       document.getElementById("btn-edge-reset").onclick = () => {
         saveSnapshot();
         edge.bend = null;
-        invalidateGeometry();
+        edge._ver = -1;
       };
       document.getElementById("btn-edge-delete").onclick = deleteSelected;
     }
@@ -848,9 +1034,13 @@ function renderFormatPanel() {
 }
 renderFormatPanel();
 
-// Fast coordinate sync during drag without recreating DOM nodes
-function updateArrangeInputsLive(node) {
+// Sync Arrange inputs inside RAF (throttled) instead of inside mousemove
+function syncArrangeInputsIfDirty() {
+  if (!state.arrangeDirty) return;
+  state.arrangeDirty = false;
   if (state.activeFormatTab !== "arrange") return;
+  const node = nodeMap.get(state.selectedNodeId);
+  if (!node) return;
   const xEl = document.getElementById("insp-x");
   const yEl = document.getElementById("insp-y");
   const wEl = document.getElementById("insp-w");
@@ -862,13 +1052,15 @@ function updateArrangeInputsLive(node) {
 }
 
 // ============================================================================
-// POINTER & INTERACTION HANDLERS
+// POINTER & INTERACTION HANDLERS (Zero DOM Reflows in Mousemove)
 // ============================================================================
 canvas.addEventListener("mousedown", (e) => {
   inlineEditor.style.display = "none";
-  const rect = canvas.getBoundingClientRect();
-  const sx = e.clientX - rect.left;
-  const sy = e.clientY - rect.top;
+  state.layoutAnim = null;
+  state.viewAnim = null;
+
+  const sx = e.clientX - canvasRect.left;
+  const sy = e.clientY - canvasRect.top;
   const wpt = screenToWorld(sx, sy);
   state.mouseWorld = wpt;
   const p = page();
@@ -940,7 +1132,8 @@ canvas.addEventListener("mousedown", (e) => {
 
   // 3. Port Handle Click (Drag-to-Connect)
   const portHitRadius = 15 / Math.max(0.4, p.zoom);
-  for (const n of p.nodes) {
+  for (let i = 0; i < p.nodes.length; i++) {
+    const n = p.nodes[i];
     for (const port of getNodePorts(n)) {
       if (Math.hypot(wpt.x - port.x, wpt.y - port.y) <= portHitRadius) {
         state.connectingFrom = { node: n, port };
@@ -992,8 +1185,7 @@ canvas.addEventListener("mousedown", (e) => {
 });
 
 canvas.addEventListener("dblclick", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const wpt = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+  const wpt = screenToWorld(e.clientX - canvasRect.left, e.clientY - canvasRect.top);
 
   const hitEdge = hitTestEdge(wpt);
   if (hitEdge) {
@@ -1003,7 +1195,7 @@ canvas.addEventListener("dblclick", (e) => {
     if (geo && hitEdge.bend && Math.hypot(wpt.x - geo.midPoint.x, wpt.y - geo.midPoint.y) <= 16) {
       saveSnapshot();
       hitEdge.bend = null;
-      invalidateGeometry();
+      hitEdge._ver = -1;
       renderFormatPanel();
       return;
     }
@@ -1019,6 +1211,7 @@ canvas.addEventListener("dblclick", (e) => {
         if (ev.key === "Enter") {
           saveSnapshot();
           hitEdge.label = inlineEditor.value;
+          hitEdge._ver = -1;
           inlineEditor.style.display = "none";
           renderFormatPanel();
         } else if (ev.key === "Escape") {
@@ -1052,92 +1245,109 @@ canvas.addEventListener("dblclick", (e) => {
   };
 });
 
-window.addEventListener("mousemove", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const sx = e.clientX - rect.left;
-  const sy = e.clientY - rect.top;
-  state.mouseWorld = screenToWorld(sx, sy);
-  const p = page();
+window.addEventListener(
+  "mousemove",
+  (e) => {
+    const sx = e.clientX - canvasRect.left;
+    const sy = e.clientY - canvasRect.top;
+    const p = page();
+    const wx = (sx - p.pan.x) / p.zoom;
+    const wy = (sy - p.pan.y) / p.zoom;
+    state.mouseWorld.x = wx;
+    state.mouseWorld.y = wy;
 
-  if (state.connectingFrom) {
-    state.snapTargetPort = findSnapTargetPort(state.mouseWorld, state.connectingFrom.node.id);
-    canvas.style.cursor = "crosshair";
-    return;
-  }
-
-  if (state.reconnectingEdge) {
-    const { edge, end } = state.reconnectingEdge;
-    const excludeId = end === "target" ? edge.source : edge.target;
-    state.snapTargetPort = findSnapTargetPort(state.mouseWorld, excludeId);
-    canvas.style.cursor = "crosshair";
-    return;
-  }
-
-  if (state.draggingEdgeBend) {
-    state.draggingEdgeBend.bend = {
-      x: Math.round(state.mouseWorld.x / 5) * 5,
-      y: Math.round(state.mouseWorld.y / 5) * 5,
-    };
-    invalidateGeometry();
-    canvas.style.cursor = "grabbing";
-    return;
-  }
-
-  if (state.resizingNode) {
-    const { node, aspect } = state.resizingNode;
-    node.w = Math.max(70, Math.round((state.mouseWorld.x - node.x) / 10) * 10);
-    if (e.shiftKey) {
-      node.h = Math.max(48, Math.round(node.w / aspect));
-    } else {
-      node.h = Math.max(48, Math.round((state.mouseWorld.y - node.y) / 10) * 10);
+    if (state.connectingFrom) {
+      state.snapTargetPort = findSnapTargetPort(state.mouseWorld, state.connectingFrom.node.id);
+      setCanvasCursor("crosshair");
+      return;
     }
-    invalidateGeometry();
-    updateArrangeInputsLive(node);
-    return;
-  }
 
-  if (state.draggingNode) {
-    const { node, offsetX, offsetY } = state.draggingNode;
-    node.x = Math.round((state.mouseWorld.x - offsetX) / 10) * 10;
-    node.y = Math.round((state.mouseWorld.y - offsetY) / 10) * 10;
-    state.smartGuides = computeSmartGuides(node);
-    invalidateGeometry();
-    updateArrangeInputsLive(node);
-    return;
-  }
-
-  if (state.panning) {
-    p.pan.x = sx - state.panning.startX;
-    p.pan.y = sy - state.panning.startY;
-    state.minimapDirty = true;
-    return;
-  }
-
-  // Only check hovered ports when idle
-  state.hoveredPort = null;
-  const portHoverRadius = 15 / Math.max(0.4, p.zoom);
-  for (const n of p.nodes) {
-    if (
-      state.mouseWorld.x < n.x - portHoverRadius ||
-      state.mouseWorld.x > n.x + n.w + portHoverRadius ||
-      state.mouseWorld.y < n.y - portHoverRadius ||
-      state.mouseWorld.y > n.y + n.h + portHoverRadius
-    ) {
-      continue;
+    if (state.reconnectingEdge) {
+      const { edge, end } = state.reconnectingEdge;
+      const excludeId = end === "target" ? edge.source : edge.target;
+      state.snapTargetPort = findSnapTargetPort(state.mouseWorld, excludeId);
+      setCanvasCursor("crosshair");
+      return;
     }
-    for (const port of getNodePorts(n)) {
-      if (Math.hypot(state.mouseWorld.x - port.x, state.mouseWorld.y - port.y) <= portHoverRadius) {
-        state.hoveredPort = { nodeId: n.id, side: port.side, x: port.x, y: port.y };
-        break;
+
+    // Smooth 1:1 Edge Bend Dragging (Zero 5px stair-stepping)
+    if (state.draggingEdgeBend) {
+      const rawX = wx;
+      const rawY = wy;
+      state.draggingEdgeBend.bend = {
+        x: state.snapToGrid ? Math.round(rawX / state.gridSize) * state.gridSize : rawX,
+        y: state.snapToGrid ? Math.round(rawY / state.gridSize) * state.gridSize : rawY,
+      };
+      state.draggingEdgeBend._ver = -1;
+      setCanvasCursor("grabbing");
+      return;
+    }
+
+    // Smooth 1:1 Node Resizing (Zero 10px stair-stepping)
+    if (state.resizingNode) {
+      const { node, aspect } = state.resizingNode;
+      const rawW = Math.max(70, wx - node.x);
+      node.w = state.snapToGrid ? Math.round(rawW / state.gridSize) * state.gridSize : rawW;
+      if (e.shiftKey) {
+        node.h = Math.max(48, node.w / aspect);
+      } else {
+        const rawH = Math.max(48, wy - node.y);
+        node.h = state.snapToGrid ? Math.round(rawH / state.gridSize) * state.gridSize : rawH;
       }
+      invalidateNodeEdges(node.id);
+      setCanvasCursor("nwse-resize");
+      return;
     }
-  }
-  canvas.style.cursor = state.hoveredPort ? "crosshair" : "default";
-});
+
+    // Smooth 1:1 Node Dragging (Zero 10px stair-stepping; only invalidates connected edges!)
+    if (state.draggingNode) {
+      const { node, offsetX, offsetY } = state.draggingNode;
+      const rawX = wx - offsetX;
+      const rawY = wy - offsetY;
+      node.x = state.snapToGrid ? Math.round(rawX / state.gridSize) * state.gridSize : rawX;
+      node.y = state.snapToGrid ? Math.round(rawY / state.gridSize) * state.gridSize : rawY;
+      state.smartGuides = computeSmartGuides(node);
+      invalidateNodeEdges(node.id);
+      setCanvasCursor("grabbing");
+      return;
+    }
+
+    if (state.panning) {
+      p.pan.x = sx - state.panning.startX;
+      p.pan.y = sy - state.panning.startY;
+      state.minimapDirty = true;
+      setCanvasCursor("grabbing");
+      return;
+    }
+
+    // Idle Port Hover Detection (Bounding-Box Culled)
+    state.hoveredPort = null;
+    const portHoverRadius = 15 / Math.max(0.4, p.zoom);
+    for (let i = 0; i < p.nodes.length; i++) {
+      const n = p.nodes[i];
+      if (
+        wx < n.x - portHoverRadius ||
+        wx > n.x + n.w + portHoverRadius ||
+        wy < n.y - portHoverRadius ||
+        wy > n.y + n.h + portHoverRadius
+      ) {
+        continue;
+      }
+      for (const port of getNodePorts(n)) {
+        if (Math.hypot(wx - port.x, wy - port.y) <= portHoverRadius) {
+          state.hoveredPort = { nodeId: n.id, side: port.side, x: port.x, y: port.y };
+          break;
+        }
+      }
+      if (state.hoveredPort) break;
+    }
+    setCanvasCursor(state.hoveredPort ? "crosshair" : "default");
+  },
+  { passive: true }
+);
 
 window.addEventListener("mouseup", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  state.mouseWorld = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+  state.mouseWorld = screenToWorld(e.clientX - canvasRect.left, e.clientY - canvasRect.top);
   const p = page();
 
   if (state.connectingFrom) {
@@ -1179,9 +1389,23 @@ window.addEventListener("mouseup", (e) => {
         edge.source = snap.node.id;
         edge.sourcePort = snap.port.side;
       }
-      invalidateGeometry();
+      edge._ver = -1;
       renderFormatPanel();
     }
+  }
+
+  // Round to clean integer coordinates on release
+  if (state.draggingNode) {
+    const n = state.draggingNode.node;
+    n.x = Math.round(n.x);
+    n.y = Math.round(n.y);
+    invalidateNodeEdges(n.id);
+  }
+  if (state.resizingNode) {
+    const n = state.resizingNode.node;
+    n.w = Math.round(n.w);
+    n.h = Math.round(n.h);
+    invalidateNodeEdges(n.id);
   }
 
   state.draggingNode = null;
@@ -1192,17 +1416,17 @@ window.addEventListener("mouseup", (e) => {
   state.connectingFrom = null;
   state.snapTargetPort = null;
   state.smartGuides = [];
+  setCanvasCursor("default");
 });
 
 canvas.addEventListener(
   "wheel",
   (e) => {
     e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const cx = e.clientX - rect.left;
-    const cy = e.clientY - rect.top;
-    const factor = e.deltaY < 0 ? 1.12 : 0.89;
-    setZoom(page().zoom * factor, cx, cy);
+    const cx = e.clientX - canvasRect.left;
+    const cy = e.clientY - canvasRect.top;
+    const factor = Math.exp(-e.deltaY * 0.0014);
+    setZoomImmediate(page().zoom * factor, cx, cy);
   },
   { passive: false }
 );
@@ -1381,6 +1605,7 @@ function deleteSelected() {
   renderFormatPanel();
 }
 
+// Smooth Animated Sugiyama Hierarchical Auto-Layout
 function runHierarchicalLayout() {
   const p = page();
   saveSnapshot();
@@ -1399,30 +1624,34 @@ function runHierarchicalLayout() {
     byLayer[l] = byLayer[l] || [];
     byLayer[l].push(n);
   }
+  const targets = new Map();
   Object.entries(byLayer).forEach(([layerIdx, group]) => {
     group.forEach((n, sibIdx) => {
-      n.x = 90 + Number(layerIdx) * 250;
-      n.y = 70 + sibIdx * 125;
+      targets.set(n.id, {
+        x: 90 + Number(layerIdx) * 250,
+        y: 70 + sibIdx * 125,
+      });
     });
   });
   p.edges.forEach((e) => (e.bend = null));
-  invalidateGeometry();
-  renderFormatPanel();
+  animateNodesToTargets(targets);
 }
 
 function runGridLayout() {
   const p = page();
   saveSnapshot();
   const cols = Math.max(3, Math.ceil(Math.sqrt(p.nodes.length)));
+  const targets = new Map();
   p.nodes.forEach((n, idx) => {
     const col = idx % cols;
     const row = Math.floor(idx / cols);
-    n.x = 80 + col * 230;
-    n.y = 70 + row * 130;
+    targets.set(n.id, {
+      x: 80 + col * 230,
+      y: 70 + row * 130,
+    });
   });
   p.edges.forEach((e) => (e.bend = null));
-  invalidateGeometry();
-  renderFormatPanel();
+  animateNodesToTargets(targets);
 }
 
 function runRadialLayout() {
@@ -1431,14 +1660,16 @@ function runRadialLayout() {
   const count = Math.max(1, p.nodes.length);
   const radius = Math.max(180, count * 28);
   const cx = 420, cy = 280;
+  const targets = new Map();
   p.nodes.forEach((n, idx) => {
     const angle = (idx / count) * Math.PI * 2;
-    n.x = Math.round(cx + radius * Math.cos(angle) - n.w / 2);
-    n.y = Math.round(cy + radius * Math.sin(angle) - n.h / 2);
+    targets.set(n.id, {
+      x: Math.round(cx + radius * Math.cos(angle) - n.w / 2),
+      y: Math.round(cy + radius * Math.sin(angle) - n.h / 2),
+    });
   });
   p.edges.forEach((e) => (e.bend = null));
-  invalidateGeometry();
-  renderFormatPanel();
+  animateNodesToTargets(targets);
 }
 
 function generateStressGraph(count) {
@@ -1487,8 +1718,8 @@ document.getElementById("btn-undo").onclick = undo;
 document.getElementById("btn-redo").onclick = redo;
 document.getElementById("btn-duplicate").onclick = duplicateSelected;
 document.getElementById("btn-delete").onclick = deleteSelected;
-document.getElementById("btn-zoom-in").onclick = () => setZoom(page().zoom * 1.2);
-document.getElementById("btn-zoom-out").onclick = () => setZoom(page().zoom / 1.2);
+document.getElementById("btn-zoom-in").onclick = () => animateZoom(page().zoom * 1.25);
+document.getElementById("btn-zoom-out").onclick = () => animateZoom(page().zoom / 1.25);
 document.getElementById("btn-layout-hier").onclick = runHierarchicalLayout;
 
 document.getElementById("select-edge-anim").onchange = (e) => {
@@ -1504,7 +1735,7 @@ document.getElementById("select-edge-kind").onchange = (e) => {
   const selEdge = page().edges.find((ed) => ed.id === state.selectedEdgeId);
   if (selEdge) {
     selEdge.kind = state.edgeKindPreset;
-    invalidateGeometry();
+    selEdge._ver = -1;
     renderFormatPanel();
   }
 };
@@ -1521,7 +1752,7 @@ function exportDrawioXml() {
   const p = page();
   let xml = `<mxfile host="RustFlowDraw" version="1.0.0">\n  <diagram id="page-${p.id}" name="${p.name}">\n    <mxGraphModel dx="1280" dy="720" grid="1" gridSize="20">\n      <root>\n        <mxCell id="0"/>\n        <mxCell id="1" parent="0"/>\n`;
   for (const n of p.nodes) {
-    xml += `        <mxCell id="node-${n.id}" value="${n.title}" style="shape=${n.shape};rounded=1;fillColor=${n.fill};strokeColor=${n.stroke};" vertex="1" parent="1">\n          <mxGeometry x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" as="geometry"/>\n        </mxCell>\n`;
+    xml += `        <mxCell id="node-${n.id}" value="${n.title}" style="shape=${n.shape};rounded=1;fillColor=${n.fill};strokeColor=${n.stroke};" vertex="1" parent="1">\n          <mxGeometry x="${Math.round(n.x)}" y="${Math.round(n.y)}" width="${Math.round(n.w)}" height="${Math.round(n.h)}" as="geometry"/>\n        </mxCell>\n`;
   }
   for (const e of p.edges) {
     xml += `        <mxCell id="edge-${e.id}" value="${e.label}" style="curved=1;rfdAnim=${e.anim};" edge="1" parent="1" source="node-${e.source}" target="node-${e.target}">\n          <mxGeometry relative="1" as="geometry"/>\n        </mxCell>\n`;
@@ -1632,13 +1863,12 @@ window.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown") n.y += step;
     if (e.key === "ArrowLeft") n.x -= step;
     if (e.key === "ArrowRight") n.x += step;
-    invalidateGeometry();
-    updateArrangeInputsLive(n);
+    invalidateNodeEdges(n.id);
   }
 });
 
 // ============================================================================
-// 3. ULTRA-FAST O(1) OFFSCREEN GRID PATTERN & FRUSTUM-CULLED RENDERER
+// 3. MACRO-TILE OFFSCREEN GRID PATTERN & 60-144 FPS RENDERER
 // ============================================================================
 function drawInfiniteGridFast(p) {
   if (state.gridStyle === "off") return;
@@ -1648,24 +1878,35 @@ function drawInfiniteGridFast(p) {
   const key = `${state.theme}:${state.gridStyle}:${step}`;
   if (key !== cachedGridKey) {
     cachedGridKey = key;
+    // Build a ~240x240 macro-tile so CanvasPattern repeats 95% fewer times across screen
+    const reps = Math.max(1, Math.round(240 / step));
+    const macro = step * reps;
+    cachedGridMacroStep = macro;
+
     const tile = document.createElement("canvas");
-    tile.width = step;
-    tile.height = step;
+    tile.width = macro;
+    tile.height = macro;
     const tctx = tile.getContext("2d");
     const color =
       state.theme === "light" ? "#cbd5e1" : state.theme === "contrast" ? "#404040" : "#263346";
 
     if (state.gridStyle === "dots") {
       tctx.fillStyle = color;
-      tctx.fillRect(0, 0, 2, 2);
+      for (let gx = 0; gx < macro; gx += step) {
+        for (let gy = 0; gy < macro; gy += step) {
+          tctx.fillRect(gx, gy, 2, 2);
+        }
+      }
     } else {
       tctx.strokeStyle = color;
       tctx.lineWidth = 1;
       tctx.beginPath();
-      tctx.moveTo(0, 0);
-      tctx.lineTo(step, 0);
-      tctx.moveTo(0, 0);
-      tctx.lineTo(0, step);
+      for (let g = 0; g < macro; g += step) {
+        tctx.moveTo(0, g);
+        tctx.lineTo(macro, g);
+        tctx.moveTo(g, 0);
+        tctx.lineTo(g, macro);
+      }
       tctx.stroke();
     }
     cachedGridPattern = ctx.createPattern(tile, "repeat");
@@ -1682,7 +1923,7 @@ function drawInfiniteGridFast(p) {
   }
 }
 
-function drawNodeShape(ctx, n, textColor) {
+function drawNodeShapeGeometry(ctx, n) {
   const { x, y, w, h, shape } = n;
 
   ctx.beginPath();
@@ -1885,12 +2126,12 @@ function drawNodeShape(ctx, n, textColor) {
     ctx.lineTo(x + w, y + 26);
     ctx.stroke();
     const colors = ["#f43f5e", "#fbbf24", "#34d399"];
-    colors.forEach((c, i) => {
+    for (let i = 0; i < 3; i++) {
       ctx.beginPath();
       ctx.arc(x + 14 + i * 12, y + 13, 4, 0, Math.PI * 2);
-      ctx.fillStyle = c;
+      ctx.fillStyle = colors[i];
       ctx.fill();
-    });
+    }
   } else if (shape === "mobile") {
     ctx.roundRect(x, y, w, h, 18);
     ctx.fill();
@@ -1906,26 +2147,6 @@ function drawNodeShape(ctx, n, textColor) {
     ctx.fill();
     ctx.stroke();
   }
-
-  ctx.fillStyle = textColor;
-  ctx.font = "600 13px Inter, sans-serif";
-  ctx.textAlign = "center";
-  const titleY =
-    shape === "actor"
-      ? y + h - 4
-      : shape === "uml_class" || shape === "uml_interface"
-      ? y + 23
-      : shape === "browser"
-      ? y + 54
-      : y + h / 2 - (n.body ? 6 : -4);
-  ctx.fillText(n.title, x + w / 2, titleY);
-
-  if (n.body && shape !== "actor") {
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "400 11px monospace";
-    const bodyY = shape === "uml_class" || shape === "uml_interface" ? y + 54 : shape === "browser" ? y + 78 : y + h / 2 + 16;
-    ctx.fillText(n.body, x + w / 2, bodyY);
-  }
 }
 
 function drawArrowhead(ctx, fromPt, toPt, color) {
@@ -1940,24 +2161,56 @@ function drawArrowhead(ctx, fromPt, toPt, color) {
   ctx.fill();
 }
 
-let statusFrameCounter = 0;
+let frameCounter = 0;
 
 function renderLoop(timestamp) {
   const dt = Math.max(1, timestamp - state.lastFrameTime);
-  state.fps = Math.round(state.fps * 0.9 + (1000 / dt) * 0.1);
+  state.fps = Math.round(state.fps * 0.92 + (1000 / dt) * 0.08);
   state.lastFrameTime = timestamp;
 
   const timeSec = timestamp * 0.001;
   const p = page();
 
-  // Clear background without DOM getComputedStyle
+  // Step Smooth Layout Animation (easeOutCubic)
+  if (state.layoutAnim) {
+    const elapsed = timestamp - state.layoutAnim.startTime;
+    const rawT = Math.min(1, elapsed / state.layoutAnim.duration);
+    const ease = 1 - Math.pow(1 - rawT, 3);
+    for (const item of state.layoutAnim.entries) {
+      item.node.x = item.sx + (item.tx - item.sx) * ease;
+      item.node.y = item.sy + (item.ty - item.sy) * ease;
+    }
+    state.geometryVersion++;
+    state.minimapDirty = true;
+    if (rawT >= 1) {
+      state.layoutAnim = null;
+      renderFormatPanel();
+    }
+  }
+
+  // Step Smooth View Zoom/Pan Animation (easeOutCubic)
+  if (state.viewAnim) {
+    const elapsed = timestamp - state.viewAnim.startTime;
+    const rawT = Math.min(1, elapsed / state.viewAnim.duration);
+    const ease = 1 - Math.pow(1 - rawT, 3);
+    p.pan.x = state.viewAnim.startPanX + (state.viewAnim.targetPanX - state.viewAnim.startPanX) * ease;
+    p.pan.y = state.viewAnim.startPanY + (state.viewAnim.targetPanY - state.viewAnim.startPanY) * ease;
+    p.zoom = state.viewAnim.startZoom + (state.viewAnim.targetZoom - state.viewAnim.startZoom) * ease;
+    state.minimapDirty = true;
+    updateZoomLabel();
+    if (rawT >= 1) {
+      state.viewAnim = null;
+    }
+  }
+
+  // Clear background
   ctx.fillStyle = state.theme === "light" ? "#f8fafc" : state.theme === "contrast" ? "#000000" : "#0b0f19";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // 1. O(1) Cached Pattern Grid
+  // 1. Macro-Tile Cached Pattern Grid
   drawInfiniteGridFast(p);
 
-  // Compute visible world frustum for culling off-screen nodes/edges
+  // Compute visible world frustum for culling
   const viewTL = screenToWorld(0, 0);
   const viewBR = screenToWorld(canvas.width, canvas.height);
 
@@ -1971,7 +2224,8 @@ function renderLoop(timestamp) {
     ctx.lineWidth = 1.2 / p.zoom;
     ctx.setLineDash([4 / p.zoom, 4 / p.zoom]);
     ctx.beginPath();
-    for (const g of state.smartGuides) {
+    for (let i = 0; i < state.smartGuides.length; i++) {
+      const g = state.smartGuides[i];
       if (g.type === "v") {
         ctx.moveTo(g.x, g.y1);
         ctx.lineTo(g.x, g.y2);
@@ -1984,8 +2238,12 @@ function renderLoop(timestamp) {
     ctx.setLineDash([]);
   }
 
-  // 3. Frustum-Culled Edges & Zero-ShadowBlur Animations
-  for (const e of p.edges) {
+  // 3. Frustum-Culled Edges & Sub-Pixel Continuous Arc-Length Animations
+  ctx.font = "600 11px Inter, sans-serif";
+  ctx.textAlign = "center";
+
+  for (let i = 0; i < p.edges.length; i++) {
+    const e = p.edges[i];
     const geo = getEdgeGeometry(e);
     if (!geo) continue;
     if (
@@ -2003,8 +2261,8 @@ function renderLoop(timestamp) {
     ctx.beginPath();
     if (e.kind === "straight" || e.kind === "orthogonal" || e.kind === "smoothstep") {
       ctx.moveTo(geo.samples[0].x, geo.samples[0].y);
-      for (let i = 1; i < geo.samples.length; i++) {
-        ctx.lineTo(geo.samples[i].x, geo.samples[i].y);
+      for (let j = 1; j < geo.samples.length; j++) {
+        ctx.lineTo(geo.samples[j].x, geo.samples[j].y);
       }
     } else {
       ctx.moveTo(geo.p0.x, geo.p0.y);
@@ -2016,7 +2274,7 @@ function renderLoop(timestamp) {
 
     if (e.anim === "ants") {
       ctx.setLineDash([9, 5]);
-      ctx.lineDashOffset = -timeSec * 36;
+      ctx.lineDashOffset = -timeSec * 42;
     }
     ctx.stroke();
     if (e.anim === "ants") ctx.setLineDash([]);
@@ -2024,35 +2282,49 @@ function renderLoop(timestamp) {
     const prevPt = geo.samples[Math.max(0, geo.samples.length - 2)];
     drawArrowhead(ctx, prevPt, geo.p3, strokeColor);
 
-    // Fast dual-circle glow pulse (no expensive Gaussian shadowBlur!)
+    // Sub-Pixel Butter-Smooth Comet Pulse Along Exact Arc-Length
     if (e.anim === "pulse") {
-      for (const offset of [0, 0.5]) {
-        const t = (timeSec * 0.55 + offset) % 1;
-        const idx = Math.min(geo.samples.length - 1, Math.floor(t * (geo.samples.length - 1)));
-        const pt = geo.samples[idx];
-        ctx.fillStyle = "rgba(56, 189, 248, 0.28)";
+      const speedPxPerSec = 145;
+      const spacing = geo.totalLen * 0.5;
+      for (let pIdx = 0; pIdx < 2; pIdx++) {
+        const headDist = (timeSec * speedPxPerSec + pIdx * spacing) % geo.totalLen;
+        // Draw smooth comet tail + glowing head using exact sub-pixel linear interpolation
+        const tail1 = getPointAtArcDistance(geo, headDist - 12);
+        const tail2 = getPointAtArcDistance(geo, headDist - 6);
+        const head = getPointAtArcDistance(geo, headDist);
+
+        ctx.fillStyle = "rgba(56, 189, 248, 0.18)";
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
+        ctx.arc(tail1.x, tail1.y, 4.2, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = "#38bdf8";
+
+        ctx.fillStyle = "rgba(56, 189, 248, 0.35)";
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+        ctx.arc(tail2.x, tail2.y, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(56, 189, 248, 0.25)";
+        ctx.beginPath();
+        ctx.arc(head.x, head.y, 7.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#e0f2fe";
+        ctx.beginPath();
+        ctx.arc(head.x, head.y, 3.6, 0, Math.PI * 2);
         ctx.fill();
       }
     }
 
     if (e.label) {
-      ctx.font = "600 11px Inter, sans-serif";
-      const textW = e.label.length * 7 + 14;
+      const textW = geo.labelWidth;
       ctx.fillStyle = state.theme === "light" ? "#ffffff" : "#0f172a";
       ctx.strokeStyle = strokeColor;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(geo.midPoint.x - textW / 2, geo.midPoint.y - 10, textW, 20, 6);
+      ctx.roundRect(geo.midPoint.x - textW * 0.5, geo.midPoint.y - 10, textW, 20, 6);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = state.theme === "light" ? "#0f172a" : "#f8fafc";
-      ctx.textAlign = "center";
       ctx.fillText(e.label, geo.midPoint.x, geo.midPoint.y + 4);
     }
 
@@ -2093,7 +2365,7 @@ function renderLoop(timestamp) {
       startPt = state.connectingFrom.port;
     } else if (state.reconnectingEdge) {
       const geo = getEdgeGeometry(state.reconnectingEdge.edge);
-      startPt = state.reconnectingEdge.end === "target" ? geo.p0 : geo.p3;
+      if (geo) startPt = state.reconnectingEdge.end === "target" ? geo.p0 : geo.p3;
     }
     const endPt = state.snapTargetPort ? state.snapTargetPort.port : state.mouseWorld;
     ctx.beginPath();
@@ -2114,8 +2386,10 @@ function renderLoop(timestamp) {
     }
   }
 
-  // 4. Frustum-Culled Nodes (Zero shadowBlur!)
-  for (const n of p.nodes) {
+  // 4. Frustum-Culled Nodes (Batched Shape Pass + Batched Text Pass to Eliminate Font Switching Overhead)
+  const visibleNodes = [];
+  for (let i = 0; i < p.nodes.length; i++) {
+    const n = p.nodes[i];
     if (
       n.x + n.w + 35 < viewTL.x ||
       n.x - 35 > viewBR.x ||
@@ -2124,9 +2398,9 @@ function renderLoop(timestamp) {
     ) {
       continue;
     }
-    const selected = n.id === state.selectedNodeId;
+    visibleNodes.push(n);
 
-    // Fast selection halo
+    const selected = n.id === state.selectedNodeId;
     if (selected) {
       ctx.strokeStyle = "rgba(56, 189, 248, 0.28)";
       ctx.lineWidth = 6;
@@ -2136,9 +2410,7 @@ function renderLoop(timestamp) {
     ctx.fillStyle = n.fill;
     ctx.strokeStyle = selected ? "#38bdf8" : n.stroke;
     ctx.lineWidth = selected ? 2.5 : 1.7;
-
-    const textColor = state.theme === "light" && n.fill === "#ffffff" ? "#0f172a" : "#f8fafc";
-    drawNodeShape(ctx, n, textColor);
+    drawNodeShapeGeometry(ctx, n);
 
     for (const port of getNodePorts(n)) {
       const isHovered =
@@ -2151,38 +2423,75 @@ function renderLoop(timestamp) {
       ctx.fill();
       ctx.stroke();
     }
+  }
 
-    if (selected) {
+  // Batched Title Text Pass (1 font state change for all visible nodes!)
+  ctx.font = "600 13px Inter, sans-serif";
+  ctx.textAlign = "center";
+  for (let i = 0; i < visibleNodes.length; i++) {
+    const n = visibleNodes[i];
+    const { x, y, w, h, shape } = n;
+    ctx.fillStyle = state.theme === "light" && n.fill === "#ffffff" ? "#0f172a" : "#f8fafc";
+    const titleY =
+      shape === "actor"
+        ? y + h - 4
+        : shape === "uml_class" || shape === "uml_interface"
+        ? y + 23
+        : shape === "browser"
+        ? y + 54
+        : y + h * 0.5 - (n.body ? 6 : -4);
+    ctx.fillText(n.title, x + w * 0.5, titleY);
+  }
+
+  // Batched Subtitle Text Pass (1 font state change for all visible nodes!)
+  ctx.font = "400 11px monospace";
+  ctx.fillStyle = "#94a3b8";
+  for (let i = 0; i < visibleNodes.length; i++) {
+    const n = visibleNodes[i];
+    if (!n.body || n.shape === "actor") continue;
+    const { x, y, w, h, shape } = n;
+    const bodyY =
+      shape === "uml_class" || shape === "uml_interface"
+        ? y + 54
+        : shape === "browser"
+        ? y + 78
+        : y + h * 0.5 + 16;
+    ctx.fillText(n.body, x + w * 0.5, bodyY);
+  }
+
+  // Selected Node Quick-Connect Overlay & Resize Handle
+  const selectedNode = nodeMap.get(state.selectedNodeId);
+  if (selectedNode) {
+    ctx.fillStyle = "#38bdf8";
+    ctx.fillRect(selectedNode.x + selectedNode.w - 5, selectedNode.y + selectedNode.h - 5, 10, 10);
+
+    ctx.font = "700 11px sans-serif";
+    for (const arrow of getQuickArrows(selectedNode)) {
+      ctx.beginPath();
+      ctx.arc(arrow.x, arrow.y, 9.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#1e293b";
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 1.5;
+      ctx.fill();
+      ctx.stroke();
       ctx.fillStyle = "#38bdf8";
-      ctx.fillRect(n.x + n.w - 5, n.y + n.h - 5, 10, 10);
-
-      for (const arrow of getQuickArrows(n)) {
-        ctx.beginPath();
-        ctx.arc(arrow.x, arrow.y, 9.5, 0, Math.PI * 2);
-        ctx.fillStyle = "#1e293b";
-        ctx.strokeStyle = "#38bdf8";
-        ctx.lineWidth = 1.5;
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = "#38bdf8";
-        ctx.font = "700 11px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(arrow.label, arrow.x, arrow.y + 4);
-      }
+      ctx.fillText(arrow.label, arrow.x, arrow.y + 4);
     }
   }
 
   ctx.restore();
 
-  // 5. Dirty-Checked Minimap (only redraws when nodes, pan, or zoom change!)
-  if (state.minimapDirty) {
+  // 5. Throttled Dirty-Checked Minimap & Arrange Input Sync
+  frameCounter++;
+  if (state.minimapDirty && (!state.draggingNode || frameCounter % 3 === 0)) {
     state.minimapDirty = false;
     minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
     const scale = 0.13;
     minimapCtx.save();
     minimapCtx.translate(14, 14);
     minimapCtx.scale(scale, scale);
-    for (const n of p.nodes) {
+    for (let i = 0; i < p.nodes.length; i++) {
+      const n = p.nodes[i];
       minimapCtx.fillStyle = n.id === state.selectedNodeId ? "#38bdf8" : "#64748b";
       minimapCtx.fillRect(n.x, n.y, n.w, n.h);
     }
@@ -2192,10 +2501,14 @@ function renderLoop(timestamp) {
     minimapCtx.restore();
   }
 
-  // Update status bar text every 10 frames to avoid DOM churn
-  if (++statusFrameCounter % 10 === 0) {
-    document.getElementById("status-bar").textContent = `FPS: ${state.fps} | Zoom: ${Math.round(p.zoom * 100)}% | Nodes: ${p.nodes.length} | Edges: ${p.edges.length}`;
+  if (frameCounter % 4 === 0) {
+    syncArrangeInputsIfDirty();
   }
+
+  if (frameCounter % 12 === 0) {
+    statusBarEl.textContent = `FPS: ${state.fps} | Zoom: ${Math.round(p.zoom * 100)}% | Nodes: ${p.nodes.length} | Edges: ${p.edges.length}`;
+  }
+
   requestAnimationFrame(renderLoop);
 }
 requestAnimationFrame(renderLoop);
