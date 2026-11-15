@@ -3,6 +3,7 @@
 pub mod command;
 pub mod crdt;
 pub mod document;
+pub mod plugin;
 pub mod scene;
 pub mod selection;
 pub mod spatial;
@@ -11,6 +12,10 @@ pub mod telemetry;
 pub use command::{Command, CommandHistory};
 pub use crdt::{CrdtOp, CrdtReplica, HlcTimestamp, ThemeTokens};
 pub use document::{Document, MinimapNodeBox, MinimapSnapshot, Page};
+pub use plugin::{
+    CustomLayoutPlugin, EdgeShaderPlugin, PluginRegistry, PluginStencilDescriptor,
+    RadialLayoutPlugin, SemVer,
+};
 pub use scene::{
     ColorRgba, Edge, EdgeAnimation, EdgeId, EdgeKind, GroupId, Node, NodeId, NodeStyle, PageId,
     Port, PortDirection, PortId, PortSide, QuickConnectDirection, SceneGraph, ShapeKind, TextAlign,

@@ -2,7 +2,7 @@
 //! animated SVG exporter, high-DPI rasterizer, and PDF exporter.
 
 use rustflow_core::{
-    ColorRgba, Edge, EdgeAnimation, EdgeKind, Node, Point, Rect, SceneGraph, Viewport,
+    ColorRgba, Edge, EdgeAnimation, EdgeKind, Node, Point, Rect, SceneGraph, SemVer, Viewport,
 };
 use rustflow_renderer::{tessellate_edge_path, HeadlessFramebuffer};
 
@@ -131,9 +131,10 @@ pub fn export_native_json(scene: &SceneGraph) -> String {
 }
 
 fn extract_json_str_field(line: &str, key: &str) -> Option<String> {
-    let pattern = format!("\"{key}\":\"");
+    let pattern = format!("\"{key}\":");
     let start = line.find(&pattern)? + pattern.len();
-    let rest = &line[start..];
+    let rest = line[start..].trim_start();
+    let rest = rest.strip_prefix('"')?;
     let mut end = 0;
     let bytes = rest.as_bytes();
     while end < bytes.len() {
@@ -166,8 +167,12 @@ pub fn import_native_json(json: &str) -> Result<SceneGraph, FormatError> {
     if !trimmed.contains("\"version\"") {
         return Err(FormatError::InvalidJson("missing version field".into()));
     }
-    if !trimmed.contains(&format!("\"{}\"", NATIVE_FORMAT_VERSION)) {
-        return Err(FormatError::UnsupportedVersion("unknown version".into()));
+    let version_str = extract_json_str_field(trimmed, "version")
+        .ok_or_else(|| FormatError::InvalidJson("malformed version string".into()))?;
+    let parsed_ver = SemVer::parse(&version_str)
+        .ok_or_else(|| FormatError::UnsupportedVersion(version_str.clone()))?;
+    if !SemVer::V1_0_0.is_backward_compatible_with(&parsed_ver) {
+        return Err(FormatError::UnsupportedVersion(version_str));
     }
 
     let mut scene = SceneGraph::new();
