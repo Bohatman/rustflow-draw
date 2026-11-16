@@ -291,11 +291,11 @@ function createDogfoodPages() {
       pan: { x: 50, y: 40 },
       zoom: 1.0,
       nodes: [
-        { id: 1, title: "crates/core", body: "R-Tree + Scene + CRDT", x: 70, y: 155, w: 185, h: 86, fill: "#ffffff", stroke: "#000080", shape: "uml_package", icon: "cpu", iconPos: "left", imgUrl: "", z: 1 },
-        { id: 2, title: "crates/renderer", body: "wgpu WGSL + Bezier", x: 355, y: 45, w: 185, h: 78, fill: "#e8f6fc", stroke: "#0077b5", shape: "uml_component", icon: "uml_component", iconPos: "left", imgUrl: "", z: 2 },
-        { id: 3, title: "crates/layout", body: "Sugiyama + Force + Spring", x: 355, y: 160, w: 185, h: 78, fill: "#f2faef", stroke: "#2d8a1e", shape: "hexagon", icon: "gear", iconPos: "left", imgUrl: "", z: 3 },
-        { id: 4, title: "crates/io-formats", body: ".drawio XML + SVG + PDF", x: 355, y: 280, w: 185, h: 82, fill: "#fff9e6", stroke: "#c47f00", shape: "document", icon: "code", iconPos: "left", imgUrl: "", z: 4 },
-        { id: 5, title: "crates/ui-bridge", body: "WASM & Tauri v2 Shell", x: 650, y: 155, w: 205, h: 108, fill: "#f5edf7", stroke: "#7a267b", shape: "browser", icon: "globe", iconPos: "left", imgUrl: "", z: 5 },
+        { id: 1, title: "crates/core", body: "", x: 70, y: 155, w: 185, h: 86, fill: "#ffffff", stroke: "#000080", shape: "uml_package", icon: "cpu", iconPos: "left", imgUrl: "", z: 1 },
+        { id: 2, title: "crates/renderer", body: "", x: 355, y: 45, w: 185, h: 78, fill: "#e8f6fc", stroke: "#0077b5", shape: "uml_component", icon: "uml_component", iconPos: "left", imgUrl: "", z: 2 },
+        { id: 3, title: "crates/layout", body: "", x: 355, y: 160, w: 185, h: 78, fill: "#f2faef", stroke: "#2d8a1e", shape: "hexagon", icon: "gear", iconPos: "left", imgUrl: "", z: 3 },
+        { id: 4, title: "crates/io-formats", body: "", x: 355, y: 280, w: 185, h: 82, fill: "#fff9e6", stroke: "#c47f00", shape: "document", icon: "code", iconPos: "left", imgUrl: "", z: 4 },
+        { id: 5, title: "crates/ui-bridge", body: "", x: 650, y: 155, w: 205, h: 108, fill: "#f5edf7", stroke: "#7a267b", shape: "browser", icon: "globe", iconPos: "left", imgUrl: "", z: 5 },
       ],
       edges: [
         { id: 101, source: 1, sourcePort: "right", target: 2, targetPort: "left", label: "", anim: "pulse", kind: "bezier", arrow: "one-way", color: "#0077b5", width: 1.8, bend: null },
@@ -314,11 +314,11 @@ function createDogfoodPages() {
       pan: { x: 60, y: 50 },
       zoom: 1.0,
       nodes: [
-        { id: 10, title: "Client User", body: "HTTPS", x: 75, y: 132, w: 72, h: 76, fill: "#ffffff", stroke: "#000080", shape: "actor", icon: "none", iconPos: "left", imgUrl: "", z: 1 },
-        { id: 11, title: "WAF Firewall", body: "Rate Limiter", x: 235, y: 133, w: 180, h: 74, fill: "#fdecee", stroke: "#c92027", shape: "firewall", icon: "firewall", iconPos: "left", imgUrl: "", z: 2 },
-        { id: 12, title: "Auth Check", body: "XOR", x: 495, y: 130, w: 80, h: 80, fill: "#fff9e6", stroke: "#c47f00", shape: "gateway_xor", icon: "none", iconPos: "left", imgUrl: "", z: 3 },
-        { id: 13, title: "Kafka Stream", body: "events-topic", x: 660, y: 80, w: 180, h: 72, fill: "#f2faef", stroke: "#2d8a1e", shape: "queue", icon: "none", iconPos: "left", imgUrl: "", z: 4 },
-        { id: 14, title: "Postgres DB", body: "pgvector", x: 680, y: 210, w: 136, h: 92, fill: "#e8f6fc", stroke: "#0077b5", shape: "cylinder", icon: "database", iconPos: "left", imgUrl: "", z: 5 },
+        { id: 10, title: "Client User", body: "", x: 75, y: 132, w: 72, h: 76, fill: "#ffffff", stroke: "#000080", shape: "actor", icon: "none", iconPos: "left", imgUrl: "", z: 1 },
+        { id: 11, title: "WAF Firewall", body: "", x: 235, y: 133, w: 180, h: 74, fill: "#fdecee", stroke: "#c92027", shape: "firewall", icon: "firewall", iconPos: "left", imgUrl: "", z: 2 },
+        { id: 12, title: "Auth Check", body: "", x: 495, y: 130, w: 80, h: 80, fill: "#fff9e6", stroke: "#c47f00", shape: "gateway_xor", icon: "none", iconPos: "left", imgUrl: "", z: 3 },
+        { id: 13, title: "Kafka Stream", body: "", x: 660, y: 80, w: 180, h: 72, fill: "#f2faef", stroke: "#2d8a1e", shape: "queue", icon: "none", iconPos: "left", imgUrl: "", z: 4 },
+        { id: 14, title: "Postgres DB", body: "", x: 680, y: 210, w: 136, h: 92, fill: "#e8f6fc", stroke: "#0077b5", shape: "cylinder", icon: "database", iconPos: "left", imgUrl: "", z: 5 },
       ],
       edges: [
         { id: 201, source: 10, sourcePort: "right", target: 11, targetPort: "left", label: "", anim: "pulse", kind: "bezier", arrow: "two-way", color: "#000080", width: 1.8, bend: null },
@@ -1681,7 +1681,7 @@ function createNodeFromStencil(item, worldX, worldY) {
   const newNode = {
     id: ++state.nextId,
     title: item.label,
-    body: isImgCard || item.isCustom ? "" : item.id.split(".").pop(),
+    body: "",
     x: Math.round(worldX),
     y: Math.round(worldY),
     w: item.w,
@@ -3494,7 +3494,7 @@ function generateStressGraph(count) {
     p.nodes.push({
       id: i,
       title: `Service-${i}`,
-      body: `shard-${c}-${r}`,
+      body: "",
       x: 60 + c * 220,
       y: 60 + r * 120,
       w: 165,
@@ -5396,7 +5396,7 @@ function renderLoop(timestamp) {
       h: item.h,
       shape: item.shape,
       title: item.label,
-      body: item.id.split(".").pop(),
+      body: "",
     };
     ctx.save();
     ctx.globalAlpha = 0.82;

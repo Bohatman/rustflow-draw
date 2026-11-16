@@ -299,24 +299,35 @@
          2. PLATINUM BEVELED QUICK CONTROL STRIP (TOOLBAR)
          ========================================================================== */
       .quick-toolbar {
-        height: 36px;
+        min-height: 32px;
+        height: auto;
         background: var(--bg-panel);
         border-bottom: 1.5px solid var(--border-outer);
         box-shadow: inset 1px 1px 0 var(--bevel-light), inset -1px -1px 0 var(--bevel-dark);
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        gap: 5px;
-        padding: 0 10px;
-        overflow-x: auto;
-        white-space: nowrap;
+        gap: 3px;
+        padding: 3px 8px;
+        overflow: hidden;
+        flex-shrink: 0;
         z-index: 40;
+      }
+      .quick-toolbar button,
+      .quick-toolbar select {
+        padding: 2px 6px;
+        font-size: 11px;
+        height: 24px;
+        gap: 4px;
+        flex-shrink: 0;
       }
       .toolbar-sep {
         width: 2px;
-        height: 20px;
+        height: 18px;
         border-left: 1px solid var(--bevel-dark);
         border-right: 1px solid var(--bevel-light);
-        margin: 0 3px;
+        margin: 0 2px;
+        flex-shrink: 0;
       }
 
       /* Tactile 90s Apple Platinum 3D Beveled Buttons & Inputs */
@@ -1063,38 +1074,31 @@
       </button>
       <input type="file" id="diagram-file-input" accept=".drawio,.xml,.json,.svg" style="display:none" />
       <div class="toolbar-sep"></div>
-      <button id="btn-undo" title="Undo (Ctrl+Z)">
+      <button id="btn-undo" title="Undo (Ctrl+Z)" aria-label="Undo">
         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
-        Undo
       </button>
-      <button id="btn-redo" title="Redo (Ctrl+Y)">
+      <button id="btn-redo" title="Redo (Ctrl+Y)" aria-label="Redo">
         <svg class="icon-svg" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>
-        Redo
       </button>
       <div class="toolbar-sep"></div>
-      <button id="btn-copy" title="Copy (Ctrl+C)">
+      <button id="btn-copy" title="Copy (Ctrl+C)" aria-label="Copy">
         <svg class="icon-svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        Copy
       </button>
-      <button id="btn-paste" title="Paste (Ctrl+V)">
+      <button id="btn-paste" title="Paste (Ctrl+V)" aria-label="Paste">
         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
-        Paste
       </button>
-      <button id="btn-duplicate" title="Duplicate (Ctrl+D)">
+      <button id="btn-duplicate" title="Duplicate (Ctrl+D)" aria-label="Duplicate">
         <svg class="icon-svg" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
-        Duplicate
       </button>
-      <button id="btn-select-all" title="Select All (Ctrl+A)">
+      <button id="btn-select-all" title="Select All (Ctrl+A)" aria-label="Select All">
         <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4 3"/></svg>
-        Select All
       </button>
-      <button id="btn-delete" class="danger" title="Delete Selected (Del)">
+      <button id="btn-delete" class="danger" title="Delete Selected (Del)" aria-label="Delete">
         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-        Delete
       </button>
       <div class="toolbar-sep"></div>
       <button id="btn-zoom-out" title="Zoom Out (Ctrl+-)">−</button>
-      <span id="zoom-label" style="font-size:11px; min-width:44px; text-align:center; font-family:var(--font-mono); font-weight:700;">100%</span>
+      <span id="zoom-label" style="font-size:10.5px; min-width:38px; text-align:center; font-family:var(--font-mono); font-weight:700;">100%</span>
       <button id="btn-zoom-in" title="Zoom In (Ctrl++)">+</button>
       <button id="btn-fit-view" title="Fit Diagram to Screen (Ctrl+1)">
         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
@@ -1102,24 +1106,24 @@
       </button>
       <div class="toolbar-sep"></div>
       <select id="select-edge-kind" title="Edge Routing Style">
-        <option value="bezier">Curve: Bezier</option>
-        <option value="smoothstep">Curve: SmoothStep</option>
-        <option value="orthogonal">Curve: Orthogonal</option>
-        <option value="straight">Curve: Straight</option>
+        <option value="bezier">Bezier</option>
+        <option value="smoothstep">SmoothStep</option>
+        <option value="orthogonal">Orthogonal</option>
+        <option value="straight">Straight</option>
       </select>
       <select id="select-edge-arrow" title="Edge Arrowhead Style (1-Way, 2-Way, Non-Headed, Open, Diamond)">
-        <option value="one-way">Arrow: 1-Way (→)</option>
-        <option value="two-way">Arrow: 2-Way (↔)</option>
-        <option value="none">Arrow: Non-Headed (—)</option>
-        <option value="reverse">Arrow: Reverse (←)</option>
-        <option value="open">Arrow: Open (—&gt;)</option>
-        <option value="diamond">Arrow: Diamond (—◇)</option>
-        <option value="circle">Arrow: Socket (—○)</option>
+        <option value="one-way">1-Way (→)</option>
+        <option value="two-way">2-Way (↔)</option>
+        <option value="none">No Arrow (—)</option>
+        <option value="reverse">Reverse (←)</option>
+        <option value="open">Open (—&gt;)</option>
+        <option value="diamond">Diamond (—◇)</option>
+        <option value="circle">Socket (—○)</option>
       </select>
       <select id="select-edge-anim" title="Edge Flow Animation">
-        <option value="pulse">Flow: Pulse</option>
-        <option value="ants">Flow: Dashed</option>
-        <option value="none">Flow: Static</option>
+        <option value="pulse">Pulse</option>
+        <option value="ants">Dashed</option>
+        <option value="none">Static</option>
       </select>
       <div class="toolbar-sep"></div>
       <button id="btn-upload-img" title="Add Image or Set Selected Entity Image">
@@ -1133,7 +1137,7 @@
       </button>
       <button id="btn-export-gif" class="primary" title="Export Animated GIF (.gif) with Live Edge Flows">
         <svg class="icon-svg" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-        Export GIF
+        GIF
       </button>
       <button id="btn-export-png" title="Export High-DPI PNG Image (.png)">
         PNG
