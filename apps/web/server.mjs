@@ -115,8 +115,6 @@ const server = http.createServer((req, res) => {
     ETag: asset.etag,
     "Cache-Control": isImmutableAsset
       ? "public, max-age=31536000, immutable"
-      : isProd
-      ? "public, max-age=0, must-revalidate"
       : "no-store, no-cache, must-revalidate",
     ...SECURITY_HEADERS,
   };
