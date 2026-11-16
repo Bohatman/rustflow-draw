@@ -897,6 +897,63 @@
         background: var(--bg-panel);
         border-top: 2px solid var(--border-outer);
       }
+      /* Welcome Startup Dialog (Create New Empty Space vs Load from File) */
+      .welcome-body {
+        padding: 16px;
+        background: var(--bg-subtle);
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .welcome-hero {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        background: var(--bg-well);
+        border: 2px solid var(--border-outer);
+        box-shadow: inset 1px 1px 0px var(--bevel-dark);
+      }
+      .welcome-cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .welcome-card {
+        background: var(--bg-panel);
+        border: 2px solid var(--border-outer);
+        box-shadow:
+          inset 1px 1px 0px var(--bevel-light),
+          inset -1px -1px 0px var(--bevel-dark),
+          3px 3px 0px rgba(0, 0, 0, 0.25);
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .welcome-card-title {
+        font-size: 13px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .welcome-dropzone {
+        border: 2px dashed var(--border-outer);
+        background: var(--bg-well);
+        padding: 12px 10px;
+        text-align: center;
+        font-size: 11px;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: background 0.12s ease;
+      }
+      .welcome-dropzone:hover,
+      .welcome-dropzone.dragover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+      }
     </style>
   </head>
   <body>
@@ -911,6 +968,10 @@
         <div class="menu-item" data-menu="file">
           File
           <div class="dropdown-menu">
+            <div class="dropdown-entry" data-action="new-empty-workspace"><span>New Empty Space</span><span class="dropdown-shortcut">⇧⌘N</span></div>
+            <div class="dropdown-entry" data-action="open-diagram-file"><span>Load from File (.drawio / .json)...</span><span class="dropdown-shortcut">⌘O</span></div>
+            <div class="dropdown-entry" data-action="open-welcome"><span>Startup Welcome Dialog...</span></div>
+            <div class="dropdown-divider"></div>
             <div class="dropdown-entry" data-action="new-page"><span>New Page Tab</span><span class="dropdown-shortcut">⌘N</span></div>
             <div class="dropdown-entry" data-action="open-symbol-studio"><span>Create / Import Symbol...</span><span class="dropdown-shortcut">⇧⌘S</span></div>
             <div class="dropdown-divider"></div>
@@ -992,6 +1053,16 @@
 
     <!-- Row 2: Platinum Beveled Quick Control Strip -->
     <div class="quick-toolbar">
+      <button id="btn-new-empty" title="Create New Empty Space (Shift+Ctrl+N)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        New
+      </button>
+      <button id="btn-open-diagram-file" title="Load Diagram from File (.drawio, .json, .xml) (Ctrl+O)">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        Open
+      </button>
+      <input type="file" id="diagram-file-input" accept=".drawio,.xml,.json,.svg" style="display:none" />
+      <div class="toolbar-sep"></div>
       <button id="btn-undo" title="Undo (Ctrl+Z)">
         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
         Undo
@@ -1293,6 +1364,72 @@
       </div>
     </div>
 
-    <script type="module" src="/src/app.js?v=9"></script>
+    <!-- Startup Welcome Dialog: Create New Empty Space OR Load from File -->
+    <div class="cmd-overlay open" id="welcome-overlay">
+      <div class="cmd-modal" style="width: 620px;">
+        <div class="mac-titlebar">
+          <span class="mac-window-box" id="btn-close-welcome" style="cursor:pointer;" title="Close"></span>
+          <span class="mac-titlebar-label">Welcome to RustFlow Draw — Macintosh System 8.5</span>
+          <span class="mac-window-box"></span>
+        </div>
+        <div class="welcome-body">
+          <div class="welcome-hero">
+            <span class="apple-rainbow-icon" style="width:20px; height:24px; flex-shrink:0;"></span>
+            <div>
+              <div style="font-size:13px; font-weight:700;">Choose How to Start Your Workspace</div>
+              <div style="font-size:11px; color:var(--text-muted);">Start with a clean empty drafting canvas or load an existing <b>.drawio</b> / <b>.json</b> diagram file.</div>
+            </div>
+          </div>
+
+          <div class="welcome-cards">
+            <!-- Card 1: Create New Empty Space -->
+            <div class="welcome-card">
+              <div>
+                <div class="welcome-card-title">
+                  <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                  <span>1. Create New Empty Space</span>
+                </div>
+                <p style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.45;">
+                  Start from a fresh, blank drafting board ready for drag-and-drop symbols, custom entities, and animated flows.
+                </p>
+                <div style="margin-top:8px;">
+                  <label style="font-size:10px; font-weight:700; text-transform:uppercase; color:var(--text-muted);">Workspace Name</label>
+                  <input id="welcome-doc-name" type="text" value="Untitled Diagram" placeholder="e.g. System Architecture" style="margin-top:3px;" />
+                </div>
+              </div>
+              <button type="button" id="btn-welcome-empty" class="primary" style="width:100%; padding:7px 10px; font-size:12px;">
+                + Create Empty Space
+              </button>
+            </div>
+
+            <!-- Card 2: Load Diagram from File -->
+            <div class="welcome-card">
+              <div>
+                <div class="welcome-card-title">
+                  <svg class="icon-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  <span>2. Load from File</span>
+                </div>
+                <p style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.45;">
+                  Open an existing <b>.drawio</b> XML, <b>.rfd.json</b>, or <b>.json</b> diagram file from your computer.
+                </p>
+                <div id="welcome-dropzone" class="welcome-dropzone" style="margin-top:8px;">
+                  <div style="font-weight:700;">Drop .drawio or .json file here</div>
+                  <div style="margin-top:2px;">or click the button below to browse</div>
+                </div>
+              </div>
+              <button type="button" id="btn-welcome-load-file" style="width:100%; padding:7px 10px; font-size:12px;">
+                Load Diagram File...
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="studio-footer">
+          <button type="button" id="btn-welcome-sample" title="Load the sample RustFlow & Cloud architecture pages">Load Sample Architecture</button>
+          <span style="font-size:10.5px; color:var(--text-muted);">Tip: Press <b>⌘O</b> anytime to open a file</span>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/app.js?v=10"></script>
   </body>
 </html>

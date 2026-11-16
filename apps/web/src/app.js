@@ -858,6 +858,15 @@ document.querySelectorAll(".dropdown-entry").forEach((entry) => {
 function handleMenuAction(action) {
   const p = page();
   switch (action) {
+    case "new-empty-workspace":
+      createEmptyWorkspace("Untitled Diagram");
+      break;
+    case "open-diagram-file":
+      triggerOpenDiagramFile();
+      break;
+    case "open-welcome":
+      openWelcomeModal();
+      break;
     case "new-page":
       addNewPage();
       break;
@@ -879,7 +888,24 @@ function handleMenuAction(action) {
     case "export-json":
       downloadFile(
         "diagram.rfd.json",
-        JSON.stringify({ version: "1.0.0", nodes: p.nodes, edges: p.edges.map(({ _geo, _ver, ...r }) => r) }, null, 2),
+        JSON.stringify(
+          {
+            version: "1.0.0",
+            activePageId: state.activePageId,
+            pages: state.pages.map((pg) => ({
+              id: pg.id,
+              name: pg.name,
+              pan: pg.pan,
+              zoom: pg.zoom,
+              nodes: pg.nodes,
+              edges: pg.edges.map(({ _geo, _ver, ...r }) => r),
+            })),
+            nodes: p.nodes,
+            edges: p.edges.map(({ _geo, _ver, ...r }) => r),
+          },
+          null,
+          2
+        ),
         "application/json"
       );
       showToast("Exported diagram.rfd.json");
@@ -3966,16 +3992,49 @@ function exportPngImage() {
   }, "image/png");
 }
 
+function escapeXmlAttr(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function exportDrawioXml() {
-  const p = page();
-  let xml = `<mxfile host="RustFlowDraw" version="1.0.0">\n  <diagram id="page-${p.id}" name="${p.name}">\n    <mxGraphModel dx="1280" dy="720" grid="1" gridSize="20">\n      <root>\n        <mxCell id="0"/>\n        <mxCell id="1" parent="0"/>\n`;
-  for (const n of p.nodes) {
-    xml += `        <mxCell id="node-${n.id}" value="${n.title}" style="shape=${n.shape};rounded=1;fillColor=${n.fill};strokeColor=${n.stroke};" vertex="1" parent="1">\n          <mxGeometry x="${Math.round(n.x)}" y="${Math.round(n.y)}" width="${Math.round(n.w)}" height="${Math.round(n.h)}" as="geometry"/>\n        </mxCell>\n`;
+  let xml = `<mxfile host="RustFlowDraw" version="1.0.0">\n`;
+  for (const p of state.pages) {
+    xml += `  <diagram id="page-${p.id}" name="${escapeXmlAttr(p.name)}">\n    <mxGraphModel dx="1280" dy="720" grid="1" gridSize="20">\n      <root>\n        <mxCell id="0"/>\n        <mxCell id="1" parent="0"/>\n`;
+    for (const n of p.nodes) {
+      const style = [
+        `shape=${n.shape}`,
+        `rounded=1`,
+        `fillColor=${n.fill}`,
+        `strokeColor=${n.stroke}`,
+        n.body ? `rfdBody=${encodeURIComponent(n.body)}` : "",
+        n.icon ? `rfdIcon=${n.icon}` : "",
+        n.iconPos ? `rfdIconPos=${n.iconPos}` : "",
+        n.imgUrl ? `rfdImg=${encodeURIComponent(n.imgUrl)}` : "",
+      ]
+        .filter(Boolean)
+        .join(";");
+      xml += `        <mxCell id="node-${n.id}" value="${escapeXmlAttr(n.title)}" style="${style};" vertex="1" parent="1">\n          <mxGeometry x="${Math.round(n.x)}" y="${Math.round(n.y)}" width="${Math.round(n.w)}" height="${Math.round(n.h)}" as="geometry"/>\n        </mxCell>\n`;
+    }
+    for (const e of p.edges) {
+      const style = [
+        `curved=1`,
+        `rfdAnim=${e.anim || "pulse"}`,
+        `rfdKind=${e.kind || "bezier"}`,
+        `rfdArrow=${e.arrow || "one-way"}`,
+        `rfdSrcPort=${e.sourcePort || "right"}`,
+        `rfdDstPort=${e.targetPort || "left"}`,
+        `strokeColor=${e.color || "#000080"}`,
+        `strokeWidth=${e.width || 1.8}`,
+      ].join(";");
+      xml += `        <mxCell id="edge-${e.id}" value="${escapeXmlAttr(e.label || "")}" style="${style};" edge="1" parent="1" source="node-${e.source}" target="node-${e.target}">\n          <mxGeometry relative="1" as="geometry"/>\n        </mxCell>\n`;
+    }
+    xml += `      </root>\n    </mxGraphModel>\n  </diagram>\n`;
   }
-  for (const e of p.edges) {
-    xml += `        <mxCell id="edge-${e.id}" value="${e.label}" style="curved=1;rfdAnim=${e.anim};" edge="1" parent="1" source="node-${e.source}" target="node-${e.target}">\n          <mxGeometry relative="1" as="geometry"/>\n        </mxCell>\n`;
-  }
-  xml += `      </root>\n    </mxGraphModel>\n  </diagram>\n</mxfile>`;
+  xml += `</mxfile>`;
   downloadFile("diagram.drawio", xml, "application/xml");
   showToast("Saved diagram.drawio");
 }
@@ -4376,6 +4435,290 @@ if (symbolFileInput) {
 }
 
 // ============================================================================
+// STARTUP WELCOME DIALOG: CREATE NEW EMPTY SPACE OR LOAD FROM FILE (.DRAWIO / .JSON)
+// ============================================================================
+const welcomeOverlay = document.getElementById("welcome-overlay");
+const welcomeDocNameInput = document.getElementById("welcome-doc-name");
+const welcomeDropzone = document.getElementById("welcome-dropzone");
+const diagramFileInput = document.getElementById("diagram-file-input");
+
+function openWelcomeModal() {
+  if (!welcomeOverlay) return;
+  welcomeOverlay.classList.add("open");
+  if (welcomeDocNameInput) {
+    welcomeDocNameInput.focus();
+    welcomeDocNameInput.select();
+  }
+}
+
+function closeWelcomeModal() {
+  if (!welcomeOverlay) return;
+  welcomeOverlay.classList.remove("open");
+}
+
+function createEmptyWorkspace(workspaceName = "Untitled Diagram") {
+  const cleanName = (workspaceName || "Untitled Diagram").trim() || "Untitled Diagram";
+  state.pages = [
+    {
+      id: 1,
+      name: `Page-1: ${cleanName}`,
+      pan: { x: 80, y: 60 },
+      zoom: 1.0,
+      nodes: [],
+      edges: [],
+      undoStack: [],
+      redoStack: [],
+    },
+  ];
+  state.activePageId = 1;
+  setSingleNodeSelection(null);
+  invalidateGeometry();
+  renderPageTabs();
+  renderFormatPanel();
+  updateZoomLabel();
+  closeWelcomeModal();
+  showToast(`Created Empty Workspace "${cleanName}"`);
+}
+
+function loadSampleArchitectureWorkspace() {
+  state.pages = createDogfoodPages();
+  state.activePageId = 1;
+  setSingleNodeSelection(state.pages[0]?.nodes[0]?.id || null);
+  invalidateGeometry();
+  renderPageTabs();
+  renderFormatPanel();
+  updateZoomLabel();
+  closeWelcomeModal();
+  showToast("Loaded Sample Architecture Workspace");
+}
+
+function triggerOpenDiagramFile() {
+  if (diagramFileInput) {
+    diagramFileInput.value = "";
+    diagramFileInput.click();
+  }
+}
+
+function parseStyleMap(styleStr = "") {
+  const map = {};
+  for (const part of String(styleStr).split(";")) {
+    const [k, v] = part.split("=");
+    if (k && v !== undefined) map[k.trim()] = v.trim();
+  }
+  return map;
+}
+
+function parseDrawioXmlToPages(xmlText, fallbackName = "Imported Diagram") {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, "text/xml");
+  const diagramEls = Array.from(doc.querySelectorAll("diagram"));
+  const roots = diagramEls.length > 0 ? diagramEls : [doc.documentElement];
+
+  const loadedPages = [];
+  let pageIdCounter = 1;
+
+  for (const diagEl of roots) {
+    const pageName = diagEl.getAttribute("name") || `Page-${pageIdCounter}: ${fallbackName}`;
+    const cells = Array.from(diagEl.querySelectorAll("mxCell"));
+    const nodes = [];
+    const edges = [];
+    const cellIdToNodeId = new Map();
+
+    for (const cell of cells) {
+      const rawId = cell.getAttribute("id") || "";
+      if (rawId === "0" || rawId === "1") continue;
+      const isVertex = cell.getAttribute("vertex") === "1";
+      const isEdge = cell.getAttribute("edge") === "1";
+      const styleMap = parseStyleMap(cell.getAttribute("style") || "");
+      const value = cell.getAttribute("value") || "";
+
+      if (isVertex) {
+        const geo = cell.querySelector("mxGeometry");
+        const numId = ++state.nextId;
+        cellIdToNodeId.set(rawId, numId);
+        nodes.push({
+          id: numId,
+          title: value || `Node-${nodes.length + 1}`,
+          body: styleMap.rfdBody ? decodeURIComponent(styleMap.rfdBody) : "",
+          x: Number(geo?.getAttribute("x")) || 80 + (nodes.length % 4) * 210,
+          y: Number(geo?.getAttribute("y")) || 80 + Math.floor(nodes.length / 4) * 130,
+          w: Math.max(50, Number(geo?.getAttribute("width")) || 170),
+          h: Math.max(40, Number(geo?.getAttribute("height")) || 78),
+          fill: styleMap.fillColor || "#ffffff",
+          stroke: styleMap.strokeColor || "#000080",
+          shape: styleMap.shape || "card",
+          icon: styleMap.rfdIcon || "none",
+          iconPos: styleMap.rfdIconPos || "left",
+          imgUrl: styleMap.rfdImg ? decodeURIComponent(styleMap.rfdImg) : "",
+          z: nodes.length + 1,
+        });
+      } else if (isEdge) {
+        edges.push({
+          rawId,
+          rawSource: cell.getAttribute("source") || "",
+          rawTarget: cell.getAttribute("target") || "",
+          label: value || "",
+          anim: styleMap.rfdAnim || "pulse",
+          kind: styleMap.rfdKind || "bezier",
+          arrow: styleMap.rfdArrow || "one-way",
+          color: styleMap.strokeColor || "#000080",
+          width: Number(styleMap.strokeWidth) || 1.8,
+          sourcePort: styleMap.rfdSrcPort || "right",
+          targetPort: styleMap.rfdDstPort || "left",
+        });
+      }
+    }
+
+    const resolvedEdges = [];
+    for (const ed of edges) {
+      const srcId = cellIdToNodeId.get(ed.rawSource) ?? Number(String(ed.rawSource).replace(/\D+/g, ""));
+      const dstId = cellIdToNodeId.get(ed.rawTarget) ?? Number(String(ed.rawTarget).replace(/\D+/g, ""));
+      if (nodes.some((n) => n.id === srcId) && nodes.some((n) => n.id === dstId)) {
+        resolvedEdges.push({
+          id: ++state.nextId,
+          source: srcId,
+          sourcePort: ed.sourcePort,
+          target: dstId,
+          targetPort: ed.targetPort,
+          label: ed.label,
+          anim: ed.anim,
+          kind: ed.kind,
+          arrow: ed.arrow,
+          color: ed.color,
+          width: ed.width,
+          bend: null,
+        });
+      }
+    }
+
+    loadedPages.push({
+      id: pageIdCounter++,
+      name: pageName,
+      pan: { x: 60, y: 50 },
+      zoom: 1.0,
+      nodes,
+      edges: resolvedEdges,
+      undoStack: [],
+      redoStack: [],
+    });
+  }
+
+  return loadedPages;
+}
+
+function loadDiagramFromFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const content = String(reader.result || "");
+    const baseName = file.name.replace(/\.[^.]+$/, "");
+    try {
+      let loadedPages = [];
+      if (file.name.endsWith(".json")) {
+        const data = JSON.parse(content);
+        if (Array.isArray(data.pages) && data.pages.length > 0) {
+          loadedPages = data.pages.map((pg, idx) => ({
+            id: pg.id || idx + 1,
+            name: pg.name || `Page-${idx + 1}`,
+            pan: pg.pan || { x: 60, y: 50 },
+            zoom: pg.zoom || 1.0,
+            nodes: Array.isArray(pg.nodes) ? pg.nodes : [],
+            edges: Array.isArray(pg.edges) ? pg.edges : [],
+            undoStack: [],
+            redoStack: [],
+          }));
+        } else if (Array.isArray(data.nodes)) {
+          loadedPages = [
+            {
+              id: 1,
+              name: `Page-1: ${baseName}`,
+              pan: { x: 60, y: 50 },
+              zoom: 1.0,
+              nodes: data.nodes,
+              edges: Array.isArray(data.edges) ? data.edges : [],
+              undoStack: [],
+              redoStack: [],
+            },
+          ];
+        }
+      } else {
+        loadedPages = parseDrawioXmlToPages(content, baseName);
+      }
+
+      if (!loadedPages.length) {
+        showToast(`Could not parse diagram from ${file.name}`);
+        return;
+      }
+
+      for (const pg of loadedPages) {
+        for (const n of pg.nodes) {
+          if (n.id >= state.nextId) state.nextId = n.id + 10;
+          if (n.imgUrl) getOrLoadImage(n.imgUrl);
+        }
+        for (const ed of pg.edges) {
+          if (ed.id >= state.nextId) state.nextId = ed.id + 10;
+        }
+      }
+
+      state.pages = loadedPages;
+      state.activePageId = loadedPages[0].id;
+      setSingleNodeSelection(loadedPages[0].nodes[0]?.id || null);
+      invalidateGeometry();
+      renderPageTabs();
+      renderFormatPanel();
+      updateZoomLabel();
+      closeWelcomeModal();
+      fitToScreen();
+      showToast(`Loaded "${file.name}" (${loadedPages[0].nodes.length} nodes, ${loadedPages[0].edges.length} edges)`);
+    } catch {
+      showToast(`Failed to load ${file.name}`);
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById("btn-new-empty")?.addEventListener("click", () => {
+  openWelcomeModal();
+});
+document.getElementById("btn-open-diagram-file")?.addEventListener("click", triggerOpenDiagramFile);
+document.getElementById("btn-close-welcome")?.addEventListener("click", closeWelcomeModal);
+document.getElementById("btn-welcome-empty")?.addEventListener("click", () => {
+  createEmptyWorkspace(welcomeDocNameInput?.value || "Untitled Diagram");
+});
+welcomeDocNameInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    createEmptyWorkspace(welcomeDocNameInput.value);
+  }
+});
+document.getElementById("btn-welcome-load-file")?.addEventListener("click", triggerOpenDiagramFile);
+document.getElementById("btn-welcome-sample")?.addEventListener("click", loadSampleArchitectureWorkspace);
+
+if (diagramFileInput) {
+  diagramFileInput.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) loadDiagramFromFile(file);
+  });
+}
+
+if (welcomeDropzone) {
+  welcomeDropzone.addEventListener("click", triggerOpenDiagramFile);
+  welcomeDropzone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    welcomeDropzone.classList.add("dragover");
+  });
+  welcomeDropzone.addEventListener("dragleave", () => {
+    welcomeDropzone.classList.remove("dragover");
+  });
+  welcomeDropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    welcomeDropzone.classList.remove("dragover");
+    const file = e.dataTransfer?.files?.[0];
+    if (file) loadDiagramFromFile(file);
+  });
+}
+
+// ============================================================================
 // COMMAND PALETTE (Ctrl+K) & SHORTCUTS MODAL (?)
 // ============================================================================
 const cmdOverlay = document.getElementById("cmd-overlay");
@@ -4398,6 +4741,9 @@ shortcutsOverlay.addEventListener("click", (e) => {
 });
 
 const COMMANDS = [
+  { label: "Workspace: Create New Empty Space", shortcut: "⇧⌘N", run: () => createEmptyWorkspace("Untitled Diagram") },
+  { label: "Workspace: Load Diagram from File (.drawio / .json)", shortcut: "⌘O", run: triggerOpenDiagramFile },
+  { label: "Workspace: Open Startup Welcome Dialog", shortcut: "File", run: openWelcomeModal },
   { label: "Select All Nodes & Edges", shortcut: "Ctrl+A", run: selectAll },
   { label: "Copy Selection", shortcut: "Ctrl+C", run: copySelection },
   { label: "Cut Selection", shortcut: "Ctrl+X", run: cutSelection },
@@ -4467,10 +4813,23 @@ window.addEventListener("keydown", (e) => {
     return;
   }
 
+  if (mod && key === "o") {
+    e.preventDefault();
+    triggerOpenDiagramFile();
+    return;
+  }
+
+  if (mod && e.shiftKey && key === "n") {
+    e.preventDefault();
+    createEmptyWorkspace("Untitled Diagram");
+    return;
+  }
+
   if (e.key === "Escape") {
     closeCommandPalette();
     closeShortcutsModal();
     closeSymbolStudioModal();
+    closeWelcomeModal();
     inlineEditor.style.display = "none";
     state.draggingStencil = null;
     state.smartGuides = [];
