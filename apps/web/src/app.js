@@ -1,16 +1,4 @@
-// High-Performance Minimalist Draw.io + React Flow Web Engine
-// Features:
-// 1. Drag-and-Drop Stencil Creation from Left Panel onto Canvas:
-//    - Drag any shape from the left panel directly onto the canvas with a live translucent ghost preview & smart alignment guides
-//    - Or click any shape in the left panel to insert at viewport center
-// 2. Minimalist Monoline Design Language (Linear / Figma / Vercel / Lucide aesthetic):
-//    - Clean monoline geometric silhouettes for Queue (horizontal cylinder), Database (vertical cylinder), Cloud (flat-bottom geometric cloud), Actor (minimalist user glyph), BPMN Gateways & Timer
-//    - Sleek architecture cards with pure vector monoline icon badges for AWS Lambda, AWS S3, K8s Pod, Server Rack, and WAF Firewall
-//    - Crisp 32x24 minimalist vector thumbnails in the left stencil palette
-// 3. Complete Keyboard Shortcuts (Ctrl+A, Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D, Ctrl+Z/Y, Shift+Drag Marquee, F2, Ctrl+1, ?) & 60-144 FPS Sub-Pixel Edge Animations
-
 const STENCILS = [
-  // Flowchart
   { id: "flowchart.process", label: "Process", category: "Flowchart", w: 170, h: 74, shape: "card" },
   { id: "flowchart.rounded", label: "Start / End", category: "Flowchart", w: 150, h: 60, shape: "rounded" },
   { id: "flowchart.decision", label: "Decision", category: "Flowchart", w: 136, h: 90, shape: "diamond" },
@@ -20,8 +8,6 @@ const STENCILS = [
   { id: "flowchart.document", label: "Document", category: "Flowchart", w: 155, h: 82, shape: "document" },
   { id: "flowchart.note", label: "Note", category: "Flowchart", w: 145, h: 86, shape: "note" },
   { id: "flowchart.circle", label: "Circle", category: "Flowchart", w: 80, h: 80, shape: "circle" },
-
-  // UML & BPMN
   { id: "uml.class", label: "UML Class", category: "UML & BPMN", w: 180, h: 92, shape: "uml_class" },
   { id: "uml.interface", label: "Interface", category: "UML & BPMN", w: 180, h: 88, shape: "uml_interface" },
   { id: "uml.component", label: "Component", category: "UML & BPMN", w: 180, h: 78, shape: "uml_component" },
@@ -30,20 +16,14 @@ const STENCILS = [
   { id: "bpmn.gateway.xor", label: "XOR Gateway", category: "UML & BPMN", w: 80, h: 80, shape: "gateway_xor" },
   { id: "bpmn.gateway.par", label: "Parallel (+)", category: "UML & BPMN", w: 80, h: 80, shape: "gateway_parallel" },
   { id: "bpmn.timer", label: "Timer Event", category: "UML & BPMN", w: 74, h: 74, shape: "timer" },
-
-  // Cloud & Kubernetes
   { id: "cloud.aws.lambda", label: "AWS Lambda", category: "Cloud & K8s", w: 180, h: 74, shape: "aws_lambda" },
   { id: "cloud.aws.s3", label: "S3 Storage", category: "Cloud & K8s", w: 180, h: 74, shape: "aws_s3" },
   { id: "cloud.gcp.cloudrun", label: "Cloud Service", category: "Cloud & K8s", w: 175, h: 90, shape: "cloud" },
   { id: "cloud.k8s.pod", label: "K8s Pod", category: "Cloud & K8s", w: 180, h: 74, shape: "k8s_pod" },
-
-  // Network & Infra
   { id: "network.queue", label: "Kafka / Queue", category: "Network & Infra", w: 180, h: 72, shape: "queue" },
   { id: "network.server", label: "Server Node", category: "Network & Infra", w: 180, h: 74, shape: "server" },
   { id: "network.firewall", label: "WAF Firewall", category: "Network & Infra", w: 180, h: 74, shape: "firewall" },
   { id: "network.shield", label: "Auth Shield", category: "Network & Infra", w: 126, h: 94, shape: "shield" },
-
-  // Wireframes & Media
   { id: "wireframe.section", label: "Section / Group", category: "Wireframes", w: 340, h: 220, shape: "section" },
   { id: "wireframe.image_node", label: "Image Node", category: "Wireframes", w: 148, h: 96, shape: "image_node" },
   { id: "wireframe.image", label: "Image Card", category: "Wireframes", w: 170, h: 98, shape: "image_card" },
@@ -52,7 +32,6 @@ const STENCILS = [
   { id: "wireframe.browser", label: "Browser UI", category: "Wireframes", w: 220, h: 132, shape: "browser" },
   { id: "wireframe.mobile", label: "Mobile UI", category: "Wireframes", w: 118, h: 180, shape: "mobile" },
 ];
-
 const DEFAULT_FOLDER_TREE_TEXT = `rustflow-draw/
   crates/
     core/
@@ -60,12 +39,9 @@ const DEFAULT_FOLDER_TREE_TEXT = `rustflow-draw/
   apps/
     web/app.js
   Cargo.toml`;
-
 const DEFAULT_COLLAPSIBLE_TEXT = `• API Gateway (:6129)
 • Auth Guard (JWT)
 • Worker Pool (x4)`;
-
-// Preset Vector Templates for Custom Symbol Studio (normalized [0..1] coordinates)
 const SYMBOL_STUDIO_TEMPLATES = {
   redis: {
     name: "Redis Cube",
@@ -172,10 +148,8 @@ const SYMBOL_STUDIO_TEMPLATES = {
     ],
   },
 };
-
 const CUSTOM_STENCILS_STORAGE_KEY = "rustflow_custom_stencils_v1";
 const customStencilsMap = new Map();
-
 function loadStoredCustomStencils() {
   try {
     const raw = localStorage.getItem(CUSTOM_STENCILS_STORAGE_KEY);
@@ -184,9 +158,7 @@ function loadStoredCustomStencils() {
       if (Array.isArray(parsed)) return parsed;
     }
   } catch {
-    // Ignore storage read errors
   }
-  // Default starter custom symbols so the user immediately sees Custom Symbols in the palette
   return [
     {
       id: "custom.redis_cube",
@@ -218,16 +190,13 @@ function loadStoredCustomStencils() {
     },
   ];
 }
-
 function saveCustomStencilsToStorage() {
   try {
     const customList = STENCILS.filter((s) => s.isCustom);
     localStorage.setItem(CUSTOM_STENCILS_STORAGE_KEY, JSON.stringify(customList));
   } catch {
-    // Ignore quota errors
   }
 }
-
 const ENTITY_ICONS = [
   ["none", "None"],
   ["globe", "Web / API"],
@@ -246,8 +215,6 @@ const ENTITY_ICONS = [
   ["gear", "Config"],
   ["rocket", "Deploy"],
 ];
-
-// Built-in Macintosh System 8.5 Sample Graphic SVG Data URI for Image Entities
 const DEFAULT_SAMPLE_IMAGE_DATA_URL =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
@@ -260,8 +227,6 @@ const DEFAULT_SAMPLE_IMAGE_DATA_URL =
       <line x1="0" y1="62" x2="160" y2="62" stroke="#000" stroke-width="1.5"/>
     </svg>`
   );
-
-// Fast in-memory HTMLImageElement cache for zero-overhead 60 FPS Canvas image rendering
 const imageCache = new Map();
 function getOrLoadImage(url) {
   if (!url) return null;
@@ -281,9 +246,7 @@ function getOrLoadImage(url) {
   img.src = url;
   return null;
 }
-
 const STYLE_SWATCHES = [
-  // Apple 90s 6-Color Rainbow & Macintosh Platinum Swatches
   { fill: "#ffffff", stroke: "#000080" },
   { fill: "#f2faef", stroke: "#2d8a1e" },
   { fill: "#fff9e6", stroke: "#c47f00" },
@@ -292,13 +255,11 @@ const STYLE_SWATCHES = [
   { fill: "#f5edf7", stroke: "#7a267b" },
   { fill: "#e8f6fc", stroke: "#0077b5" },
   { fill: "#e6e6e6", stroke: "#000000" },
-  // Dark / Modern Swatches
   { fill: "#131b2e", stroke: "#38bdf8" },
   { fill: "#161632", stroke: "#818cf8" },
   { fill: "#0c2924", stroke: "#34d399" },
   { fill: "#2d1220", stroke: "#f43f5e" },
 ];
-
 function createDogfoodPages() {
   return [
     {
@@ -347,7 +308,6 @@ function createDogfoodPages() {
     },
   ];
 }
-
 const state = {
   pages: createDogfoodPages(),
   activePageId: 1,
@@ -369,7 +329,7 @@ const state = {
   resizingNode: null,
   draggingEdgeBend: null,
   reconnectingEdge: null,
-  draggingStencil: null,    // { item, startX, startY, active, overCanvas, ghostX, ghostY }
+  draggingStencil: null,
   marqueeBox: null,
   panning: null,
   connectingFrom: null,
@@ -388,11 +348,9 @@ const state = {
   layoutAnim: null,
   viewAnim: null,
 };
-
 function isLightCanvasTheme() {
   return state.theme === "apple90s" || state.theme === "light" || state.theme === "contrast";
 }
-
 function isDarkHexColor(hex) {
   if (!hex || typeof hex !== "string" || !hex.startsWith("#") || hex.length < 7) return false;
   const r = parseInt(hex.slice(1, 3), 16);
@@ -400,7 +358,6 @@ function isDarkHexColor(hex) {
   const b = parseInt(hex.slice(5, 7), 16);
   return r * 0.299 + g * 0.587 + b * 0.114 < 128;
 }
-
 const macClockEl = document.getElementById("mac-clock");
 function updateMacClock() {
   if (!macClockEl) return;
@@ -409,7 +366,6 @@ function updateMacClock() {
 }
 updateMacClock();
 setInterval(updateMacClock, 15000);
-
 const canvas = document.getElementById("rustflow-canvas");
 const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true }) || canvas.getContext("2d", { alpha: false });
 const minimapCanvas = document.getElementById("minimap-canvas");
@@ -418,7 +374,6 @@ const inlineEditor = document.getElementById("inline-editor");
 const statusBarEl = document.getElementById("status-bar");
 const zoomLabelEl = document.getElementById("zoom-label");
 const toastBadgeEl = document.getElementById("toast-badge");
-
 let toastTimer = null;
 function showToast(msg) {
   if (!toastBadgeEl) return;
@@ -429,7 +384,6 @@ function showToast(msg) {
     toastBadgeEl.classList.remove("show");
   }, 1600);
 }
-
 function setSingleNodeSelection(nodeId) {
   state.selectedNodeIds.clear();
   state.selectedEdgeIds.clear();
@@ -437,7 +391,6 @@ function setSingleNodeSelection(nodeId) {
   state.selectedNodeId = nodeId ?? null;
   state.selectedEdgeId = null;
 }
-
 function setSingleEdgeSelection(edgeId) {
   state.selectedNodeIds.clear();
   state.selectedEdgeIds.clear();
@@ -445,30 +398,25 @@ function setSingleEdgeSelection(edgeId) {
   state.selectedEdgeId = edgeId ?? null;
   state.selectedNodeId = null;
 }
-
 function syncPrimarySelectionFromSets() {
   state.selectedNodeId = state.selectedNodeIds.size === 1 ? [...state.selectedNodeIds][0] : null;
   state.selectedEdgeId =
     state.selectedNodeIds.size === 0 && state.selectedEdgeIds.size === 1 ? [...state.selectedEdgeIds][0] : null;
 }
-
 let canvasRect = { left: 0, top: 0, right: 800, bottom: 600, width: 800, height: 600 };
 let currentCursor = "default";
 let nodeMap = new Map();
 let cachedGridPattern = null;
 let cachedGridKey = "";
-
 function setCanvasCursor(cursor) {
   if (cursor !== currentCursor) {
     currentCursor = cursor;
     canvas.style.cursor = cursor;
   }
 }
-
 function page() {
   return state.pages.find((p) => p.id === state.activePageId) || state.pages[0];
 }
-
 function rebuildNodeMap() {
   const p = page();
   nodeMap.clear();
@@ -477,13 +425,11 @@ function rebuildNodeMap() {
     nodeMap.set(n.id, n);
   }
 }
-
 function invalidateGeometry() {
   state.geometryVersion++;
   state.minimapDirty = true;
   rebuildNodeMap();
 }
-
 function invalidateNodeEdges(nodeId) {
   const edges = page().edges;
   for (let i = 0; i < edges.length; i++) {
@@ -495,7 +441,6 @@ function invalidateNodeEdges(nodeId) {
   state.minimapDirty = true;
   state.arrangeDirty = true;
 }
-
 function invalidateSelectedNodesEdges() {
   const edges = page().edges;
   for (let i = 0; i < edges.length; i++) {
@@ -507,7 +452,6 @@ function invalidateSelectedNodesEdges() {
   state.minimapDirty = true;
   state.arrangeDirty = true;
 }
-
 function saveSnapshot() {
   const p = page();
   p.undoStack.push(
@@ -522,11 +466,9 @@ function saveSnapshot() {
     setTimeout(() => scheduleCollabSync(true), 12);
   }
 }
-
 let canvasCssW = 800;
 let canvasCssH = 600;
 let canvasDpr = Math.min(2, window.devicePixelRatio || 1);
-
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   canvasRect = rect;
@@ -551,22 +493,14 @@ window.addEventListener(
 );
 resizeCanvas();
 rebuildNodeMap();
-
 function screenToWorld(sx, sy) {
   const p = page();
   return { x: (sx - p.pan.x) / p.zoom, y: (sy - p.pan.y) / p.zoom };
 }
-
 function worldToScreen(wx, wy) {
   const p = page();
   return { x: wx * p.zoom + p.pan.x, y: wy * p.zoom + p.pan.y };
 }
-
-// ---------------------------------------------------------------------------
-// Connection Points: multiple ports per side.
-// Port ids are "top" | "right" | "bottom" | "left" (side centre, legacy format)
-// or "<side>@<fraction>" (e.g. "top@0.25") for off-centre points along the side.
-// ---------------------------------------------------------------------------
 const PORT_SIDES = ["top", "right", "bottom", "left"];
 const PORT_COUNT_OPTIONS = [
   ["auto", "Auto (by size)"],
@@ -575,7 +509,6 @@ const PORT_COUNT_OPTIONS = [
   ["5", "5 per side"],
   ["7", "7 per side"],
 ];
-
 function parsePortId(id) {
   const s = String(id || "right");
   const at = s.indexOf("@");
@@ -587,20 +520,16 @@ function parsePortId(id) {
     t: Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0.5,
   };
 }
-
 function portSideOf(id) {
   return parsePortId(id).side;
 }
-
 function makePortId(side, t) {
   return Math.abs(t - 0.5) < 1e-3 ? side : `${side}@${Number(t.toFixed(3))}`;
 }
-
 function describePortId(id) {
   const { side, t } = parsePortId(id);
   return Math.abs(t - 0.5) < 1e-3 ? `${side} · center` : `${side} · ${Math.round(t * 100)}%`;
 }
-
 function getPortCountForSide(n, side) {
   const raw = n.portCount;
   if (raw && raw !== "auto") {
@@ -612,15 +541,12 @@ function getPortCountForSide(n, side) {
   if (len >= 54) return 3;
   return 1;
 }
-
 function getPortFractions(n, side) {
   const k = getPortCountForSide(n, side);
   const out = [];
   for (let i = 1; i <= k; i++) out.push(i / (k + 1));
   return out;
 }
-
-// Shape-aware point on the node outline for a side + fraction.
 function portPoint(n, side, t) {
   const { x, y, w, h, shape } = n;
   const d = t - 0.5;
@@ -648,7 +574,6 @@ function portPoint(n, side, t) {
   if (side === "left") return { x, y: y + t * h };
   return { x: x + w, y: y + t * h };
 }
-
 function getNodePorts(n) {
   const key = `${n.x}|${n.y}|${n.w}|${n.h}|${n.shape}|${n.portCount || ""}`;
   if (n._portsKey === key && n._ports) return n._ports;
@@ -664,13 +589,11 @@ function getNodePorts(n) {
   Object.defineProperty(n, "_ports", { value: ports, writable: true, configurable: true });
   return ports;
 }
-
 function getPortPosition(node, portId) {
   const { side, t } = parsePortId(portId);
   const pt = portPoint(node, side, t);
   return { id: makePortId(side, t), side, t, x: pt.x, y: pt.y };
 }
-
 function buildPortOptionsHtml(node, currentId) {
   const ids = node ? getNodePorts(node).map((pt) => pt.id) : PORT_SIDES.slice();
   const cur = makePortId(parsePortId(currentId).side, parsePortId(currentId).t);
@@ -679,8 +602,6 @@ function buildPortOptionsHtml(node, currentId) {
     .map((id) => `<option value="${id}" ${id === cur ? "selected" : ""}>${describePortId(id)}</option>`)
     .join("");
 }
-
-// Nearest port of a node within radius (primary ports get a slightly larger hit area).
 function findNearestPortOnNode(n, wx, wy, radius) {
   let best = null;
   let bestD = Infinity;
@@ -694,11 +615,9 @@ function findNearestPortOnNode(n, wx, wy, radius) {
   }
   return best;
 }
-
 function findSnapTargetPort(worldPt, excludeNodeId) {
   const p = page();
   const portSnapRadius = 22 / Math.max(0.4, p.zoom);
-
   let best = null;
   for (let i = 0; i < p.nodes.length; i++) {
     const n = p.nodes[i];
@@ -719,7 +638,6 @@ function findSnapTargetPort(worldPt, excludeNodeId) {
     }
   }
   if (best) return best;
-
   const margin = 14 / Math.max(0.4, p.zoom);
   for (let i = p.nodes.length - 1; i >= 0; i--) {
     const n = p.nodes[i];
@@ -744,7 +662,6 @@ function findSnapTargetPort(worldPt, excludeNodeId) {
   }
   return null;
 }
-
 function getQuickArrows(n) {
   const pad = 22;
   return [
@@ -754,7 +671,6 @@ function getQuickArrows(n) {
     { dir: "left", side: "left", targetSide: "right", x: n.x - pad, y: n.y + n.h / 2, dx: -(n.w + 95), dy: 0, label: "←" },
   ];
 }
-
 function evalBezier(p0, p1, p2, p3, t) {
   const u = 1 - t;
   const uu = u * u;
@@ -764,7 +680,6 @@ function evalBezier(p0, p1, p2, p3, t) {
     y: uu * u * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + tt * t * p3.y,
   };
 }
-
 function buildSmoothStepSamples(p0, c1, c2, p3) {
   const pts = [p0];
   const corners = [
@@ -797,7 +712,6 @@ function buildSmoothStepSamples(p0, c1, c2, p3) {
   pts.push(p3);
   return pts;
 }
-
 function getEdgeGeometry(e) {
   if (e._geo && e._ver === state.geometryVersion) {
     return e._geo;
@@ -805,20 +719,16 @@ function getEdgeGeometry(e) {
   const src = nodeMap.get(e.source);
   const dst = nodeMap.get(e.target);
   if (!src || !dst) return null;
-
   const p0 = getPortPosition(src, e.sourcePort || "right");
   const p3 = getPortPosition(dst, e.targetPort || "left");
-
   const tangentOffset = (side, dist) => {
     if (side === "top") return { x: 0, y: -dist };
     if (side === "bottom") return { x: 0, y: dist };
     if (side === "left") return { x: -dist, y: 0 };
     return { x: dist, y: 0 };
   };
-
   const span = Math.max(55, Math.hypot(p3.x - p0.x, p3.y - p0.y) * 0.38);
   let p1, p2, midPoint;
-
   if (e.bend) {
     midPoint = { x: e.bend.x, y: e.bend.y };
     const cx = (8 * midPoint.x - p0.x - p3.x) / 6;
@@ -832,7 +742,6 @@ function getEdgeGeometry(e) {
     p2 = { x: p3.x + t2.x, y: p3.y + t2.y };
     midPoint = evalBezier(p0, p1, p2, p3, 0.5);
   }
-
   let samples = [];
   if (e.kind === "straight") {
     if (e.bend) {
@@ -857,11 +766,9 @@ function getEdgeGeometry(e) {
       samples.push(evalBezier(p0, p1, p2, p3, i / steps));
     }
   }
-
   const cumLen = new Float32Array(samples.length);
   let totalLen = 0;
   let minX = p0.x, maxX = p0.x, minY = p0.y, maxY = p0.y;
-
   for (let i = 0; i < samples.length; i++) {
     const pt = samples[i];
     if (pt.x < minX) minX = pt.x;
@@ -874,9 +781,7 @@ function getEdgeGeometry(e) {
     }
     cumLen[i] = totalLen;
   }
-
   const labelWidth = e.label ? e.label.length * 6.6 + 14 : 0;
-
   e._geo = {
     p0,
     p1,
@@ -892,12 +797,10 @@ function getEdgeGeometry(e) {
   e._ver = state.geometryVersion;
   return e._geo;
 }
-
 function getPointAtArcDistance(geo, dist) {
   const { samples, cumLen, totalLen } = geo;
   const n = samples.length;
   if (n < 2) return samples[0] || { x: 0, y: 0 };
-
   const d = ((dist % totalLen) + totalLen) % totalLen;
   let lo = 0;
   let hi = n - 1;
@@ -916,7 +819,6 @@ function getPointAtArcDistance(geo, dist) {
     y: a.y + (b.y - a.y) * frac,
   };
 }
-
 function distToSegment(pt, a, b) {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
@@ -925,7 +827,6 @@ function distToSegment(pt, a, b) {
   const t = Math.max(0, Math.min(1, ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / lenSq));
   return Math.hypot(pt.x - (a.x + t * dx), pt.y - (a.y + t * dy));
 }
-
 function hitTestEdge(worldPt) {
   const p = page();
   const tolerance = 9 / Math.max(0.4, p.zoom);
@@ -941,7 +842,6 @@ function hitTestEdge(worldPt) {
   }
   return null;
 }
-
 function computeSmartGuides(movingNode, ignoreSelection = false) {
   const guides = [];
   const threshold = 4.5;
@@ -978,10 +878,6 @@ function computeSmartGuides(movingNode, ignoreSelection = false) {
   }
   return guides;
 }
-
-// ============================================================================
-// 1. TOP DROPDOWN MENU BAR & ACTIONS
-// ============================================================================
 const menuItems = document.querySelectorAll(".menu-item");
 menuItems.forEach((item) => {
   item.addEventListener("click", (e) => {
@@ -998,11 +894,9 @@ menuItems.forEach((item) => {
     }
   });
 });
-
 window.addEventListener("click", () => {
   menuItems.forEach((m) => m.classList.remove("open"));
 });
-
 document.querySelectorAll(".dropdown-entry").forEach((entry) => {
   entry.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -1011,7 +905,6 @@ document.querySelectorAll(".dropdown-entry").forEach((entry) => {
     handleMenuAction(action);
   });
 });
-
 function handleMenuAction(action) {
   const p = page();
   switch (action) {
@@ -1180,7 +1073,6 @@ function handleMenuAction(action) {
       break;
   }
 }
-
 function setZoomImmediate(targetZoom, cx = canvasCssW / 2, cy = canvasCssH / 2) {
   const p = page();
   state.viewAnim = null;
@@ -1191,7 +1083,6 @@ function setZoomImmediate(targetZoom, cx = canvasCssW / 2, cy = canvasCssH / 2) 
   state.minimapDirty = true;
   updateZoomLabel();
 }
-
 function animateZoom(targetZoom, cx = canvasCssW / 2, cy = canvasCssH / 2) {
   const clampedZoom = Math.min(8.0, Math.max(0.1, targetZoom));
   const before = screenToWorld(cx, cy);
@@ -1199,7 +1090,6 @@ function animateZoom(targetZoom, cx = canvasCssW / 2, cy = canvasCssH / 2) {
   const targetPanY = cy - before.y * clampedZoom;
   animateViewTo(targetPanX, targetPanY, clampedZoom);
 }
-
 function animateViewTo(targetPanX, targetPanY, targetZoom) {
   const p = page();
   state.viewAnim = {
@@ -1213,7 +1103,6 @@ function animateViewTo(targetPanX, targetPanY, targetZoom) {
     targetZoom,
   };
 }
-
 function fitToScreen() {
   const p = page();
   if (!p.nodes.length) {
@@ -1238,7 +1127,6 @@ function fitToScreen() {
   animateViewTo(targetPanX, targetPanY, targetZoom);
   showToast("Fit Diagram to Screen");
 }
-
 function animateNodesToTargets(targetsMap) {
   const p = page();
   const entries = [];
@@ -1254,25 +1142,18 @@ function animateNodesToTargets(targetsMap) {
     entries,
   };
 }
-
 function updateZoomLabel() {
   zoomLabelEl.textContent = `${Math.round(page().zoom * 100)}%`;
 }
-
-// ============================================================================
-// 2. DRAW.IO MINIMALIST CONTEXT-SENSITIVE RIGHT FORMAT PANEL
-// ============================================================================
 const formatTabsEl = document.getElementById("format-tabs");
 const formatBodyEl = document.getElementById("format-body");
 const formatBadgeEl = document.getElementById("format-selection-badge");
-
 formatTabsEl.querySelectorAll(".format-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     state.activeFormatTab = tab.getAttribute("data-tab");
     renderFormatPanel();
   });
 });
-
 const BORDER_STYLE_OPTIONS = [
   ["solid", "Solid (───)"],
   ["dashed", "Dashed (- - -)"],
@@ -1281,7 +1162,6 @@ const BORDER_STYLE_OPTIONS = [
   ["double", "Double (═══)"],
   ["none", "No Border"],
 ];
-
 function getBorderDashArray(style, width = 1.65) {
   const w = Math.max(1, width);
   if (style === "dashed") return [6 + w * 1.5, 4 + w];
@@ -1289,15 +1169,12 @@ function getBorderDashArray(style, width = 1.65) {
   if (style === "dashdot") return [8 + w * 1.5, 3.5 + w * 0.5, 1.5, 3.5 + w * 0.5];
   return [];
 }
-
 function drawNodeWithBorderStyle(ctx, n, selected, selectColor, defaultWidth = 1.65, timeSec = 0) {
   const bStyle = n.borderStyle || "solid";
   const baseW = Number(n.borderWidth) || defaultWidth;
   const strokeCol = bStyle === "none" ? (selected ? selectColor : "rgba(0,0,0,0)") : selected ? selectColor : n.stroke;
-
   ctx.fillStyle = n.fill;
   ctx.strokeStyle = strokeCol;
-
   if (bStyle === "double") {
     ctx.setLineDash([]);
     ctx.lineDashOffset = 0;
@@ -1314,7 +1191,6 @@ function drawNodeWithBorderStyle(ctx, n, selected, selectColor, defaultWidth = 1
     ctx.restore();
     return;
   }
-
   ctx.lineWidth = bStyle === "none" ? (selected ? 1.5 : 0.5) : selected ? Math.max(2.1, baseW) : baseW;
   ctx.setLineDash(getBorderDashArray(bStyle, baseW));
   ctx.lineDashOffset = n.borderAnim ? -timeSec * 28 : 0;
@@ -1322,7 +1198,6 @@ function drawNodeWithBorderStyle(ctx, n, selected, selectColor, defaultWidth = 1
   ctx.setLineDash([]);
   ctx.lineDashOffset = 0;
 }
-
 const SHAPE_OPTIONS = [
   ["card", "Process Card"],
   ["image_card", "Image / Media Card"],
@@ -1357,7 +1232,6 @@ const SHAPE_OPTIONS = [
   ["collapsible", "Collapsible Panel"],
   ["section", "Section / Container"],
 ];
-
 function registerCustomStencil(item, persist = true) {
   const existingIdx = STENCILS.findIndex((s) => s.id === item.id);
   if (existingIdx >= 0) {
@@ -1373,7 +1247,6 @@ function registerCustomStencil(item, persist = true) {
   if (item.imgUrl) getOrLoadImage(item.imgUrl);
   if (persist) saveCustomStencilsToStorage();
 }
-
 function removeCustomStencil(id) {
   const idx = STENCILS.findIndex((s) => s.id === id && s.isCustom);
   if (idx >= 0) {
@@ -1385,11 +1258,9 @@ function removeCustomStencil(id) {
     showToast(`Removed symbol "${removed.label}"`);
   }
 }
-
 for (const customItem of loadStoredCustomStencils()) {
   registerCustomStencil(customItem, false);
 }
-
 function getEffectiveNodeIcon(n) {
   if (n.icon && n.icon !== "none") return n.icon;
   if (n.icon === "none") return null;
@@ -1405,15 +1276,12 @@ function getEffectiveNodeIcon(n) {
   }
   return null;
 }
-
 let draggedLayerId = null;
-
 function renderLayersPanel() {
   const p = page();
   normalizeLayerOrder(p);
   const selectedNodes = [...state.selectedNodeIds].map((id) => nodeMap.get(id)).filter(Boolean);
   const activeOpacity = selectedNodes.length ? Math.round((selectedNodes[0].opacity ?? 1) * 100) : 100;
-
   formatBodyEl.innerHTML = `
     <div class="format-section">
       <label>Layer Order (${p.nodes.length} Layers)</label>
@@ -1433,21 +1301,17 @@ function renderLayersPanel() {
       <div class="layer-list" id="layer-list"></div>
     </div>
   `;
-
   document.getElementById("lyr-front").onclick = bringToFront;
   document.getElementById("lyr-fwd").onclick = bringForward;
   document.getElementById("lyr-bwd").onclick = sendBackward;
   document.getElementById("lyr-back").onclick = sendToBack;
-
   const opEl = document.getElementById("lyr-opacity");
   opEl.oninput = (e) => {
     const val = Math.max(0.1, Math.min(1, Number(e.target.value) / 100));
     for (const n of selectedNodes) n.opacity = val;
     e.target.previousElementSibling.textContent = `Opacity (${Math.round(val * 100)}%)`;
   };
-
   const listEl = document.getElementById("layer-list");
-  // Photoshop-style hierarchical stack: roots top-to-bottom (highest z first), children nested right below their parent
   const orderedLayers = getHierarchicalLayersForPanel(p);
   for (const n of orderedLayers) {
     const row = document.createElement("div");
@@ -1455,7 +1319,6 @@ function renderLayersPanel() {
     row.className = "layer-row" + (isSel ? " active" : "") + (n.hidden ? " is-hidden" : "");
     row.draggable = true;
     row.title = `#${n.id} ${n.title || n.shape} (z:${n.z || 0}) — Click to select, drag to reorder`;
-
     const eyeBtn = document.createElement("button");
     eyeBtn.className = "layer-icon-btn";
     eyeBtn.textContent = n.hidden ? "○" : "👁";
@@ -1471,7 +1334,6 @@ function renderLayersPanel() {
       state.minimapDirty = true;
       renderFormatPanel();
     };
-
     const lockBtn = document.createElement("button");
     lockBtn.className = "layer-icon-btn";
     lockBtn.textContent = n.locked ? "🔒" : "🔓";
@@ -1482,28 +1344,23 @@ function renderLayersPanel() {
       n.locked = !n.locked;
       renderFormatPanel();
     };
-
     const sw = document.createElement("span");
     sw.className = "layer-swatch";
     sw.style.background = n.fill || "#ffffff";
     sw.style.borderColor = n.stroke || "#000080";
-
     const nameEl = document.createElement("span");
     nameEl.className = "layer-name";
     const depth = getNodeDepth(n, p);
     if (depth > 0) row.style.marginLeft = `${Math.min(48, depth * 12)}px`;
     nameEl.textContent = `${depth > 0 ? "↳ " : ""}${n.title || n.shape}`;
-
     const metaEl = document.createElement("span");
     metaEl.className = "layer-meta";
     metaEl.textContent = n.opacity !== undefined && n.opacity < 1 ? `${Math.round(n.opacity * 100)}%` : `${n.z || 1}`;
-
     row.appendChild(eyeBtn);
     row.appendChild(lockBtn);
     row.appendChild(sw);
     row.appendChild(nameEl);
     row.appendChild(metaEl);
-
     row.onclick = (ev) => {
       if (ev.shiftKey) {
         if (state.selectedNodeIds.has(n.id)) state.selectedNodeIds.delete(n.id);
@@ -1514,7 +1371,6 @@ function renderLayersPanel() {
       }
       renderFormatPanel();
     };
-
     row.addEventListener("dragstart", () => {
       draggedLayerId = n.id;
     });
@@ -1533,28 +1389,23 @@ function renderLayersPanel() {
       }
       draggedLayerId = null;
     });
-
     listEl.appendChild(row);
   }
 }
-
 function renderFormatPanel() {
   const p = page();
   const totalSelected = state.selectedNodeIds.size + state.selectedEdgeIds.size;
   const node = nodeMap.get(state.selectedNodeId);
   const edge = p.edges.find((e) => e.id === state.selectedEdgeId);
-
   formatTabsEl.style.display = "grid";
   formatTabsEl.querySelectorAll(".format-tab").forEach((t) => {
     t.classList.toggle("active", t.getAttribute("data-tab") === state.activeFormatTab);
   });
-
   if (state.activeFormatTab === "layers") {
     formatBadgeEl.textContent = `${p.nodes.length} Layers`;
     renderLayersPanel();
     return;
   }
-
   if (totalSelected > 1) {
     formatBadgeEl.textContent = `${state.selectedNodeIds.size}N · ${state.selectedEdgeIds.size}E`;
     if (state.activeFormatTab === "arrange") {
@@ -1616,7 +1467,6 @@ function renderFormatPanel() {
       document.getElementById("m-back").onclick = sendToBack;
       return;
     }
-
     formatBodyEl.innerHTML = `
       <div class="format-section">
         <label>Batch Style Presets (${state.selectedNodeIds.size} Nodes)</label>
@@ -1683,7 +1533,6 @@ function renderFormatPanel() {
     document.getElementById("btn-multi-del").onclick = deleteSelected;
     return;
   }
-
   if (!node && !edge) {
     formatBadgeEl.textContent = "Diagram";
     if (state.activeFormatTab === "arrange") {
@@ -1780,9 +1629,7 @@ function renderFormatPanel() {
     };
     return;
   }
-
   formatTabsEl.style.display = "grid";
-
   if (node) {
     formatBadgeEl.textContent = `Node #${node.id}`;
     if (state.activeFormatTab === "style") {
@@ -1891,7 +1738,6 @@ function renderFormatPanel() {
         };
         swatchContainer.appendChild(el);
       });
-
       const iconGridEl = document.getElementById("node-icon-grid");
       ENTITY_ICONS.forEach(([iconKey, iconLabel]) => {
         const btn = document.createElement("div");
@@ -1923,7 +1769,6 @@ function renderFormatPanel() {
         };
         iconGridEl.appendChild(btn);
       });
-
       document.getElementById("btn-node-upload-img").onclick = () => {
         triggerEntityImageUpload(node);
       };
@@ -2248,7 +2093,6 @@ function renderFormatPanel() {
     }
     return;
   }
-
   if (edge) {
     formatBadgeEl.textContent = `Edge #${edge.id}`;
     if (state.activeFormatTab === "style") {
@@ -2408,7 +2252,6 @@ function renderFormatPanel() {
   }
 }
 renderFormatPanel();
-
 function syncArrangeInputsIfDirty() {
   if (!state.arrangeDirty) return;
   state.arrangeDirty = false;
@@ -2424,10 +2267,6 @@ function syncArrangeInputsIfDirty() {
   if (wEl) wEl.value = Math.round(node.w);
   if (hEl) hEl.value = Math.round(node.h);
 }
-
-// ============================================================================
-// POINTER, DRAG-AND-DROP STENCIL & INTERACTION HANDLERS
-// ============================================================================
 function createNodeFromStencil(item, worldX, worldY) {
   saveSnapshot();
   const p = page();
@@ -2481,10 +2320,8 @@ function createNodeFromStencil(item, worldX, worldY) {
   renderFormatPanel();
   showToast(`Added ${item.label}`);
 }
-
 let pendingImageTargetNode = null;
 const entityImageInput = document.getElementById("entity-image-input");
-
 function triggerEntityImageUpload(targetNode = null) {
   pendingImageTargetNode = targetNode || nodeMap.get(state.selectedNodeId) || null;
   if (entityImageInput) {
@@ -2492,7 +2329,6 @@ function triggerEntityImageUpload(targetNode = null) {
     entityImageInput.click();
   }
 }
-
 if (entityImageInput) {
   entityImageInput.addEventListener("change", (e) => {
     const file = e.target.files?.[0];
@@ -2541,29 +2377,23 @@ if (entityImageInput) {
     reader.readAsDataURL(file);
   });
 }
-
 const btnUploadImgToolbar = document.getElementById("btn-upload-img");
 if (btnUploadImgToolbar) {
   btnUploadImgToolbar.onclick = () => triggerEntityImageUpload(nodeMap.get(state.selectedNodeId) || null);
 }
-
 function addStencilToCanvasCenter(item) {
   const center = screenToWorld(canvasCssW / 2 - item.w / 2, canvasCssH / 2 - item.h / 2);
   createNodeFromStencil(item, Math.round(center.x / 20) * 20, Math.round(center.y / 20) * 20);
   if (window.innerWidth <= 1024) closeAllDrawers();
 }
-
-// Responsive Tablet / Smartphone Drawer Controls & Multi-Touch Canvas Support
 const panelShapesEl = document.getElementById("panel-shapes");
 const panelInspectorEl = document.getElementById("panel-inspector");
 const drawerBackdropEl = document.getElementById("drawer-backdrop");
-
 function closeAllDrawers() {
   panelShapesEl?.classList.remove("drawer-open");
   panelInspectorEl?.classList.remove("drawer-open");
   drawerBackdropEl?.classList.remove("open");
 }
-
 function toggleDrawer(which) {
   const target = which === "shapes" ? panelShapesEl : panelInspectorEl;
   const other = which === "shapes" ? panelInspectorEl : panelShapesEl;
@@ -2573,18 +2403,14 @@ function toggleDrawer(which) {
   target.classList.toggle("drawer-open", willOpen);
   drawerBackdropEl?.classList.toggle("open", willOpen);
 }
-
 document.getElementById("btn-toggle-shapes")?.addEventListener("click", () => toggleDrawer("shapes"));
 document.getElementById("btn-toggle-inspector")?.addEventListener("click", () => toggleDrawer("inspector"));
 document.getElementById("btn-close-shapes")?.addEventListener("click", closeAllDrawers);
 document.getElementById("btn-close-inspector")?.addEventListener("click", closeAllDrawers);
 drawerBackdropEl?.addEventListener("click", closeAllDrawers);
-
-// Touch & Two-Finger Pinch-to-Zoom on Canvas
 let activePinch = null;
 let lastTapTime = 0;
 let lastTapPos = { x: 0, y: 0 };
-
 function dispatchCanvasMouse(type, clientX, clientY, targetEl = canvas) {
   targetEl.dispatchEvent(
     new MouseEvent(type, {
@@ -2597,7 +2423,6 @@ function dispatchCanvasMouse(type, clientX, clientY, targetEl = canvas) {
     })
   );
 }
-
 canvas.addEventListener(
   "touchstart",
   (e) => {
@@ -2631,7 +2456,6 @@ canvas.addEventListener(
   },
   { passive: false }
 );
-
 canvas.addEventListener(
   "touchmove",
   (e) => {
@@ -2660,7 +2484,6 @@ canvas.addEventListener(
   },
   { passive: false }
 );
-
 canvas.addEventListener(
   "touchend",
   (e) => {
@@ -2672,8 +2495,6 @@ canvas.addEventListener(
   },
   { passive: true }
 );
-
-// HTML5 Drag & Drop support on Canvas (Stencils + OS Image Files)
 canvas.addEventListener("dragover", (e) => {
   e.preventDefault();
   e.dataTransfer.dropEffect = "copy";
@@ -2696,21 +2517,17 @@ canvas.addEventListener("dragover", (e) => {
     state.draggingStencil.ghostY = ghost.y;
   }
 });
-
 canvas.addEventListener("dragleave", () => {
   if (state.draggingStencil) {
     state.draggingStencil.overCanvas = false;
     state.smartGuides = [];
   }
 });
-
 canvas.addEventListener("drop", (e) => {
   e.preventDefault();
   const sx = e.clientX - canvasRect.left;
   const sy = e.clientY - canvasRect.top;
   const wpt = screenToWorld(sx, sy);
-
-  // 1. OS Image File Dropped onto Canvas or Node
   const files = e.dataTransfer?.files;
   if (files && files.length > 0 && files[0].type.startsWith("image/")) {
     const file = files[0];
@@ -2757,8 +2574,6 @@ canvas.addEventListener("drop", (e) => {
     reader.readAsDataURL(file);
     return;
   }
-
-  // 2. Left Panel Stencil Dropped onto Canvas
   if (state.draggingStencil) {
     const item = state.draggingStencil.item;
     const dropX = state.draggingStencil.overCanvas ? state.draggingStencil.ghostX : wpt.x - item.w * 0.5;
@@ -2768,21 +2583,18 @@ canvas.addEventListener("drop", (e) => {
     createNodeFromStencil(item, dropX, dropY);
   }
 });
-
 canvas.addEventListener("mousedown", (e) => {
   closeCanvasContextMenu();
   if (e.button === 2) return;
   inlineEditor.style.display = "none";
   state.layoutAnim = null;
   state.viewAnim = null;
-
   const sx = e.clientX - canvasRect.left;
   const sy = e.clientY - canvasRect.top;
   const wpt = screenToWorld(sx, sy);
   state.mouseWorld = wpt;
   const p = page();
   const handleHitRadius = 13 / Math.max(0.4, p.zoom);
-
   const selectedEdge = p.edges.find((ed) => ed.id === state.selectedEdgeId);
   if (selectedEdge) {
     const geo = getEdgeGeometry(selectedEdge);
@@ -2804,7 +2616,6 @@ canvas.addEventListener("mousedown", (e) => {
       }
     }
   }
-
   const selectedNode = nodeMap.get(state.selectedNodeId);
   if (selectedNode && state.selectedNodeIds.size === 1) {
     if (!selectedNode.locked && Math.hypot(wpt.x - (selectedNode.x + selectedNode.w), wpt.y - (selectedNode.y + selectedNode.h)) <= handleHitRadius) {
@@ -2845,7 +2656,6 @@ canvas.addEventListener("mousedown", (e) => {
       }
     }
   }
-
   const portHitRadius = 15 / Math.max(0.4, p.zoom);
   for (let i = p.nodes.length - 1; i >= 0; i--) {
     const n = p.nodes[i];
@@ -2866,7 +2676,6 @@ canvas.addEventListener("mousedown", (e) => {
       return;
     }
   }
-
   const hitEdge = hitTestEdge(wpt);
   if (hitEdge) {
     if (e.shiftKey) {
@@ -2884,7 +2693,6 @@ canvas.addEventListener("mousedown", (e) => {
     }
     return;
   }
-
   let hit = null;
   for (let i = p.nodes.length - 1; i >= 0; i--) {
     const n = p.nodes[i];
@@ -2913,7 +2721,6 @@ canvas.addEventListener("mousedown", (e) => {
       setSingleNodeSelection(hit.id);
       renderFormatPanel();
     }
-
     if (hit.locked) {
       showToast("Layer is locked (unlock in Layers tab)");
       return;
@@ -2950,7 +2757,6 @@ canvas.addEventListener("mousedown", (e) => {
     if (hadSelection) renderFormatPanel();
   }
 });
-
 function openInlineEditorForSelection() {
   const p = page();
   const edge = p.edges.find((ed) => ed.id === state.selectedEdgeId);
@@ -2978,7 +2784,6 @@ function openInlineEditorForSelection() {
     };
     return;
   }
-
   const node = nodeMap.get(state.selectedNodeId);
   if (!node) return;
   const spt = worldToScreen(node.x, node.y);
@@ -3004,10 +2809,8 @@ function openInlineEditorForSelection() {
     }
   };
 }
-
 canvas.addEventListener("dblclick", (e) => {
   const wpt = screenToWorld(e.clientX - canvasRect.left, e.clientY - canvasRect.top);
-
   const hitEdge = hitTestEdge(wpt);
   if (hitEdge) {
     setSingleEdgeSelection(hitEdge.id);
@@ -3023,7 +2826,6 @@ canvas.addEventListener("dblclick", (e) => {
     openInlineEditorForSelection();
     return;
   }
-
   const hit = [...page().nodes].reverse().find((n) => !n.hidden && wpt.x >= n.x && wpt.x <= n.x + n.w && wpt.y >= n.y && wpt.y <= n.y + n.h);
   if (!hit) return;
   if (hit.locked) {
@@ -3035,7 +2837,6 @@ canvas.addEventListener("dblclick", (e) => {
   renderFormatPanel();
   openInlineEditorForSelection();
 });
-
 window.addEventListener(
   "mousemove",
   (e) => {
@@ -3046,8 +2847,6 @@ window.addEventListener(
     const wy = (sy - p.pan.y) / p.zoom;
     state.mouseWorld.x = wx;
     state.mouseWorld.y = wy;
-
-    // 0. Pointer Drag-and-Drop of Stencil from Left Panel
     if (state.draggingStencil) {
       const dist = Math.hypot(e.clientX - state.draggingStencil.startX, e.clientY - state.draggingStencil.startY);
       if (dist > 4) state.draggingStencil.active = true;
@@ -3073,7 +2872,6 @@ window.addEventListener(
       }
       return;
     }
-
     if (state.marqueeBox) {
       state.marqueeBox.endX = wx;
       state.marqueeBox.endY = wy;
@@ -3081,7 +2879,6 @@ window.addEventListener(
       const maxX = Math.max(state.marqueeBox.startX, wx);
       const minY = Math.min(state.marqueeBox.startY, wy);
       const maxY = Math.max(state.marqueeBox.startY, wy);
-
       state.selectedNodeIds.clear();
       state.selectedEdgeIds.clear();
       for (const n of p.nodes) {
@@ -3098,13 +2895,11 @@ window.addEventListener(
       setCanvasCursor("crosshair");
       return;
     }
-
     if (state.connectingFrom) {
       state.snapTargetPort = findSnapTargetPort(state.mouseWorld, state.connectingFrom.node.id);
       setCanvasCursor("crosshair");
       return;
     }
-
     if (state.reconnectingEdge) {
       const { edge, end } = state.reconnectingEdge;
       const excludeId = end === "target" ? edge.source : edge.target;
@@ -3112,7 +2907,6 @@ window.addEventListener(
       setCanvasCursor("crosshair");
       return;
     }
-
     if (state.draggingEdgeBend) {
       state.draggingEdgeBend.bend = {
         x: state.snapToGrid ? Math.round(wx / state.gridSize) * state.gridSize : wx,
@@ -3122,7 +2916,6 @@ window.addEventListener(
       setCanvasCursor("grabbing");
       return;
     }
-
     if (state.resizingNode) {
       const { node, aspect } = state.resizingNode;
       const rawW = Math.max(68, wx - node.x);
@@ -3139,7 +2932,6 @@ window.addEventListener(
       scheduleCollabSync(false, node.id);
       return;
     }
-
     if (state.draggingNode) {
       const { leadNode, offsetX, offsetY, initialPositions } = state.draggingNode;
       const leadStart = initialPositions.get(leadNode.id) || { x: leadNode.x, y: leadNode.y };
@@ -3147,8 +2939,7 @@ window.addEventListener(
       const rawY = wy - offsetY;
       leadNode.x = state.snapToGrid ? Math.round(rawX / state.gridSize) * state.gridSize : rawX;
       leadNode.y = state.snapToGrid ? Math.round(rawY / state.gridSize) * state.gridSize : rawY;
-      state.smartGuides = computeSmartGuides(leadNode);
-
+      state.smartGuides = p.nodes.length <= 60 ? computeSmartGuides(leadNode) : [];
       const dx = leadNode.x - leadStart.x;
       const dy = leadNode.y - leadStart.y;
       for (const [nid, initPos] of initialPositions.entries()) {
@@ -3166,7 +2957,6 @@ window.addEventListener(
       scheduleCollabSync(false, leadNode.id);
       return;
     }
-
     if (state.panning) {
       p.pan.x = sx - state.panning.startX;
       p.pan.y = sy - state.panning.startY;
@@ -3174,7 +2964,6 @@ window.addEventListener(
       setCanvasCursor("grabbing");
       return;
     }
-
     state.hoveredPort = null;
     state.hoveredNodeId = null;
     const portHoverRadius = 15 / Math.max(0.4, p.zoom);
@@ -3207,12 +2996,9 @@ window.addEventListener(
   },
   { passive: true }
 );
-
 window.addEventListener("mouseup", (e) => {
   state.mouseWorld = screenToWorld(e.clientX - canvasRect.left, e.clientY - canvasRect.top);
   const p = page();
-
-  // Complete Drag-and-Drop or Click from Left Stencil Palette
   if (state.draggingStencil) {
     const st = state.draggingStencil;
     state.draggingStencil = null;
@@ -3225,12 +3011,10 @@ window.addEventListener("mouseup", (e) => {
     setCanvasCursor("default");
     return;
   }
-
   if (state.marqueeBox) {
     state.marqueeBox = null;
     renderFormatPanel();
   }
-
   if (state.connectingFrom) {
     const srcNode = state.connectingFrom.node;
     const srcPort = state.connectingFrom.port;
@@ -3257,7 +3041,6 @@ window.addEventListener("mouseup", (e) => {
       renderFormatPanel();
     }
   }
-
   if (state.reconnectingEdge) {
     const { edge, end } = state.reconnectingEdge;
     const excludeId = end === "target" ? edge.source : edge.target;
@@ -3274,7 +3057,6 @@ window.addEventListener("mouseup", (e) => {
       renderFormatPanel();
     }
   }
-
   if (state.draggingNode) {
     const leadId = state.draggingNode.leadNode?.id;
     for (const nid of state.draggingNode.initialPositions.keys()) {
@@ -3299,7 +3081,6 @@ window.addEventListener("mouseup", (e) => {
     collabReleaseNode(n.id);
     scheduleCollabSync(true);
   }
-
   state.draggingNode = null;
   state.resizingNode = null;
   state.draggingEdgeBend = null;
@@ -3310,7 +3091,6 @@ window.addEventListener("mouseup", (e) => {
   state.smartGuides = [];
   setCanvasCursor("default");
 });
-
 canvas.addEventListener(
   "wheel",
   (e) => {
@@ -3322,10 +3102,6 @@ canvas.addEventListener(
   },
   { passive: false }
 );
-
-// ============================================================================
-// MINIMALIST MONOLINE VECTOR SYMBOL SYSTEM (Main Canvas + Palette Previews)
-// ============================================================================
 function drawMinimalistBadgeGlyph(ctx, shape, cx, cy, s, strokeCol) {
   ctx.save();
   ctx.strokeStyle = strokeCol;
@@ -3333,7 +3109,6 @@ function drawMinimalistBadgeGlyph(ctx, shape, cx, cy, s, strokeCol) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.beginPath();
-
   if (shape === "aws_lambda") {
     ctx.moveTo(cx - s * 0.45, cy - s * 0.65);
     ctx.lineTo(cx - s * 0.1, cy - s * 0.65);
@@ -3477,16 +3252,13 @@ function drawMinimalistBadgeGlyph(ctx, shape, cx, cy, s, strokeCol) {
   ctx.stroke();
   ctx.restore();
 }
-
 function drawNodeEntityMedia(ctx, n, strokeCol, fillCol) {
   const { x, y, w, h } = n;
   const iconKey = getEffectiveNodeIcon(n);
   const hasImg = Boolean(n.imgUrl);
   if (!hasImg && !iconKey) return;
-
   const pos = n.iconPos || (n.shape === "image_card" ? "cover" : "left");
   const imgObj = hasImg ? getOrLoadImage(n.imgUrl) : null;
-
   if (pos === "cover") {
     const bannerH = n.title ? 24 : 0;
     const mediaH = Math.max(20, h - bannerH);
@@ -3517,7 +3289,6 @@ function drawNodeEntityMedia(ctx, n, strokeCol, fillCol) {
     }
     return;
   }
-
   if (pos === "top") {
     const bx = x + w * 0.5;
     const by = y + 20;
@@ -3537,8 +3308,6 @@ function drawNodeEntityMedia(ctx, n, strokeCol, fillCol) {
     ctx.fillStyle = fillCol;
     return;
   }
-
-  // Default: "left" badge
   const bx = x + 26;
   const by = y + h * 0.5;
   ctx.save();
@@ -3556,19 +3325,13 @@ function drawNodeEntityMedia(ctx, n, strokeCol, fillCol) {
   ctx.restore();
   ctx.fillStyle = fillCol;
 }
-
-// ---------------------------------------------------------------------------
-// Structured items: Image Node, Folder Tree, Collapsible
-// ---------------------------------------------------------------------------
 const TREE_HEADER_H = 24;
 const TREE_PAD_TOP = 6;
 const TREE_ROW_H = 18;
 const TREE_INDENT_W = 14;
 const COLLAPSE_HEADER_H = 28;
 const COLLAPSE_LINE_H = 16;
-
 const STRUCTURED_SHAPES = new Set(["image_node", "folder_tree", "collapsible"]);
-
 function parseFolderTree(text) {
   const raw = String(text ?? "").replace(/\t/g, "  ").split(/\r?\n/);
   const entries = [];
@@ -3578,7 +3341,6 @@ function parseFolderTree(text) {
     let name = line.trim().replace(/^[-*•]\s+/, "");
     entries.push({ depth: Math.floor(lead / 2), rawName: name });
   }
-  // Normalize depth jumps (child can be at most parent + 1)
   for (let i = 0; i < entries.length; i++) {
     const prevDepth = i > 0 ? entries[i - 1].depth : -1;
     if (entries[i].depth > prevDepth + 1) entries[i].depth = prevDepth + 1;
@@ -3595,7 +3357,6 @@ function parseFolderTree(text) {
   }
   return entries;
 }
-
 function getVisibleTreeRows(n) {
   const rawText = n.treeText ?? DEFAULT_FOLDER_TREE_TEXT;
   const colKey = (n.treeCollapsed || []).join("|");
@@ -3616,12 +3377,9 @@ function getVisibleTreeRows(n) {
   Object.defineProperty(n, "_treeCache", { value: { rawText, colKey, rows }, writable: true, configurable: true });
   return rows;
 }
-
 function getCollapsibleLines(n) {
   return String(n.bodyText ?? DEFAULT_COLLAPSIBLE_TEXT).split(/\r?\n/);
 }
-
-// Auto-fit structured node height to its content (keeps width user-controlled).
 function fitStructuredNodeHeight(n) {
   if (n.shape === "folder_tree") {
     const rows = getVisibleTreeRows(n).length;
@@ -3636,7 +3394,6 @@ function fitStructuredNodeHeight(n) {
   invalidateNodeEdges(n.id);
   state.minimapDirty = true;
 }
-
 function fitImageNodeToAspect(n, url) {
   if (!url) return;
   const probe = new Image();
@@ -3658,8 +3415,6 @@ function fitImageNodeToAspect(n, url) {
   };
   probe.src = url;
 }
-
-// Returns a toggle descriptor when (wx, wy) hits an interactive toggle on the node.
 function hitTestNodeToggle(n, wx, wy) {
   if (!n) return null;
   if (n.shape === "collapsible") {
@@ -3681,7 +3436,6 @@ function hitTestNodeToggle(n, wx, wy) {
   }
   return null;
 }
-
 function applyNodeToggle(n, toggle) {
   saveSnapshot();
   if (toggle.kind === "collapse") {
@@ -3699,12 +3453,10 @@ function applyNodeToggle(n, toggle) {
   }
   state.arrangeDirty = true;
 }
-
 function getContentTextColors(n) {
   const dark = isDarkHexColor(n.fill || "#ffffff");
   return { text: dark ? "#e2e8f0" : "#1a1a2e", muted: dark ? "#94a3b8" : "#6a6a80" };
 }
-
 function drawTreeFolderGlyph(ctx, x, y, open, col) {
   ctx.beginPath();
   ctx.moveTo(x, y + 2);
@@ -3719,7 +3471,6 @@ function drawTreeFolderGlyph(ctx, x, y, open, col) {
   ctx.strokeStyle = col;
   ctx.stroke();
 }
-
 function drawTreeFileGlyph(ctx, x, y, col) {
   ctx.beginPath();
   ctx.moveTo(x + 1, y);
@@ -3738,7 +3489,6 @@ function drawTreeFileGlyph(ctx, x, y, col) {
   ctx.lineTo(x + 10, y + 3);
   ctx.stroke();
 }
-
 function drawCaret(ctx, cx, cy, open, col) {
   ctx.beginPath();
   if (open) {
@@ -3754,7 +3504,6 @@ function drawCaret(ctx, cx, cy, open, col) {
   ctx.fillStyle = col;
   ctx.fill();
 }
-
 function drawImageNode(ctx, n, isMiniPreview) {
   const { x, y, w, h } = n;
   const strokeCol = ctx.strokeStyle;
@@ -3802,7 +3551,6 @@ function drawImageNode(ctx, n, isMiniPreview) {
     }
     return;
   }
-  // Placeholder (no image yet or still loading)
   ctx.save();
   ctx.shadowColor = "transparent";
   ctx.fillStyle = "rgba(128, 128, 164, 0.08)";
@@ -3817,7 +3565,6 @@ function drawImageNode(ctx, n, isMiniPreview) {
   ctx.fillText("Drop image here", x + w * 0.5, y + h * 0.78);
   ctx.restore();
 }
-
 function drawFolderTreeNode(ctx, n, isMiniPreview) {
   const { x, y, w, h } = n;
   const strokeCol = ctx.strokeStyle;
@@ -3826,7 +3573,6 @@ function drawFolderTreeNode(ctx, n, isMiniPreview) {
   ctx.roundRect(x, y, w, h, isMiniPreview ? 2 : 6);
   ctx.fill();
   ctx.stroke();
-
   if (isMiniPreview) {
     ctx.save();
     ctx.lineWidth = 1;
@@ -3847,11 +3593,9 @@ function drawFolderTreeNode(ctx, n, isMiniPreview) {
     ctx.restore();
     return;
   }
-
   const colors = getContentTextColors(n);
   ctx.save();
   ctx.shadowColor = "transparent";
-  // Header band
   ctx.beginPath();
   ctx.roundRect(x + 1, y + 1, w - 2, TREE_HEADER_H - 1, [5, 5, 0, 0]);
   ctx.fillStyle = isDarkHexColor(fillCol) ? "rgba(255,255,255,0.06)" : "rgba(0, 0, 128, 0.06)";
@@ -3862,11 +3606,9 @@ function drawFolderTreeNode(ctx, n, isMiniPreview) {
   ctx.strokeStyle = strokeCol;
   ctx.lineWidth = 1;
   ctx.stroke();
-
   ctx.beginPath();
   ctx.rect(x + 1, y + TREE_HEADER_H + 1, w - 2, h - TREE_HEADER_H - 2);
   ctx.clip();
-
   const rows = getVisibleTreeRows(n);
   const top = y + TREE_HEADER_H + TREE_PAD_TOP;
   ctx.font = '500 11px "Monaco", "Menlo", monospace';
@@ -3877,7 +3619,6 @@ function drawFolderTreeNode(ctx, n, isMiniPreview) {
     const ry = top + i * TREE_ROW_H;
     if (ry > y + h) break;
     const x0 = x + 10 + row.depth * TREE_INDENT_W;
-    // Indent guides
     ctx.strokeStyle = colors.muted;
     ctx.globalAlpha = 0.45;
     for (let l = 0; l < row.depth; l++) {
@@ -3902,7 +3643,6 @@ function drawFolderTreeNode(ctx, n, isMiniPreview) {
   }
   ctx.restore();
 }
-
 function drawCollapsibleNode(ctx, n, isMiniPreview) {
   const { x, y, w, h } = n;
   const strokeCol = ctx.strokeStyle;
@@ -3911,7 +3651,6 @@ function drawCollapsibleNode(ctx, n, isMiniPreview) {
   ctx.roundRect(x, y, w, h, isMiniPreview ? 2 : 6);
   ctx.fill();
   ctx.stroke();
-
   if (isMiniPreview) {
     ctx.save();
     ctx.beginPath();
@@ -3926,7 +3665,6 @@ function drawCollapsibleNode(ctx, n, isMiniPreview) {
     ctx.restore();
     return;
   }
-
   const colors = getContentTextColors(n);
   const headH = Math.min(COLLAPSE_HEADER_H, h);
   ctx.save();
@@ -3935,8 +3673,6 @@ function drawCollapsibleNode(ctx, n, isMiniPreview) {
   ctx.roundRect(x + 1, y + 1, w - 2, headH - 2, n.collapsed ? 5 : [5, 5, 0, 0]);
   ctx.fillStyle = isDarkHexColor(fillCol) ? "rgba(255,255,255,0.06)" : "rgba(0, 0, 128, 0.06)";
   ctx.fill();
-
-  // Chevron toggle button
   ctx.beginPath();
   ctx.roundRect(x + 6, y + headH * 0.5 - 8, 16, 16, 3);
   ctx.fillStyle = isDarkHexColor(fillCol) ? "rgba(255,255,255,0.08)" : "#ffffff";
@@ -3945,13 +3681,11 @@ function drawCollapsibleNode(ctx, n, isMiniPreview) {
   ctx.lineWidth = 1;
   ctx.stroke();
   drawCaret(ctx, x + 14, y + headH * 0.5, !n.collapsed, strokeCol);
-
   if (!n.collapsed && h > COLLAPSE_HEADER_H) {
     ctx.beginPath();
     ctx.moveTo(x, y + COLLAPSE_HEADER_H);
     ctx.lineTo(x + w, y + COLLAPSE_HEADER_H);
     ctx.stroke();
-
     ctx.beginPath();
     ctx.rect(x + 1, y + COLLAPSE_HEADER_H + 1, w - 2, h - COLLAPSE_HEADER_H - 2);
     ctx.clip();
@@ -3973,9 +3707,7 @@ function drawCollapsibleNode(ctx, n, isMiniPreview) {
   }
   ctx.restore();
 }
-
 const SECTION_HEADER_H = 26;
-
 function drawSectionNode(ctx, n, isMiniPreview) {
   const { x, y, w, h } = n;
   const strokeCol = ctx.strokeStyle;
@@ -3984,7 +3716,6 @@ function drawSectionNode(ctx, n, isMiniPreview) {
   ctx.roundRect(x, y, w, h, isMiniPreview ? 2 : 7);
   ctx.fill();
   ctx.stroke();
-
   if (isMiniPreview) {
     ctx.save();
     ctx.beginPath();
@@ -3997,7 +3728,6 @@ function drawSectionNode(ctx, n, isMiniPreview) {
     ctx.restore();
     return;
   }
-
   ctx.save();
   ctx.shadowColor = "transparent";
   ctx.beginPath();
@@ -4011,7 +3741,6 @@ function drawSectionNode(ctx, n, isMiniPreview) {
   ctx.lineWidth = 1;
   ctx.setLineDash([]);
   ctx.stroke();
-
   const childCount = getChildNodes(n.id).length;
   if (childCount > 0) {
     const colors = getContentTextColors(n);
@@ -4022,7 +3751,6 @@ function drawSectionNode(ctx, n, isMiniPreview) {
   }
   ctx.restore();
 }
-
 function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
   if (n.shape === "section") {
     drawSectionNode(ctx, n, isMiniPreview);
@@ -4043,10 +3771,7 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
   const { x, y, w, h, shape } = n;
   const strokeCol = ctx.strokeStyle;
   const fillCol = ctx.fillStyle;
-
   ctx.beginPath();
-
-  // 1. Minimalist Diamond & BPMN Gateways
   if (shape === "diamond" || shape === "gateway_xor" || shape === "gateway_parallel") {
     const cx = x + w * 0.5;
     const cy = y + h * 0.5;
@@ -4057,7 +3782,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-
     if (shape === "gateway_xor" || shape === "gateway_parallel") {
       ctx.save();
       ctx.lineWidth = isMiniPreview ? 1.5 : 2.0;
@@ -4079,13 +3803,11 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       ctx.restore();
     }
   }
-  // 2. Minimalist Capsule Pill
   else if (shape === "rounded") {
     ctx.roundRect(x, y, w, h, Math.min(w, h) * 0.5);
     ctx.fill();
     ctx.stroke();
   }
-  // 3. Minimalist Circle & Timer Event
   else if (shape === "circle" || shape === "timer") {
     const r = Math.min(w, h) * 0.5;
     const cx = x + w * 0.5;
@@ -4093,7 +3815,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-
     if (shape === "timer") {
       ctx.beginPath();
       ctx.arc(cx, cy, r * 0.76, 0, Math.PI * 2);
@@ -4103,44 +3824,34 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       ctx.stroke();
     }
   }
-  // 4. Minimalist Monoline Vertical Database Cylinder
   else if (shape === "cylinder") {
     const ry = Math.min(11, h * 0.14);
     const rx = w * 0.5;
     const cx = x + rx;
-
     ctx.ellipse(cx, y + ry, rx, ry, 0, Math.PI, Math.PI * 2, false);
     ctx.lineTo(x + w, y + h - ry);
     ctx.ellipse(cx, y + h - ry, rx, ry, 0, 0, Math.PI, false);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-
-    // Crisp single elliptical top rim
     ctx.beginPath();
     ctx.ellipse(cx, y + ry, rx, ry, 0, 0, Math.PI * 2);
     ctx.stroke();
   }
-  // 5. Minimalist Monoline Horizontal Cylinder (Kafka / Queue)
   else if (shape === "queue") {
     const rx = Math.min(11, w * 0.075);
     const ry = h * 0.5;
     const cy = y + ry;
-
-    // Clean horizontal cylinder silhouette
     ctx.ellipse(x + rx, cy, rx, ry, 0, Math.PI * 0.5, Math.PI * 1.5, false);
     ctx.lineTo(x + w - rx, y);
     ctx.ellipse(x + w - rx, cy, rx, ry, 0, -Math.PI * 0.5, Math.PI * 0.5, false);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-
-    // Single clean monoline elliptical right cap
     ctx.beginPath();
     ctx.ellipse(x + w - rx, cy, rx, ry, 0, 0, Math.PI * 2);
     ctx.stroke();
   }
-  // 6. Minimalist Parallelogram
   else if (shape === "parallelogram") {
     const skew = Math.min(16, w * 0.14);
     ctx.moveTo(x + skew, y);
@@ -4151,7 +3862,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.fill();
     ctx.stroke();
   }
-  // 7. Minimalist Hexagon
   else if (shape === "hexagon") {
     const cut = Math.min(18, w * 0.13);
     ctx.moveTo(x + cut, y);
@@ -4164,7 +3874,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.fill();
     ctx.stroke();
   }
-  // 8. Minimalist Document
   else if (shape === "document") {
     const wave = Math.min(10, h * 0.13);
     ctx.moveTo(x, y);
@@ -4182,7 +3891,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.fill();
     ctx.stroke();
   }
-  // 9. Minimalist Note
   else if (shape === "note") {
     const fold = Math.min(15, w * 0.16, h * 0.2);
     ctx.moveTo(x, y);
@@ -4193,14 +3901,12 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-
     ctx.beginPath();
     ctx.moveTo(x + w - fold, y);
     ctx.lineTo(x + w - fold, y + fold);
     ctx.lineTo(x + w, y + fold);
     ctx.stroke();
   }
-  // 10. Minimalist Geometric Cloud (Flat base + clean smooth arcs)
   else if (shape === "cloud") {
     const l = x + w * 0.08;
     const r = x + w * 0.92;
@@ -4208,7 +3914,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     const b = y + h * 0.86;
     const cw = r - l;
     const ch = b - t;
-
     ctx.moveTo(l + cw * 0.18, b);
     ctx.lineTo(l + cw * 0.82, b);
     ctx.bezierCurveTo(r + cw * 0.04, b, r + cw * 0.04, t + ch * 0.42, l + cw * 0.82, t + ch * 0.42);
@@ -4218,18 +3923,13 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.fill();
     ctx.stroke();
   }
-  // 11. Minimalist User / Actor Glyph (Lucide User style: head circle + smooth shoulder arc)
   else if (shape === "actor") {
     const cx = x + w * 0.5;
     const cy = y + h * 0.5;
     const r = Math.min(w, h) * 0.46;
-
-    // Outer minimalist avatar circle
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-
-    // Inner head circle + shoulder arc
     const headR = r * 0.28;
     ctx.beginPath();
     ctx.arc(cx, cy - r * 0.2, headR, 0, Math.PI * 2);
@@ -4237,32 +3937,27 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.bezierCurveTo(cx - r * 0.45, cy + r * 0.16, cx + r * 0.45, cy + r * 0.16, cx + r * 0.54, cy + r * 0.62);
     ctx.stroke();
   }
-  // 12. Minimalist UML Package
   else if (shape === "uml_package") {
     const tabW = Math.min(64, w * 0.4);
     const tabH = Math.min(14, h * 0.2);
     ctx.roundRect(x, y, tabW, tabH, [4, 4, 0, 0]);
     ctx.fill();
     ctx.stroke();
-
     ctx.beginPath();
     ctx.roundRect(x, y + tabH, w, h - tabH, [0, 7, 7, 7]);
     ctx.fill();
     ctx.stroke();
   }
-  // 13. Minimalist UML Class & Interface
   else if (shape === "uml_class" || shape === "uml_interface") {
     const headerH = isMiniPreview ? h * 0.4 : 30;
     ctx.roundRect(x, y, w, h, isMiniPreview ? 3 : 7);
     ctx.fill();
     ctx.stroke();
-
     ctx.beginPath();
     ctx.moveTo(x, y + headerH);
     ctx.lineTo(x + w, y + headerH);
     ctx.stroke();
   }
-  // 14. Minimalist Auth Shield
   else if (shape === "shield") {
     const cx = x + w * 0.5;
     ctx.moveTo(cx, y);
@@ -4273,7 +3968,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.fill();
     ctx.stroke();
   }
-  // 15. Minimalist Browser UI Wireframe
   else if (shape === "browser") {
     const headerH = isMiniPreview ? h * 0.3 : 22;
     ctx.roundRect(x, y, w, h, isMiniPreview ? 3 : 8);
@@ -4291,7 +3985,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       }
     }
   }
-  // 16. Minimalist Mobile UI Wireframe
   else if (shape === "mobile") {
     ctx.roundRect(x, y, w, h, isMiniPreview ? 5 : 14);
     ctx.fill();
@@ -4303,7 +3996,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.lineTo(x + w * 0.65, y + h - (isMiniPreview ? 3.5 : 8));
     ctx.stroke();
   }
-  // 17. Minimalist Architecture Cards & Image Cards
   else if (
     shape === "image_card" ||
     shape === "aws_lambda" ||
@@ -4316,18 +4008,15 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
     ctx.roundRect(x, y, w, h, isMiniPreview ? 3 : 8);
     ctx.fill();
     ctx.stroke();
-
     if (isMiniPreview) {
       drawMinimalistBadgeGlyph(ctx, shape, x + w * 0.5, y + h * 0.5, Math.min(w, h) * 0.42, strokeCol);
     }
   }
-  // 18. Custom Vector / Imported Symbol or Standard Minimalist Process Card
   else {
     const customDef = customStencilsMap.get(shape);
     const paths = n.customPaths || customDef?.customPaths || null;
     const svgPath = n.svgPath || customDef?.svgPath || "";
     const previewImgUrl = n.imgUrl || customDef?.imgUrl || "";
-
     if (paths && Array.isArray(paths) && paths.length > 0) {
       drawNormalizedCustomPaths(ctx, x, y, w, h, paths, fillCol, strokeCol);
     } else if (svgPath) {
@@ -4344,7 +4033,6 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
         ctx.stroke(p2d);
         ctx.restore();
       } catch {
-        // Ignore malformed SVG path
       }
     } else {
       ctx.roundRect(x, y, w, h, isMiniPreview ? 3 : 8);
@@ -4358,25 +4046,20 @@ function drawNodeShapeGeometry(ctx, n, isMiniPreview = false) {
       }
     }
   }
-
-  // Render Entity Icon or Image on any shape when on the main canvas
   if (!isMiniPreview) {
     drawNodeEntityMedia(ctx, n, strokeCol, fillCol);
   }
 }
-
 function drawNormalizedCustomPaths(ctx, x, y, w, h, paths, fillCol, strokeCol) {
   ctx.save();
   ctx.fillStyle = fillCol;
   ctx.strokeStyle = strokeCol;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
-
   for (let i = 0; i < paths.length; i++) {
     const strokeObj = paths[i];
     const pts = strokeObj.pts;
     if (!pts || pts.length === 0) continue;
-
     ctx.beginPath();
     if (strokeObj.tool === "rect" && pts.length >= 2) {
       const rx = x + Math.min(pts[0].x, pts[1].x) * w;
@@ -4427,13 +4110,11 @@ function drawNormalizedCustomPaths(ctx, x, y, w, h, paths, fillCol, strokeCol) {
   }
   ctx.restore();
 }
-
 function getNodeTextPlacement(n) {
   const { x, y, w, h, shape } = n;
   const cx = x + w * 0.5;
   const hasMedia = Boolean(n.imgUrl || getEffectiveNodeIcon(n));
   const mediaPos = n.iconPos || (shape === "image_card" ? "cover" : "left");
-
   if (shape === "image_node") {
     return { cx, titleY: y + h + 15, bodyY: y + h + 29, external: true };
   }
@@ -4446,7 +4127,6 @@ function getNodeTextPlacement(n) {
   if (shape === "section") {
     return { cx: x + 12, titleY: y + SECTION_HEADER_H * 0.5 + 4.5, bodyY: y, external: false, hideBody: true, alignLeft: true };
   }
-
   if (shape === "actor" || shape === "gateway_xor" || shape === "gateway_parallel" || shape === "timer") {
     return {
       cx,
@@ -4473,7 +4153,6 @@ function getNodeTextPlacement(n) {
     };
   }
   const textCx = hasMedia && mediaPos === "left" ? x + 44 + (w - 44) * 0.5 : cx;
-
   if (shape === "cylinder") {
     const bodyCenterY = y + 16 + (h - 16) * 0.5;
     return { cx: textCx, titleY: bodyCenterY - (n.body ? 5 : -4), bodyY: bodyCenterY + 12, external: false };
@@ -4509,7 +4188,6 @@ function getNodeTextPlacement(n) {
     external: false,
   };
 }
-
 function truncateTextToWidth(ctx, text, maxW) {
   if (maxW <= 8) return "";
   if (ctx.measureText(text).width <= maxW) return text;
@@ -4523,13 +4201,11 @@ function truncateTextToWidth(ctx, text, maxW) {
   }
   return lo > 0 ? text.slice(0, lo) + ell : ell;
 }
-
 function fitTextLines(ctx, text, maxW, maxLines = 2) {
   const s = String(text || "");
   if (!s || maxW <= 8) return [];
   if (ctx.measureText(s).width <= maxW) return [s];
   if (maxLines <= 1) return [truncateTextToWidth(ctx, s, maxW)];
-
   const words = s.split(/\s+/);
   const lines = [];
   let cur = "";
@@ -4556,7 +4232,6 @@ function fitTextLines(ctx, text, maxW, maxLines = 2) {
   if (cur) lines.push(truncateTextToWidth(ctx, cur, maxW));
   return lines.slice(0, maxLines);
 }
-
 function getNodeTextMaxWidth(n, pos) {
   if (pos.external) return Math.max(n.w + 48, 150);
   const hasMedia = Boolean(n.imgUrl || getEffectiveNodeIcon(n));
@@ -4578,13 +4253,11 @@ function getNodeTextMaxWidth(n, pos) {
   }
   return Math.max(20, n.w - 16);
 }
-
 function drawFittedNodeText(ctx, n, lightCanvas) {
   if (!n.title && !n.body) return;
   const pos = getNodeTextPlacement(n);
   const darkFill = isDarkHexColor(n.fill);
   const cacheKey = `${n.title || ""}\0${n.body || ""}\0${n.w}|${n.h}|${n.shape}|${n.icon || ""}|${n.iconPos || ""}|${n.collapsed ? 1 : 0}`;
-
   let cached = n._textCache;
   if (!cached || cached.key !== cacheKey) {
     const maxW = getNodeTextMaxWidth(n, pos);
@@ -4614,7 +4287,6 @@ function drawFittedNodeText(ctx, n, lightCanvas) {
     cached = { key: cacheKey, titleLines, extraTitleOffset, bodyStr, needsClip };
     Object.defineProperty(n, "_textCache", { value: cached, writable: true, configurable: true });
   }
-
   const useClip = !pos.external && cached.needsClip;
   if (useClip) {
     ctx.save();
@@ -4623,7 +4295,6 @@ function drawFittedNodeText(ctx, n, lightCanvas) {
     ctx.clip();
   }
   ctx.textAlign = pos.alignLeft ? "left" : "center";
-
   if (cached.titleLines.length > 0) {
     ctx.font = '700 12.5px "Charcoal", "Chicago", "Geneva", sans-serif';
     ctx.fillStyle = pos.external
@@ -4638,7 +4309,6 @@ function drawFittedNodeText(ctx, n, lightCanvas) {
       ctx.fillText(cached.titleLines[i], pos.cx, startY + i * 14);
     }
   }
-
   if (cached.bodyStr && !pos.hideBody) {
     const bodyY = pos.bodyY + cached.extraTitleOffset;
     if (pos.external || bodyY <= n.y + n.h - 5) {
@@ -4655,7 +4325,6 @@ function drawFittedNodeText(ctx, n, lightCanvas) {
   }
   if (useClip) ctx.restore();
 }
-
 function boxesOverlap(a, b, pad = 4) {
   return !(
     a.x + a.w + pad <= b.x ||
@@ -4664,7 +4333,6 @@ function boxesOverlap(a, b, pad = 4) {
     b.y + b.h + pad <= a.y
   );
 }
-
 function resolveEdgeLabelPos(geo, textW, placedBoxes, nodes) {
   const h = 19;
   const candidates = [geo.midPoint];
@@ -4677,7 +4345,6 @@ function resolveEdgeLabelPos(geo, textW, placedBoxes, nodes) {
     { x: geo.midPoint.x, y: geo.midPoint.y - 22 },
     { x: geo.midPoint.x, y: geo.midPoint.y + 22 }
   );
-
   for (const pt of candidates) {
     const box = { x: pt.x - textW * 0.5, y: pt.y - h * 0.5, w: textW, h };
     let hit = false;
@@ -4706,8 +4373,6 @@ function resolveEdgeLabelPos(geo, textW, placedBoxes, nodes) {
   placedBoxes.push(fallback);
   return geo.midPoint;
 }
-
-// Palette category visibility (chip bar = show / hide, section header = collapse / expand)
 function loadCategorySet(key) {
   try {
     const raw = localStorage.getItem(key);
@@ -4728,10 +4393,8 @@ function savePaletteCategoryPrefs() {
     localStorage.setItem("rustflow_palette_collapsed_v1", JSON.stringify([...state.collapsedCategories]));
     localStorage.setItem("rustflow_palette_hidden_v1", JSON.stringify([...state.hiddenCategories]));
   } catch {
-    // storage unavailable (private mode) – keep in-memory only
   }
 }
-
 function renderPaletteCategoryBar(categories) {
   const bar = document.getElementById("palette-cat-bar");
   if (!bar) return;
@@ -4770,8 +4433,6 @@ function renderPaletteCategoryBar(categories) {
     bar.appendChild(chip);
   }
 }
-
-// Render Left Stencil Palette with Drag-and-Drop + Minimalist Monoline Thumbnails
 function renderPalette(filter = "") {
   const container = document.getElementById("palette-list");
   if (!container) return;
@@ -4779,14 +4440,11 @@ function renderPalette(filter = "") {
   const countEl = document.getElementById("palette-count-label");
   const searchEl = document.getElementById("palette-search");
   if (searchEl && !searchEl.value) searchEl.placeholder = `Search ${STENCILS.length} symbols...`;
-
   const q = filter.trim().toLowerCase();
   const categories = [...new Set(STENCILS.map((s) => s.category))];
   renderPaletteCategoryBar(categories);
   let shownCount = 0;
-
   for (const cat of categories) {
-    // Searching always reveals matches, even in hidden / collapsed categories
     if (!q && state.hiddenCategories.has(cat)) continue;
     const items = STENCILS.filter(
       (s) => s.category === cat && (!q || s.label.toLowerCase().includes(q) || s.id.toLowerCase().includes(q))
@@ -4794,7 +4452,6 @@ function renderPalette(filter = "") {
     if (!items.length) continue;
     const collapsed = !q && state.collapsedCategories.has(cat);
     shownCount += items.length;
-
     const section = document.createElement("div");
     section.style.marginBottom = collapsed ? "4px" : "10px";
     const title = document.createElement("div");
@@ -4819,7 +4476,6 @@ function renderPalette(filter = "") {
       container.appendChild(section);
       continue;
     }
-
     const grid = document.createElement("div");
     grid.className = "stencil-grid";
     for (const item of items) {
@@ -4827,7 +4483,6 @@ function renderPalette(filter = "") {
       card.className = "stencil-card";
       card.draggable = true;
       card.title = `Drag "${item.label}" onto canvas or click to add`;
-
       const thumb = document.createElement("canvas");
       thumb.width = 30;
       thumb.height = 22;
@@ -4853,15 +4508,12 @@ function renderPalette(filter = "") {
         },
         true
       );
-
       const labelSpan = document.createElement("span");
       labelSpan.textContent = item.label;
       labelSpan.style.overflow = "hidden";
       labelSpan.style.textOverflow = "ellipsis";
-
       card.appendChild(thumb);
       card.appendChild(labelSpan);
-
       if (item.isCustom) {
         const delBtn = document.createElement("button");
         delBtn.className = "stencil-del-btn";
@@ -4874,8 +4526,6 @@ function renderPalette(filter = "") {
         });
         card.appendChild(delBtn);
       }
-
-      // Pointer drag-and-drop initiation
       card.addEventListener("mousedown", (e) => {
         if (e.button !== 0) return;
         state.draggingStencil = {
@@ -4888,8 +4538,6 @@ function renderPalette(filter = "") {
           ghostY: 0,
         };
       });
-
-      // HTML5 dragstart fallback
       card.addEventListener("dragstart", (e) => {
         state.draggingStencil = {
           item,
@@ -4905,12 +4553,10 @@ function renderPalette(filter = "") {
           e.dataTransfer.effectAllowed = "copy";
         }
       });
-
       card.addEventListener("dragend", () => {
         state.draggingStencil = null;
         state.smartGuides = [];
       });
-
       grid.appendChild(card);
     }
     section.appendChild(grid);
@@ -4930,7 +4576,6 @@ function renderPalette(filter = "") {
 }
 document.getElementById("palette-search").addEventListener("input", (e) => renderPalette(e.target.value));
 renderPalette();
-
 function addNewPage() {
   const id = state.pages.length + 1;
   state.pages.push({
@@ -4951,7 +4596,6 @@ function addNewPage() {
   updateZoomLabel();
   showToast(`Created Page-${id}`);
 }
-
 function renderPageTabs() {
   const container = document.getElementById("page-tabs");
   const titleEl = document.getElementById("window-canvas-title");
@@ -4979,10 +4623,6 @@ function renderPageTabs() {
   container.appendChild(addBtn);
 }
 renderPageTabs();
-
-// ============================================================================
-// CLIPBOARD, MULTI-SELECTION & EDIT OPERATIONS
-// ============================================================================
 function selectAll() {
   const p = page();
   state.selectedNodeIds.clear();
@@ -4994,13 +4634,11 @@ function selectAll() {
   renderFormatPanel();
   showToast(`Selected All (${p.nodes.length} nodes, ${p.edges.length} edges)`);
 }
-
 function clearSelection() {
   setSingleNodeSelection(null);
   state.minimapDirty = true;
   renderFormatPanel();
 }
-
 function copySelection() {
   const p = page();
   const nodesToCopy = p.nodes.filter((n) => state.selectedNodeIds.has(n.id));
@@ -5020,7 +4658,6 @@ function copySelection() {
   };
   showToast(`Copied ${nodesToCopy.length} node(s)${edgesToCopy.length ? ` & ${edgesToCopy.length} edge(s)` : ""}`);
 }
-
 function cutSelection() {
   if (!state.selectedNodeIds.size && !state.selectedEdgeIds.size) {
     showToast("Nothing selected to cut");
@@ -5030,7 +4667,6 @@ function cutSelection() {
   deleteSelected(false);
   showToast(`Cut selection to clipboard`);
 }
-
 function pasteSelection() {
   const { nodes: clipNodes, edges: clipEdges } = state.clipboard;
   if (!clipNodes.length && !clipEdges.length) {
@@ -5041,11 +4677,9 @@ function pasteSelection() {
   saveSnapshot();
   state.clipboard.pasteStep++;
   const offset = 28 * state.clipboard.pasteStep;
-
   const idMap = new Map();
   state.selectedNodeIds.clear();
   state.selectedEdgeIds.clear();
-
   for (const cn of clipNodes) {
     const newId = ++state.nextId;
     idMap.set(cn.id, newId);
@@ -5068,7 +4702,6 @@ function pasteSelection() {
       if (pastedChild) pastedChild.parentId = undefined;
     }
   }
-
   for (const ce of clipEdges) {
     const newSrc = idMap.get(ce.source) ?? ce.source;
     const newDst = idMap.get(ce.target) ?? ce.target;
@@ -5084,13 +4717,11 @@ function pasteSelection() {
       state.selectedEdgeIds.add(newEdgeId);
     }
   }
-
   syncPrimarySelectionFromSets();
   invalidateGeometry();
   renderFormatPanel();
   showToast(`Pasted ${clipNodes.length} node(s)`);
 }
-
 function duplicateSelected() {
   if (!state.selectedNodeIds.size && !state.selectedEdgeIds.size) {
     showToast("Nothing selected to duplicate");
@@ -5099,7 +4730,6 @@ function duplicateSelected() {
   copySelection();
   pasteSelection();
 }
-
 function deleteSelected(withToast = true) {
   const p = page();
   const deletableNodeIds = new Set(
@@ -5111,7 +4741,6 @@ function deleteSelected(withToast = true) {
     if (state.selectedNodeIds.size > 0 && withToast) showToast("Locked layer(s) cannot be deleted");
     return;
   }
-
   saveSnapshot();
   if (delNodes > 0) {
     p.nodes = p.nodes.filter((n) => !deletableNodeIds.has(n.id));
@@ -5132,10 +4761,8 @@ function deleteSelected(withToast = true) {
   renderFormatPanel();
   if (withToast) showToast(`Deleted ${delNodes ? `${delNodes} node(s)` : `${delEdges} edge(s)`}`);
 }
-
 function normalizeLayerOrder(p = page()) {
   p.nodes.sort((a, b) => (a.z || 0) - (b.z || 0));
-  // Ensure parents/sections always sit below their children in z-order so they never cover them
   for (let pass = 0; pass < p.nodes.length; pass++) {
     let swapped = false;
     const idxById = new Map(p.nodes.map((n, idx) => [n.id, idx]));
@@ -5154,7 +4781,6 @@ function normalizeLayerOrder(p = page()) {
   }
   for (let i = 0; i < p.nodes.length; i++) p.nodes[i].z = i + 1;
 }
-
 function getHierarchicalLayersForPanel(p = page()) {
   const byId = new Map(p.nodes.map((n) => [n.id, n]));
   const childrenMap = new Map();
@@ -5170,7 +4796,6 @@ function getHierarchicalLayersForPanel(p = page()) {
   const sortDescZ = (arr) => arr.sort((a, b) => (b.z || 0) - (a.z || 0));
   sortDescZ(roots);
   for (const arr of childrenMap.values()) sortDescZ(arr);
-
   const out = [];
   const visited = new Set();
   const visit = (n) => {
@@ -5186,7 +4811,6 @@ function getHierarchicalLayersForPanel(p = page()) {
   for (const n of p.nodes) visit(n);
   return out;
 }
-
 function getSelectedWithDescendants(p = page()) {
   const ids = new Set(state.selectedNodeIds);
   for (const nid of state.selectedNodeIds) {
@@ -5194,7 +4818,11 @@ function getSelectedWithDescendants(p = page()) {
   }
   return ids;
 }
-
+function finishLayerReorder(p, toastMsg) {
+  normalizeLayerOrder(p);
+  if (state.activeFormatTab === "layers") renderFormatPanel();
+  showToast(toastMsg);
+}
 function bringToFront() {
   const p = page();
   if (!state.selectedNodeIds.size) return;
@@ -5203,11 +4831,8 @@ function bringToFront() {
   let maxZ = Math.max(0, ...p.nodes.map((x) => x.z || 0));
   const ordered = p.nodes.filter((n) => moveIds.has(n.id)).sort((a, b) => (a.z || 0) - (b.z || 0));
   for (const n of ordered) n.z = ++maxZ;
-  normalizeLayerOrder(p);
-  if (state.activeFormatTab === "layers") renderFormatPanel();
-  showToast("Brought to Front");
+  finishLayerReorder(p, "Brought to Front");
 }
-
 function sendToBack() {
   const p = page();
   if (!state.selectedNodeIds.size) return;
@@ -5216,11 +4841,8 @@ function sendToBack() {
   let minZ = Math.min(0, ...p.nodes.map((x) => x.z || 0));
   const ordered = p.nodes.filter((n) => moveIds.has(n.id)).sort((a, b) => (b.z || 0) - (a.z || 0));
   for (const n of ordered) n.z = --minZ;
-  normalizeLayerOrder(p);
-  if (state.activeFormatTab === "layers") renderFormatPanel();
-  showToast("Sent to Back");
+  finishLayerReorder(p, "Sent to Back");
 }
-
 function bringForward() {
   const p = page();
   if (!state.selectedNodeIds.size) return;
@@ -5234,11 +4856,8 @@ function bringForward() {
     }
   }
   for (let i = 0; i < p.nodes.length; i++) p.nodes[i].z = i + 1;
-  normalizeLayerOrder(p);
-  if (state.activeFormatTab === "layers") renderFormatPanel();
-  showToast("Brought Forward");
+  finishLayerReorder(p, "Brought Forward");
 }
-
 function sendBackward() {
   const p = page();
   if (!state.selectedNodeIds.size) return;
@@ -5252,11 +4871,8 @@ function sendBackward() {
     }
   }
   for (let i = 0; i < p.nodes.length; i++) p.nodes[i].z = i + 1;
-  normalizeLayerOrder(p);
-  if (state.activeFormatTab === "layers") renderFormatPanel();
-  showToast("Sent Backward");
+  finishLayerReorder(p, "Sent Backward");
 }
-
 function reorderLayerNode(draggedId, targetId) {
   if (draggedId === targetId) return;
   const p = page();
@@ -5280,15 +4896,12 @@ function reorderLayerNode(draggedId, targetId) {
   normalizeLayerOrder(p);
   renderFormatPanel();
 }
-
 function isSectionNode(n) {
   return Boolean(n && (n.shape === "section" || n.isSection));
 }
-
 function getChildNodes(parentId, p = page()) {
   return p.nodes.filter((n) => n.parentId === parentId);
 }
-
 function getDescendantIds(parentId, p = page()) {
   const result = new Set();
   const stack = [parentId];
@@ -5303,7 +4916,6 @@ function getDescendantIds(parentId, p = page()) {
   }
   return result;
 }
-
 function getNodeDepth(n, p = page()) {
   let depth = 0;
   let cur = n;
@@ -5317,7 +4929,6 @@ function getNodeDepth(n, p = page()) {
   }
   return depth;
 }
-
 function setNodeParent(child, parentId) {
   if (!child) return false;
   if (!parentId) {
@@ -5338,7 +4949,6 @@ function setNodeParent(child, parentId) {
   }
   return true;
 }
-
 function fitSectionToChildren(sec) {
   if (!sec) return;
   const children = getChildNodes(sec.id);
@@ -5357,7 +4967,6 @@ function fitSectionToChildren(sec) {
   invalidateNodeEdges(sec.id);
   state.arrangeDirty = true;
 }
-
 function groupSelectedIntoSection() {
   const p = page();
   const targets = p.nodes.filter((n) => state.selectedNodeIds.has(n.id) && !n.hidden);
@@ -5398,7 +5007,6 @@ function groupSelectedIntoSection() {
   renderFormatPanel();
   showToast(`Grouped ${targets.length} item(s) into Section`);
 }
-
 function ungroupSelectedSection() {
   const p = page();
   const sel = nodeMap.get(state.selectedNodeId);
@@ -5426,7 +5034,6 @@ function ungroupSelectedSection() {
   renderFormatPanel();
   showToast("Ungrouped section");
 }
-
 function autoAttachNodeToSection(n) {
   if (!n || isSectionNode(n)) return;
   const p = page();
@@ -5436,7 +5043,6 @@ function autoAttachNodeToSection(n) {
     (s) => s.id !== n.id && !s.hidden && isSectionNode(s) && cx >= s.x && cx <= s.x + s.w && cy >= s.y && cy <= s.y + s.h
   );
   if (sections.length > 0) {
-    // Pick smallest-area section containing center
     sections.sort((a, b) => a.w * a.h - b.w * b.h);
     const targetSec = sections[0];
     if (n.parentId !== targetSec.id) {
@@ -5455,7 +5061,6 @@ function autoAttachNodeToSection(n) {
     }
   }
 }
-
 function undo() {
   const p = page();
   if (!p.undoStack.length) {
@@ -5471,7 +5076,6 @@ function undo() {
   renderFormatPanel();
   showToast("Undo");
 }
-
 function redo() {
   const p = page();
   if (!p.redoStack.length) {
@@ -5487,7 +5091,6 @@ function redo() {
   renderFormatPanel();
   showToast("Redo");
 }
-
 function runHierarchicalLayout() {
   const p = page();
   saveSnapshot();
@@ -5519,7 +5122,6 @@ function runHierarchicalLayout() {
   animateNodesToTargets(targets);
   showToast("Auto-Layout: Hierarchical");
 }
-
 function runGridLayout() {
   const p = page();
   saveSnapshot();
@@ -5537,7 +5139,6 @@ function runGridLayout() {
   animateNodesToTargets(targets);
   showToast("Auto-Layout: Grid");
 }
-
 function runRadialLayout() {
   const p = page();
   saveSnapshot();
@@ -5556,7 +5157,6 @@ function runRadialLayout() {
   animateNodesToTargets(targets);
   showToast("Auto-Layout: Radial");
 }
-
 function getLayoutTargetNodes() {
   const p = page();
   if (state.selectedNodeIds.size >= 2) {
@@ -5564,7 +5164,6 @@ function getLayoutTargetNodes() {
   }
   return p.nodes.filter((n) => !n.locked && !n.hidden);
 }
-
 function getNodesBoundingBox(nodes) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of nodes) {
@@ -5575,7 +5174,6 @@ function getNodesBoundingBox(nodes) {
   }
   return { minX, minY, maxX, maxY, cx: (minX + maxX) * 0.5, cy: (minY + maxY) * 0.5 };
 }
-
 function alignSelectedNodes(dir) {
   const nodes = getLayoutTargetNodes();
   if (nodes.length < 2) {
@@ -5599,7 +5197,6 @@ function alignSelectedNodes(dir) {
   animateNodesToTargets(targets);
   showToast(`Aligned ${dir}`);
 }
-
 function distributeSelectedNodes(axis) {
   const nodes = getLayoutTargetNodes();
   if (nodes.length < 3) {
@@ -5633,7 +5230,6 @@ function distributeSelectedNodes(axis) {
   animateNodesToTargets(targets);
   showToast(axis === "h" ? "Distributed Horizontally" : "Distributed Vertically");
 }
-
 function layoutOverlapStack() {
   const p = page();
   const nodes = getLayoutTargetNodes();
@@ -5661,7 +5257,6 @@ function layoutOverlapStack() {
   if (state.activeFormatTab === "layers") renderFormatPanel();
   showToast(`Layout: Overlap Stack (${nodes.length} items)`);
 }
-
 function layoutCascadePile() {
   const p = page();
   const nodes = getLayoutTargetNodes();
@@ -5689,7 +5284,6 @@ function layoutCascadePile() {
   if (state.activeFormatTab === "layers") renderFormatPanel();
   showToast(`Layout: Cascade Pile (${nodes.length} items)`);
 }
-
 let heapPileStep = 0;
 function layoutHeapPile() {
   const p = page();
@@ -5719,7 +5313,6 @@ function layoutHeapPile() {
   if (state.activeFormatTab === "layers") renderFormatPanel();
   showToast(`Layout: Heap / Pile Up (${nodes.length} items)`);
 }
-
 function layoutSeparateOverlaps() {
   const nodes = getLayoutTargetNodes();
   if (nodes.length < 2) {
@@ -5768,7 +5361,6 @@ function layoutSeparateOverlaps() {
   animateNodesToTargets(targets);
   showToast(`Separated Overlaps (${nodes.length} items)`);
 }
-
 function generateStressGraph(count) {
   const p = page();
   saveSnapshot();
@@ -5812,7 +5404,6 @@ function generateStressGraph(count) {
   renderFormatPanel();
   showToast(`Generated ${count}-Node Graph`);
 }
-
 document.getElementById("btn-undo").onclick = undo;
 document.getElementById("btn-redo").onclick = redo;
 document.getElementById("btn-copy").onclick = copySelection;
@@ -5824,7 +5415,6 @@ document.getElementById("btn-zoom-in").onclick = () => animateZoom(page().zoom *
 document.getElementById("btn-zoom-out").onclick = () => animateZoom(page().zoom / 1.25);
 document.getElementById("btn-fit-view").onclick = fitToScreen;
 document.getElementById("btn-layout-hier").onclick = runHierarchicalLayout;
-
 document.getElementById("select-edge-anim").onchange = (e) => {
   state.edgeAnimPreset = e.target.value;
   for (const eid of state.selectedEdgeIds) {
@@ -5860,7 +5450,6 @@ if (selectEdgeArrowEl) {
     renderFormatPanel();
   };
 }
-
 function getEdgeArrowMarkers(e) {
   if (e.arrow === "custom" || e.sourceArrow || e.targetArrow) {
     return {
@@ -5887,7 +5476,6 @@ function getEdgeArrowMarkers(e) {
       return { start: "none", end: "classic" };
   }
 }
-
 function downloadFile(filename, content, mime) {
   const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
   const a = document.createElement("a");
@@ -5895,7 +5483,6 @@ function downloadFile(filename, content, mime) {
   a.download = filename;
   a.click();
 }
-
 function getDiagramExportBounds(p, pad = 42) {
   if (!p.nodes.length) {
     return { minX: 0, minY: 0, width: 720, height: 420 };
@@ -5925,12 +5512,127 @@ function getDiagramExportBounds(p, pad = 42) {
     height: Math.max(160, Math.ceil(maxY - minY + pad * 2)),
   };
 }
-
+function renderEdgesPass(rctx, p, timeSec, lightCanvas, viewTL, viewBR, selectColor, interactive) {
+  rctx.font = '700 11px "Charcoal", "Chicago", "Geneva", sans-serif';
+  rctx.textAlign = "center";
+  const placedLabelBoxes = [];
+  for (let i = 0; i < p.edges.length; i++) {
+    const e = p.edges[i];
+    if (nodeMap.get(e.source)?.hidden || nodeMap.get(e.target)?.hidden) continue;
+    const geo = getEdgeGeometry(e);
+    if (!geo) continue;
+    if (
+      viewTL &&
+      viewBR &&
+      (geo.bounds.maxX < viewTL.x ||
+        geo.bounds.minX > viewBR.x ||
+        geo.bounds.maxY < viewTL.y ||
+        geo.bounds.minY > viewBR.y)
+    ) {
+      continue;
+    }
+    const isSelected = interactive && (state.selectedEdgeIds.has(e.id) || e.id === state.selectedEdgeId);
+    const strokeColor = isSelected ? selectColor : e.color || "#000080";
+    rctx.beginPath();
+    if (e.kind === "straight" || e.kind === "orthogonal" || e.kind === "smoothstep") {
+      rctx.moveTo(geo.samples[0].x, geo.samples[0].y);
+      for (let j = 1; j < geo.samples.length; j++) {
+        rctx.lineTo(geo.samples[j].x, geo.samples[j].y);
+      }
+    } else {
+      rctx.moveTo(geo.p0.x, geo.p0.y);
+      rctx.bezierCurveTo(geo.p1.x, geo.p1.y, geo.p2.x, geo.p2.y, geo.p3.x, geo.p3.y);
+    }
+    rctx.strokeStyle = strokeColor;
+    rctx.lineWidth = isSelected ? (e.width || 1.8) + 1.0 : e.width || 1.8;
+    if (e.anim === "ants") {
+      rctx.setLineDash([7, 5]);
+      rctx.lineDashOffset = -timeSec * 38;
+    }
+    rctx.stroke();
+    if (e.anim === "ants") {
+      rctx.setLineDash([]);
+      rctx.lineDashOffset = 0;
+    }
+    drawEdgeArrowheads(rctx, e, geo, strokeColor);
+    if (e.anim === "pulse") {
+      const speed = interactive ? 140 : geo.totalLen;
+      const spacing = geo.totalLen * 0.5;
+      const isTwoWay = (e.arrow || "one-way") === "two-way";
+      for (let pIdx = 0; pIdx < 2; pIdx++) {
+        const rawDist = ((timeSec * speed + pIdx * spacing) % geo.totalLen + geo.totalLen) % geo.totalLen;
+        const headDist = isTwoWay && pIdx === 1 ? geo.totalLen - rawDist : rawDist;
+        const dirSign = isTwoWay && pIdx === 1 ? 1 : -1;
+        const tail = getPointAtArcDistance(geo, headDist + dirSign * 6);
+        const head = getPointAtArcDistance(geo, headDist);
+        rctx.fillStyle = lightCanvas ? "rgba(0, 85, 204, 0.32)" : "rgba(56, 189, 248, 0.32)";
+        rctx.beginPath();
+        rctx.arc(tail.x, tail.y, 4.4, 0, Math.PI * 2);
+        rctx.fill();
+        rctx.fillStyle = lightCanvas ? strokeColor : "#e0f2fe";
+        rctx.beginPath();
+        rctx.arc(head.x, head.y, 3.3, 0, Math.PI * 2);
+        rctx.fill();
+      }
+    }
+    if (e.label && e.label.trim().length > 0) {
+      if (!e._labelGeo || e._labelVer !== state.geometryVersion || e._labelText !== e.label) {
+        const textW = Math.max(24, rctx.measureText(e.label).width + 14);
+        const lpt = resolveEdgeLabelPos(geo, textW, placedLabelBoxes, p.nodes);
+        e._labelGeo = { textW, x: lpt.x, y: lpt.y };
+        e._labelVer = state.geometryVersion;
+        e._labelText = e.label;
+      } else {
+        placedLabelBoxes.push({
+          x: e._labelGeo.x - e._labelGeo.textW * 0.5,
+          y: e._labelGeo.y - 9.5,
+          w: e._labelGeo.textW,
+          h: 19,
+        });
+      }
+      const { textW, x: lx, y: ly } = e._labelGeo;
+      rctx.fillStyle = lightCanvas ? "#ffffff" : "#161b26";
+      rctx.strokeStyle = strokeColor;
+      rctx.lineWidth = 1.25;
+      rctx.beginPath();
+      rctx.roundRect(lx - textW * 0.5, ly - 9.5, textW, 19, 3);
+      rctx.fill();
+      rctx.stroke();
+      rctx.fillStyle = lightCanvas ? "#000000" : "#f1f5f9";
+      rctx.fillText(e.label, lx, ly + 3.5);
+    }
+    if (interactive && e.id === state.selectedEdgeId) {
+      rctx.strokeStyle = "rgba(245, 130, 31, 0.55)";
+      rctx.setLineDash([3, 3]);
+      rctx.beginPath();
+      rctx.moveTo(geo.p0.x, geo.p0.y);
+      rctx.lineTo(geo.midPoint.x, geo.midPoint.y);
+      rctx.lineTo(geo.p3.x, geo.p3.y);
+      rctx.stroke();
+      rctx.setLineDash([]);
+      rctx.beginPath();
+      rctx.arc(geo.midPoint.x, geo.midPoint.y, 6, 0, Math.PI * 2);
+      rctx.fillStyle = "#fdb827";
+      rctx.strokeStyle = "#000000";
+      rctx.lineWidth = 1.6;
+      rctx.fill();
+      rctx.stroke();
+      for (const ep of [geo.p0, geo.p3]) {
+        rctx.beginPath();
+        rctx.arc(ep.x, ep.y, 5.5, 0, Math.PI * 2);
+        rctx.fillStyle = "#009ddc";
+        rctx.strokeStyle = "#000000";
+        rctx.lineWidth = 1.6;
+        rctx.fill();
+        rctx.stroke();
+      }
+    }
+  }
+}
 function renderDiagramFrameToContext(tctx, p, bounds, scale, timeSec) {
   const lightCanvas = isLightCanvasTheme();
   const wPx = Math.round(bounds.width * scale);
   const hPx = Math.round(bounds.height * scale);
-
   tctx.save();
   tctx.fillStyle =
     state.theme === "apple90s"
@@ -5941,11 +5643,8 @@ function renderDiagramFrameToContext(tctx, p, bounds, scale, timeSec) {
       ? "#ffffff"
       : "#0d121d";
   tctx.fillRect(0, 0, wPx, hPx);
-
   tctx.scale(scale, scale);
   tctx.translate(-bounds.minX, -bounds.minY);
-
-  // Subtle drafting grid dots
   if (state.gridStyle !== "off") {
     tctx.fillStyle = lightCanvas ? "#cbc7bc" : "#1e293b";
     const step = 20;
@@ -5957,82 +5656,7 @@ function renderDiagramFrameToContext(tctx, p, bounds, scale, timeSec) {
       }
     }
   }
-
-  tctx.font = '700 11px "Charcoal", "Chicago", "Geneva", sans-serif';
-  tctx.textAlign = "center";
-
-  // Draw Edges + Animated Flows (ants & pulse)
-  const exportLabelBoxes = [];
-  for (let i = 0; i < p.edges.length; i++) {
-    const e = p.edges[i];
-    if (nodeMap.get(e.source)?.hidden || nodeMap.get(e.target)?.hidden) continue;
-    const geo = getEdgeGeometry(e);
-    if (!geo) continue;
-    const strokeColor = e.color || "#000080";
-
-    tctx.beginPath();
-    if (e.kind === "straight" || e.kind === "orthogonal" || e.kind === "smoothstep") {
-      tctx.moveTo(geo.samples[0].x, geo.samples[0].y);
-      for (let j = 1; j < geo.samples.length; j++) {
-        tctx.lineTo(geo.samples[j].x, geo.samples[j].y);
-      }
-    } else {
-      tctx.moveTo(geo.p0.x, geo.p0.y);
-      tctx.bezierCurveTo(geo.p1.x, geo.p1.y, geo.p2.x, geo.p2.y, geo.p3.x, geo.p3.y);
-    }
-
-    tctx.strokeStyle = strokeColor;
-    tctx.lineWidth = e.width || 1.8;
-    if (e.anim === "ants") {
-      tctx.setLineDash([7, 5]);
-      tctx.lineDashOffset = -timeSec * 36;
-    }
-    tctx.stroke();
-    if (e.anim === "ants") {
-      tctx.setLineDash([]);
-      tctx.lineDashOffset = 0;
-    }
-
-    drawEdgeArrowheads(tctx, e, geo, strokeColor);
-
-    if (e.anim === "pulse") {
-      const spacing = geo.totalLen * 0.5;
-      const isTwoWay = (e.arrow || "one-way") === "two-way";
-      for (let pIdx = 0; pIdx < 2; pIdx++) {
-        const rawDist = ((timeSec * geo.totalLen + pIdx * spacing) % geo.totalLen + geo.totalLen) % geo.totalLen;
-        const headDist = isTwoWay && pIdx === 1 ? geo.totalLen - rawDist : rawDist;
-        const dirSign = isTwoWay && pIdx === 1 ? 1 : -1;
-        const tail = getPointAtArcDistance(geo, headDist + dirSign * 6);
-        const head = getPointAtArcDistance(geo, headDist);
-
-        tctx.fillStyle = lightCanvas ? "rgba(0, 85, 204, 0.35)" : "rgba(56, 189, 248, 0.35)";
-        tctx.beginPath();
-        tctx.arc(tail.x, tail.y, 4.4, 0, Math.PI * 2);
-        tctx.fill();
-
-        tctx.fillStyle = lightCanvas ? strokeColor : "#e0f2fe";
-        tctx.beginPath();
-        tctx.arc(head.x, head.y, 3.4, 0, Math.PI * 2);
-        tctx.fill();
-      }
-    }
-
-    if (e.label && e.label.trim().length > 0) {
-      const textW = Math.max(24, tctx.measureText(e.label).width + 14);
-      const lpt = resolveEdgeLabelPos(geo, textW, exportLabelBoxes, p.nodes);
-      tctx.fillStyle = lightCanvas ? "#ffffff" : "#161b26";
-      tctx.strokeStyle = strokeColor;
-      tctx.lineWidth = 1.25;
-      tctx.beginPath();
-      tctx.roundRect(lpt.x - textW * 0.5, lpt.y - 9.5, textW, 19, 3);
-      tctx.fill();
-      tctx.stroke();
-      tctx.fillStyle = lightCanvas ? "#000000" : "#f1f5f9";
-      tctx.fillText(e.label, lpt.x, lpt.y + 3.5);
-    }
-  }
-
-  // Draw Nodes + Custom Symbols + Icons + Images (per-layer order)
+  renderEdgesPass(tctx, p, timeSec, lightCanvas, null, null, "#0055cc", false);
   for (let i = 0; i < p.nodes.length; i++) {
     const n = p.nodes[i];
     if (n.hidden) continue;
@@ -6047,20 +5671,15 @@ function renderDiagramFrameToContext(tctx, p, bounds, scale, timeSec) {
       tctx.shadowBlur = 0;
     }
     drawNodeWithBorderStyle(tctx, n, false, n.stroke, 1.75, timeSec);
-
     tctx.shadowColor = "transparent";
     tctx.shadowOffsetX = 0;
     tctx.shadowOffsetY = 0;
     drawFittedNodeText(tctx, n, lightCanvas);
     tctx.restore();
   }
-
   tctx.restore();
 }
-
-// Self-Contained GIF89a Animated LZW Encoder (256-color table + Netscape 2.0 infinite loop)
 function encodeGif89a(rgbaFrames, width, height, delayCs = 6) {
-  // Build 256-color palette: 216 (6x6x6 RGB cube) + 40 grayscale/drafting steps
   const palette = new Uint8Array(256 * 3);
   let pIdx = 0;
   for (let r = 0; r < 6; r++) {
@@ -6073,7 +5692,6 @@ function encodeGif89a(rgbaFrames, width, height, delayCs = 6) {
       }
     }
   }
-  // Add warm Macintosh paper "#f5f3ec" at index 216 and grays for the rest
   palette[216 * 3] = 245;
   palette[216 * 3 + 1] = 243;
   palette[216 * 3 + 2] = 236;
@@ -6083,7 +5701,6 @@ function encodeGif89a(rgbaFrames, width, height, delayCs = 6) {
     palette[i * 3 + 1] = v;
     palette[i * 3 + 2] = v;
   }
-
   const out = [];
   const writeByte = (b) => out.push(b & 0xff);
   const writeShort = (s) => {
@@ -6092,43 +5709,33 @@ function encodeGif89a(rgbaFrames, width, height, delayCs = 6) {
   const writeAscii = (str) => {
     for (let i = 0; i < str.length; i++) out.push(str.charCodeAt(i));
   };
-
-  // GIF89a Header & Logical Screen Descriptor
   writeAscii("GIF89a");
   writeShort(width);
   writeShort(height);
-  writeByte(0xf7); // Global Color Table Flag (1), Color Res (7), Sort (0), Size of GCT (7 => 256 colors)
-  writeByte(0); // Background color
-  writeByte(0); // Pixel aspect ratio
+  writeByte(0xf7);
+  writeByte(0);
+  writeByte(0);
   for (let i = 0; i < palette.length; i++) writeByte(palette[i]);
-
-  // Netscape 2.0 Application Extension for Infinite Looping
   writeByte(0x21);
   writeByte(0xff);
   writeByte(11);
   writeAscii("NETSCAPE2.0");
   writeByte(3);
   writeByte(1);
-  writeShort(0); // Loop forever
+  writeShort(0);
   writeByte(0);
-
   const numPixels = width * height;
   const indexedPixels = new Uint8Array(numPixels);
-
-  // LZW Compression for 8-bit minCodeSize
   function lzwEncodeFrame(pixels) {
     const minCodeSize = 8;
-    const clearCode = 1 << minCodeSize; // 256
-    const eoiCode = clearCode + 1; // 257
-
+    const clearCode = 1 << minCodeSize;
+    const eoiCode = clearCode + 1;
     let codeSize = minCodeSize + 1;
     let nextCode = eoiCode + 1;
     const dict = new Int32Array(4096 * 256).fill(-1);
-
     let bitBuf = 0;
     let bitCount = 0;
     const subBlock = [];
-
     const flushSubBlock = () => {
       if (subBlock.length > 0) {
         writeByte(subBlock.length);
@@ -6136,7 +5743,6 @@ function encodeGif89a(rgbaFrames, width, height, delayCs = 6) {
         subBlock.length = 0;
       }
     };
-
     const emitCode = (code) => {
       bitBuf |= code << bitCount;
       bitCount += codeSize;
@@ -6147,10 +5753,8 @@ function encodeGif89a(rgbaFrames, width, height, delayCs = 6) {
         bitCount -= 8;
       }
     };
-
     writeByte(minCodeSize);
     emitCode(clearCode);
-
     let prefix = pixels[0];
     for (let i = 1; i < pixels.length; i++) {
       const k = pixels[i];
@@ -6180,11 +5784,9 @@ function encodeGif89a(rgbaFrames, width, height, delayCs = 6) {
       subBlock.push(bitBuf & 0xff);
     }
     flushSubBlock();
-    writeByte(0); // Block terminator
+    writeByte(0);
   }
-
   for (const rgba of rgbaFrames) {
-    // Graphic Control Extension
     writeByte(0x21);
     writeByte(0xf9);
     writeByte(4);
@@ -6192,16 +5794,12 @@ function encodeGif89a(rgbaFrames, width, height, delayCs = 6) {
     writeShort(delayCs);
     writeByte(0);
     writeByte(0);
-
-    // Image Descriptor
     writeByte(0x2c);
     writeShort(0);
     writeShort(0);
     writeShort(width);
     writeShort(height);
     writeByte(0x00);
-
-    // Map RGBA to 256-color palette
     for (let p = 0, j = 0; p < numPixels; p++, j += 4) {
       const r = rgba[j];
       const g = rgba[j + 1];
@@ -6215,14 +5813,11 @@ function encodeGif89a(rgbaFrames, width, height, delayCs = 6) {
         indexedPixels[p] = ri * 36 + gi * 6 + bi;
       }
     }
-
     lzwEncodeFrame(indexedPixels);
   }
-
-  writeByte(0x3b); // GIF Trailer
+  writeByte(0x3b);
   return new Uint8Array(out);
 }
-
 function exportAnimatedGif() {
   const p = page();
   const bounds = getDiagramExportBounds(p, 36);
@@ -6230,12 +5825,10 @@ function exportAnimatedGif() {
   const scale = Math.min(1.0, maxDim / Math.max(bounds.width, bounds.height));
   const width = Math.max(120, Math.round(bounds.width * scale));
   const height = Math.max(90, Math.round(bounds.height * scale));
-
   const offCanvas = document.createElement("canvas");
   offCanvas.width = width;
   offCanvas.height = height;
   const offCtx = offCanvas.getContext("2d", { willReadFrequently: true });
-
   const frameCount = 16;
   const rgbaFrames = [];
   for (let f = 0; f < frameCount; f++) {
@@ -6243,22 +5836,19 @@ function exportAnimatedGif() {
     renderDiagramFrameToContext(offCtx, p, bounds, scale, tSec);
     rgbaFrames.push(offCtx.getImageData(0, 0, width, height).data);
   }
-
   const gifBytes = encodeGif89a(rgbaFrames, width, height, 6);
   const blob = new Blob([gifBytes], { type: "image/gif" });
   downloadFile("diagram-animated.gif", blob, "image/gif");
   showToast(`Exported diagram-animated.gif (${frameCount} frames, ${Math.round(gifBytes.byteLength / 1024)} KB)`);
 }
-
 function exportPngImage() {
   const p = page();
   const bounds = getDiagramExportBounds(p, 40);
-  const scale = 2.0; // High-DPI 2x PNG
+  const scale = 2.0;
   const offCanvas = document.createElement("canvas");
   offCanvas.width = Math.round(bounds.width * scale);
   offCanvas.height = Math.round(bounds.height * scale);
   const offCtx = offCanvas.getContext("2d");
-
   renderDiagramFrameToContext(offCtx, p, bounds, scale, 0.25);
   offCanvas.toBlob((blob) => {
     if (blob) {
@@ -6267,7 +5857,6 @@ function exportPngImage() {
     }
   }, "image/png");
 }
-
 function escapeXmlAttr(str) {
   return String(str || "")
     .replace(/&/g, "&amp;")
@@ -6275,7 +5864,6 @@ function escapeXmlAttr(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
-
 function exportDrawioXml() {
   let xml = `<mxfile host="RustFlowDraw" version="1.0.0">\n`;
   for (const p of state.pages) {
@@ -6332,7 +5920,6 @@ function exportDrawioXml() {
   downloadFile("diagram.drawio", xml, "application/xml");
   showToast("Saved diagram.drawio");
 }
-
 function exportAnimatedSvg() {
   const p = page();
   const bounds = getDiagramExportBounds(p, 40);
@@ -6383,20 +5970,14 @@ function exportAnimatedSvg() {
   downloadFile("diagram-animated.svg", svg, "image/svg+xml");
   showToast("Exported diagram-animated.svg");
 }
-
 const btnExportGif = document.getElementById("btn-export-gif");
 if (btnExportGif) btnExportGif.onclick = exportAnimatedGif;
 const btnExportPng = document.getElementById("btn-export-png");
 if (btnExportPng) btnExportPng.onclick = exportPngImage;
-
-// ============================================================================
-// CUSTOM SYMBOL STUDIO & EXTERNAL SYMBOL IMPORTER
-// ============================================================================
 const symbolStudioOverlay = document.getElementById("symbol-studio-overlay");
 const symDrawCanvas = document.getElementById("sym-draw-canvas");
 const symDrawCtx = symDrawCanvas ? symDrawCanvas.getContext("2d") : null;
 const symbolFileInput = document.getElementById("symbol-file-input");
-
 const studioState = {
   tool: "path",
   paths: JSON.parse(JSON.stringify(SYMBOL_STUDIO_TEMPLATES.redis.paths)),
@@ -6404,38 +5985,30 @@ const studioState = {
   importedImgUrl: "",
   svgPath: "",
 };
-
 function renderStudioPreviewCanvas() {
   if (!symDrawCtx || !symDrawCanvas) return;
   const w = symDrawCanvas.width;
   const h = symDrawCanvas.height;
   symDrawCtx.fillStyle = "#f5f3ec";
   symDrawCtx.fillRect(0, 0, w, h);
-
-  // Subtle drafting grid
   symDrawCtx.fillStyle = "#cbc7bc";
   for (let gx = 16; gx < w; gx += 16) {
     for (let gy = 16; gy < h; gy += 16) {
       symDrawCtx.fillRect(gx, gy, 1.2, 1.2);
     }
   }
-
   const fillCol = document.getElementById("sym-fill")?.value || "#ffffff";
   const strokeCol = document.getElementById("sym-stroke")?.value || "#000080";
   const padX = 24;
   const padY = 16;
   const boxW = w - padX * 2;
   const boxH = h - padY * 2;
-
-  // Guide bounding frame
   symDrawCtx.save();
   symDrawCtx.strokeStyle = "rgba(0, 0, 128, 0.2)";
   symDrawCtx.setLineDash([4, 4]);
   symDrawCtx.strokeRect(padX, padY, boxW, boxH);
   symDrawCtx.restore();
-
   const allPaths = studioState.activeStroke ? [...studioState.paths, studioState.activeStroke] : studioState.paths;
-
   if (studioState.importedImgUrl) {
     symDrawCtx.fillStyle = fillCol;
     symDrawCtx.strokeStyle = strokeCol;
@@ -6466,13 +6039,11 @@ function renderStudioPreviewCanvas() {
       symDrawCtx.stroke(p2d);
       symDrawCtx.restore();
     } catch {
-      // Ignore invalid SVG path while typing
     }
   } else if (allPaths.length > 0) {
     symDrawCtx.lineWidth = 2.2;
     drawNormalizedCustomPaths(symDrawCtx, padX, padY, boxW, boxH, allPaths, fillCol, strokeCol);
   }
-
   const countEl = document.getElementById("sym-stroke-count");
   if (countEl) {
     countEl.textContent = studioState.importedImgUrl
@@ -6482,18 +6053,15 @@ function renderStudioPreviewCanvas() {
       : `${studioState.paths.length} paths`;
   }
 }
-
 function openSymbolStudioModal() {
   if (!symbolStudioOverlay) return;
   symbolStudioOverlay.classList.add("open");
   renderStudioPreviewCanvas();
 }
-
 function closeSymbolStudioModal() {
   if (!symbolStudioOverlay) return;
   symbolStudioOverlay.classList.remove("open");
 }
-
 document.getElementById("btn-open-symbol-studio")?.addEventListener("click", openSymbolStudioModal);
 document.getElementById("btn-create-symbol")?.addEventListener("click", openSymbolStudioModal);
 document.getElementById("btn-close-symbol-studio")?.addEventListener("click", closeSymbolStudioModal);
@@ -6501,8 +6069,6 @@ document.getElementById("btn-sym-cancel")?.addEventListener("click", closeSymbol
 symbolStudioOverlay?.addEventListener("click", (e) => {
   if (e.target === symbolStudioOverlay) closeSymbolStudioModal();
 });
-
-// Interactive Vector Drawing on #sym-draw-canvas
 if (symDrawCanvas) {
   const toNormPt = (e) => {
     const r = symDrawCanvas.getBoundingClientRect();
@@ -6514,7 +6080,6 @@ if (symDrawCanvas) {
     const ny = Math.max(0, Math.min(1, (e.clientY - r.top - padY) / boxH));
     return { x: Number(nx.toFixed(3)), y: Number(ny.toFixed(3)) };
   };
-
   symDrawCanvas.addEventListener("mousedown", (e) => {
     studioState.importedImgUrl = "";
     studioState.svgPath = "";
@@ -6525,7 +6090,6 @@ if (symDrawCanvas) {
     };
     renderStudioPreviewCanvas();
   });
-
   window.addEventListener("mousemove", (e) => {
     if (!studioState.activeStroke) return;
     const pt = toNormPt(e);
@@ -6540,7 +6104,6 @@ if (symDrawCanvas) {
     }
     renderStudioPreviewCanvas();
   });
-
   window.addEventListener("mouseup", () => {
     if (!studioState.activeStroke) return;
     studioState.paths.push(studioState.activeStroke);
@@ -6548,7 +6111,6 @@ if (symDrawCanvas) {
     renderStudioPreviewCanvas();
   });
 }
-
 document.querySelectorAll(".sym-tool-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".sym-tool-btn").forEach((b) => b.classList.remove("active"));
@@ -6556,12 +6118,10 @@ document.querySelectorAll(".sym-tool-btn").forEach((btn) => {
     studioState.tool = btn.getAttribute("data-tool") || "path";
   });
 });
-
 document.getElementById("btn-sym-undo")?.addEventListener("click", () => {
   studioState.paths.pop();
   renderStudioPreviewCanvas();
 });
-
 document.getElementById("btn-sym-clear")?.addEventListener("click", () => {
   studioState.paths = [];
   studioState.importedImgUrl = "";
@@ -6572,7 +6132,6 @@ document.getElementById("btn-sym-clear")?.addEventListener("click", () => {
   if (urlIn) urlIn.value = "";
   renderStudioPreviewCanvas();
 });
-
 document.getElementById("sym-preset-template")?.addEventListener("change", (e) => {
   const key = e.target.value;
   const tpl = SYMBOL_STUDIO_TEMPLATES[key];
@@ -6589,10 +6148,8 @@ document.getElementById("sym-preset-template")?.addEventListener("change", (e) =
   renderStudioPreviewCanvas();
   e.target.value = "";
 });
-
 document.getElementById("sym-fill")?.addEventListener("input", renderStudioPreviewCanvas);
 document.getElementById("sym-stroke")?.addEventListener("input", renderStudioPreviewCanvas);
-
 document.getElementById("sym-svg-input")?.addEventListener("input", (e) => {
   const val = e.target.value.trim();
   if (!val) {
@@ -6613,7 +6170,6 @@ document.getElementById("sym-svg-input")?.addEventListener("input", (e) => {
   }
   renderStudioPreviewCanvas();
 });
-
 document.getElementById("sym-url-input")?.addEventListener("input", (e) => {
   const val = e.target.value.trim();
   studioState.importedImgUrl = val;
@@ -6623,8 +6179,6 @@ document.getElementById("sym-url-input")?.addEventListener("input", (e) => {
   }
   renderStudioPreviewCanvas();
 });
-
-// Save Custom Symbol to Left Palette & Insert onto Canvas
 document.getElementById("btn-sym-save")?.addEventListener("click", () => {
   const label = (document.getElementById("sym-name")?.value || "Custom Symbol").trim();
   const category = document.getElementById("sym-category")?.value || "Custom Symbols";
@@ -6632,7 +6186,6 @@ document.getElementById("btn-sym-save")?.addEventListener("click", () => {
   const h = Math.max(40, Math.min(300, Number(document.getElementById("sym-h")?.value) || 84));
   const defaultFill = document.getElementById("sym-fill")?.value || "#ffffff";
   const defaultStroke = document.getElementById("sym-stroke")?.value || "#000080";
-
   const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "_") + "_" + (Date.now() % 10000);
   const id = `custom.${slug}`;
   const customItem = {
@@ -6654,22 +6207,17 @@ document.getElementById("btn-sym-save")?.addEventListener("click", () => {
     imgUrl: studioState.importedImgUrl || "",
     isCustom: true,
   };
-
   registerCustomStencil(customItem, true);
   renderPalette(document.getElementById("palette-search")?.value || "");
   addStencilToCanvasCenter(customItem);
   closeSymbolStudioModal();
   showToast(`Saved "${label}" to ${category}`);
 });
-
-// Export all custom symbols as a shareable .json pack
 document.getElementById("btn-sym-export-pack")?.addEventListener("click", () => {
   const customList = STENCILS.filter((s) => s.isCustom);
   downloadFile("rustflow-custom-symbols.json", JSON.stringify(customList, null, 2), "application/json");
   showToast(`Exported ${customList.length} custom symbol(s)`);
 });
-
-// Import Symbols from File (.svg, .png, .jpg, .webp, .json)
 let importFromStudioModal = false;
 document.getElementById("btn-import-symbol-file")?.addEventListener("click", () => {
   importFromStudioModal = false;
@@ -6685,12 +6233,10 @@ document.getElementById("btn-sym-upload-file")?.addEventListener("click", () => 
     symbolFileInput.click();
   }
 });
-
 if (symbolFileInput) {
   symbolFileInput.addEventListener("change", (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-
     for (const file of files) {
       const baseName = file.name.replace(/\.[^.]+$/, "");
       if (file.name.endsWith(".json")) {
@@ -6753,15 +6299,10 @@ if (symbolFileInput) {
     }
   });
 }
-
-// ============================================================================
-// STARTUP WELCOME DIALOG: CREATE NEW EMPTY SPACE OR LOAD FROM FILE (.DRAWIO / .JSON)
-// ============================================================================
 const welcomeOverlay = document.getElementById("welcome-overlay");
 const welcomeDocNameInput = document.getElementById("welcome-doc-name");
 const welcomeDropzone = document.getElementById("welcome-dropzone");
 const diagramFileInput = document.getElementById("diagram-file-input");
-
 function openWelcomeModal() {
   if (!welcomeOverlay) return;
   welcomeOverlay.classList.add("open");
@@ -6770,12 +6311,10 @@ function openWelcomeModal() {
     welcomeDocNameInput.select();
   }
 }
-
 function closeWelcomeModal() {
   if (!welcomeOverlay) return;
   welcomeOverlay.classList.remove("open");
 }
-
 function createEmptyWorkspace(workspaceName = "Untitled Diagram") {
   const cleanName = (workspaceName || "Untitled Diagram").trim() || "Untitled Diagram";
   state.pages = [
@@ -6799,7 +6338,6 @@ function createEmptyWorkspace(workspaceName = "Untitled Diagram") {
   closeWelcomeModal();
   showToast(`Created Empty Workspace "${cleanName}"`);
 }
-
 function loadSampleArchitectureWorkspace() {
   state.pages = createDogfoodPages();
   state.activePageId = 1;
@@ -6811,14 +6349,12 @@ function loadSampleArchitectureWorkspace() {
   closeWelcomeModal();
   showToast("Loaded Sample Architecture Workspace");
 }
-
 function triggerOpenDiagramFile() {
   if (diagramFileInput) {
     diagramFileInput.value = "";
     diagramFileInput.click();
   }
 }
-
 function parseStyleMap(styleStr = "") {
   const map = {};
   for (const part of String(styleStr).split(";")) {
@@ -6827,23 +6363,19 @@ function parseStyleMap(styleStr = "") {
   }
   return map;
 }
-
 function parseDrawioXmlToPages(xmlText, fallbackName = "Imported Diagram") {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlText, "text/xml");
   const diagramEls = Array.from(doc.querySelectorAll("diagram"));
   const roots = diagramEls.length > 0 ? diagramEls : [doc.documentElement];
-
   const loadedPages = [];
   let pageIdCounter = 1;
-
   for (const diagEl of roots) {
     const pageName = diagEl.getAttribute("name") || `Page-${pageIdCounter}: ${fallbackName}`;
     const cells = Array.from(diagEl.querySelectorAll("mxCell"));
     const nodes = [];
     const edges = [];
     const cellIdToNodeId = new Map();
-
     for (const cell of cells) {
       const rawId = cell.getAttribute("id") || "";
       if (rawId === "0" || rawId === "1") continue;
@@ -6851,7 +6383,6 @@ function parseDrawioXmlToPages(xmlText, fallbackName = "Imported Diagram") {
       const isEdge = cell.getAttribute("edge") === "1";
       const styleMap = parseStyleMap(cell.getAttribute("style") || "");
       const value = cell.getAttribute("value") || "";
-
       if (isVertex) {
         const geo = cell.querySelector("mxGeometry");
         const numId = ++state.nextId;
@@ -6923,7 +6454,6 @@ function parseDrawioXmlToPages(xmlText, fallbackName = "Imported Diagram") {
         });
       }
     }
-
     const resolvedEdges = [];
     for (const nd of nodes) {
       if (nd._rawParentId) {
@@ -6952,7 +6482,6 @@ function parseDrawioXmlToPages(xmlText, fallbackName = "Imported Diagram") {
         });
       }
     }
-
     loadedPages.push({
       id: pageIdCounter++,
       name: pageName,
@@ -6964,10 +6493,8 @@ function parseDrawioXmlToPages(xmlText, fallbackName = "Imported Diagram") {
       redoStack: [],
     });
   }
-
   return loadedPages;
 }
-
 function loadDiagramFromFile(file) {
   if (!file) return;
   const reader = new FileReader();
@@ -7006,12 +6533,10 @@ function loadDiagramFromFile(file) {
       } else {
         loadedPages = parseDrawioXmlToPages(content, baseName);
       }
-
       if (!loadedPages.length) {
         showToast(`Could not parse diagram from ${file.name}`);
         return;
       }
-
       for (const pg of loadedPages) {
         for (const n of pg.nodes) {
           if (n.id >= state.nextId) state.nextId = n.id + 10;
@@ -7021,7 +6546,6 @@ function loadDiagramFromFile(file) {
           if (ed.id >= state.nextId) state.nextId = ed.id + 10;
         }
       }
-
       state.pages = loadedPages;
       state.activePageId = loadedPages[0].id;
       setSingleNodeSelection(loadedPages[0].nodes[0]?.id || null);
@@ -7038,7 +6562,6 @@ function loadDiagramFromFile(file) {
   };
   reader.readAsText(file);
 }
-
 document.getElementById("btn-new-empty")?.addEventListener("click", () => {
   openWelcomeModal();
 });
@@ -7055,14 +6578,12 @@ welcomeDocNameInput?.addEventListener("keydown", (e) => {
 });
 document.getElementById("btn-welcome-load-file")?.addEventListener("click", triggerOpenDiagramFile);
 document.getElementById("btn-welcome-sample")?.addEventListener("click", loadSampleArchitectureWorkspace);
-
 if (diagramFileInput) {
   diagramFileInput.addEventListener("change", (e) => {
     const file = e.target.files?.[0];
     if (file) loadDiagramFromFile(file);
   });
 }
-
 if (welcomeDropzone) {
   welcomeDropzone.addEventListener("click", triggerOpenDiagramFile);
   welcomeDropzone.addEventListener("dragover", (e) => {
@@ -7079,29 +6600,21 @@ if (welcomeDropzone) {
     if (file) loadDiagramFromFile(file);
   });
 }
-
-// ============================================================================
-// COMMAND PALETTE (Ctrl+K) & SHORTCUTS MODAL (?)
-// ============================================================================
 const cmdOverlay = document.getElementById("cmd-overlay");
 const cmdInput = document.getElementById("cmd-input");
 const cmdList = document.getElementById("cmd-list");
 const shortcutsOverlay = document.getElementById("shortcuts-overlay");
-
 function openShortcutsModal() {
   shortcutsOverlay.classList.add("open");
 }
-
 function closeShortcutsModal() {
   shortcutsOverlay.classList.remove("open");
 }
-
 document.getElementById("btn-shortcuts").onclick = openShortcutsModal;
 document.getElementById("btn-close-shortcuts").onclick = closeShortcutsModal;
 shortcutsOverlay.addEventListener("click", (e) => {
   if (e.target === shortcutsOverlay) closeShortcutsModal();
 });
-
 const COMMANDS = [
   { label: "Workspace: Create New Empty Space", shortcut: "⇧⌘N", run: () => createEmptyWorkspace("Untitled Diagram") },
   { label: "Workspace: Load Diagram from File (.drawio / .json)", shortcut: "⌘O", run: triggerOpenDiagramFile },
@@ -7139,18 +6652,15 @@ const COMMANDS = [
   { label: "Benchmark: Generate 100-Node Graph", shortcut: "Extras", run: () => generateStressGraph(100) },
   ...STENCILS.map((s) => ({ label: `Add ${s.label}`, shortcut: s.category, run: () => addStencilToCanvasCenter(s) })),
 ];
-
 function openCommandPalette() {
   cmdOverlay.classList.add("open");
   cmdInput.value = "";
   renderCommandList("");
   cmdInput.focus();
 }
-
 function closeCommandPalette() {
   cmdOverlay.classList.remove("open");
 }
-
 function renderCommandList(query) {
   cmdList.innerHTML = "";
   const q = query.trim().toLowerCase();
@@ -7166,39 +6676,30 @@ function renderCommandList(query) {
     cmdList.appendChild(row);
   }
 }
-
 document.getElementById("btn-cmd-palette").onclick = openCommandPalette;
 cmdInput.addEventListener("input", (e) => renderCommandList(e.target.value));
 cmdOverlay.addEventListener("click", (e) => {
   if (e.target === cmdOverlay) closeCommandPalette();
 });
-
-// ============================================================================
-// GLOBAL KEYBOARD SHORTCUT DISPATCHER
-// ============================================================================
 window.addEventListener("keydown", (e) => {
   const mod = e.ctrlKey || e.metaKey;
   const key = e.key.toLowerCase();
-
   if (mod && key === "k") {
     e.preventDefault();
     if (cmdOverlay.classList.contains("open")) closeCommandPalette();
     else openCommandPalette();
     return;
   }
-
   if (mod && key === "o") {
     e.preventDefault();
     triggerOpenDiagramFile();
     return;
   }
-
   if (mod && e.shiftKey && key === "n") {
     e.preventDefault();
     createEmptyWorkspace("Untitled Diagram");
     return;
   }
-
   if (e.key === "Escape") {
     closeCanvasContextMenu();
     closeCommandPalette();
@@ -7212,18 +6713,15 @@ window.addEventListener("keydown", (e) => {
     clearSelection();
     return;
   }
-
   if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") {
     return;
   }
-
   if (e.key === "?" || e.key === "F1") {
     e.preventDefault();
     if (shortcutsOverlay.classList.contains("open")) closeShortcutsModal();
     else openShortcutsModal();
     return;
   }
-
   if (e.key === "F2" || (e.key === "Enter" && !mod)) {
     if (state.selectedNodeId || state.selectedEdgeId) {
       e.preventDefault();
@@ -7231,7 +6729,6 @@ window.addEventListener("keydown", (e) => {
       return;
     }
   }
-
   if (mod) {
     if (key === "a") {
       e.preventDefault();
@@ -7291,13 +6788,11 @@ window.addEventListener("keydown", (e) => {
     }
     return;
   }
-
   if (e.key === "Delete" || e.key === "Backspace") {
     e.preventDefault();
     deleteSelected(true);
     return;
   }
-
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
     if (!state.selectedNodeIds.size) return;
     e.preventDefault();
@@ -7317,21 +6812,15 @@ window.addEventListener("keydown", (e) => {
     invalidateSelectedNodesEdges();
   }
 });
-
-// ============================================================================
-// 3. MACRO-TILE OFFSCREEN GRID PATTERN & 60-144 FPS RENDERER
-// ============================================================================
 function drawInfiniteGridFast(p) {
   if (state.gridStyle === "off") return;
   const step = Math.round(state.gridSize * p.zoom);
   if (step < 6) return;
-
   const key = `${state.theme}:${state.gridStyle}:${step}`;
   if (key !== cachedGridKey) {
     cachedGridKey = key;
     const reps = Math.max(1, Math.round(240 / step));
     const macro = step * reps;
-
     const tile = document.createElement("canvas");
     tile.width = macro;
     tile.height = macro;
@@ -7344,7 +6833,6 @@ function drawInfiniteGridFast(p) {
         : state.theme === "contrast"
         ? "#000000"
         : "#1e293b";
-
     if (state.gridStyle === "dots") {
       tctx.fillStyle = color;
       for (let gx = 0; gx < macro; gx += step) {
@@ -7366,7 +6854,6 @@ function drawInfiniteGridFast(p) {
     }
     cachedGridPattern = ctx.createPattern(tile, "repeat");
   }
-
   if (cachedGridPattern) {
     ctx.save();
     const ox = ((p.pan.x % step) + step) % step;
@@ -7377,7 +6864,6 @@ function drawInfiniteGridFast(p) {
     ctx.restore();
   }
 }
-
 function drawArrowhead(ctx, fromPt, toPt, color, markerType = "classic") {
   if (!markerType || markerType === "none") return;
   const angle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x);
@@ -7388,7 +6874,6 @@ function drawArrowhead(ctx, fromPt, toPt, color, markerType = "classic") {
   ctx.lineWidth = 1.8;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
-
   if (markerType === "open") {
     ctx.beginPath();
     ctx.moveTo(toPt.x - headLen * Math.cos(angle - Math.PI / 6), toPt.y - headLen * Math.sin(angle - Math.PI / 6));
@@ -7422,7 +6907,6 @@ function drawArrowhead(ctx, fromPt, toPt, color, markerType = "classic") {
     ctx.fill();
     ctx.stroke();
   } else {
-    // "classic" filled triangle
     ctx.beginPath();
     ctx.moveTo(toPt.x, toPt.y);
     ctx.lineTo(toPt.x - headLen * Math.cos(angle - Math.PI / 6.5), toPt.y - headLen * Math.sin(angle - Math.PI / 6.5));
@@ -7432,7 +6916,6 @@ function drawArrowhead(ctx, fromPt, toPt, color, markerType = "classic") {
   }
   ctx.restore();
 }
-
 function drawEdgeArrowheads(ctx, e, geo, strokeColor) {
   const markers = getEdgeArrowMarkers(e);
   if (markers.end && markers.end !== "none") {
@@ -7444,20 +6927,16 @@ function drawEdgeArrowheads(ctx, e, geo, strokeColor) {
     drawArrowhead(ctx, nextPt, geo.p0, strokeColor, markers.start);
   }
 }
-
 let frameCounter = 0;
 let lastActivityAt = performance.now();
 let forceRenderFrame = true;
-
 function wakeRender() {
   lastActivityAt = performance.now();
   forceRenderFrame = true;
 }
-
 for (const evName of ["mousedown", "mousemove", "mouseup", "wheel", "touchstart", "touchmove", "touchend", "keydown", "input", "change", "click", "resize"]) {
   window.addEventListener(evName, wakeRender, { passive: true, capture: true });
 }
-
 function pageHasLiveAnimations(p) {
   if (
     state.layoutAnim ||
@@ -7483,7 +6962,6 @@ function pageHasLiveAnimations(p) {
   }
   return false;
 }
-
 function renderLoop(timestamp) {
   const p = page();
   if (!forceRenderFrame && timestamp - lastActivityAt > 250 && !pageHasLiveAnimations(p)) {
@@ -7492,15 +6970,12 @@ function renderLoop(timestamp) {
     return;
   }
   forceRenderFrame = false;
-
   const dt = Math.max(1, timestamp - state.lastFrameTime);
   state.fps = Math.round(state.fps * 0.92 + (1000 / dt) * 0.08);
   state.lastFrameTime = timestamp;
-
   const timeSec = timestamp * 0.001;
   const lightCanvas = isLightCanvasTheme();
   const selectColor = state.theme === "apple90s" ? "#0055cc" : state.theme === "contrast" ? "#000000" : "#38bdf8";
-
   if (state.layoutAnim) {
     const elapsed = timestamp - state.layoutAnim.startTime;
     const rawT = Math.min(1, elapsed / state.layoutAnim.duration);
@@ -7516,7 +6991,6 @@ function renderLoop(timestamp) {
       renderFormatPanel();
     }
   }
-
   if (state.viewAnim) {
     const elapsed = timestamp - state.viewAnim.startTime;
     const rawT = Math.min(1, elapsed / state.viewAnim.duration);
@@ -7530,7 +7004,6 @@ function renderLoop(timestamp) {
       state.viewAnim = null;
     }
   }
-
   ctx.setTransform(canvasDpr, 0, 0, canvasDpr, 0, 0);
   ctx.fillStyle =
     state.theme === "apple90s"
@@ -7541,16 +7014,12 @@ function renderLoop(timestamp) {
       ? "#ffffff"
       : "#0d121d";
   ctx.fillRect(0, 0, canvasCssW, canvasCssH);
-
   drawInfiniteGridFast(p);
-
   const viewTL = screenToWorld(0, 0);
   const viewBR = screenToWorld(canvasCssW, canvasCssH);
-
   ctx.save();
   ctx.translate(p.pan.x, p.pan.y);
   ctx.scale(p.zoom, p.zoom);
-
   if (state.smartGuides.length) {
     ctx.strokeStyle = "#e03a3e";
     ctx.lineWidth = 1.2 / p.zoom;
@@ -7569,142 +7038,7 @@ function renderLoop(timestamp) {
     ctx.stroke();
     ctx.setLineDash([]);
   }
-
-  ctx.font = '700 11px "Charcoal", "Chicago", "Geneva", sans-serif';
-  ctx.textAlign = "center";
-
-  const placedEdgeLabelBoxes = [];
-  for (let i = 0; i < p.edges.length; i++) {
-    const e = p.edges[i];
-    if (nodeMap.get(e.source)?.hidden || nodeMap.get(e.target)?.hidden) continue;
-    const geo = getEdgeGeometry(e);
-    if (!geo) continue;
-    if (
-      geo.bounds.maxX < viewTL.x ||
-      geo.bounds.minX > viewBR.x ||
-      geo.bounds.maxY < viewTL.y ||
-      geo.bounds.minY > viewBR.y
-    ) {
-      continue;
-    }
-
-    const isSelected = state.selectedEdgeIds.has(e.id) || e.id === state.selectedEdgeId;
-    const strokeColor = isSelected ? selectColor : e.color || "#000080";
-
-    ctx.beginPath();
-    if (e.kind === "straight" || e.kind === "orthogonal" || e.kind === "smoothstep") {
-      ctx.moveTo(geo.samples[0].x, geo.samples[0].y);
-      for (let j = 1; j < geo.samples.length; j++) {
-        ctx.lineTo(geo.samples[j].x, geo.samples[j].y);
-      }
-    } else {
-      ctx.moveTo(geo.p0.x, geo.p0.y);
-      ctx.bezierCurveTo(geo.p1.x, geo.p1.y, geo.p2.x, geo.p2.y, geo.p3.x, geo.p3.y);
-    }
-
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = isSelected ? (e.width || 1.8) + 1.0 : e.width || 1.8;
-
-    if (e.anim === "ants") {
-      ctx.setLineDash([7, 5]);
-      ctx.lineDashOffset = -timeSec * 38;
-    }
-    ctx.stroke();
-    if (e.anim === "ants") {
-      ctx.setLineDash([]);
-      ctx.lineDashOffset = 0;
-    }
-
-    drawEdgeArrowheads(ctx, e, geo, strokeColor);
-
-    if (e.anim === "pulse") {
-      const speedPxPerSec = 140;
-      const spacing = geo.totalLen * 0.5;
-      const isTwoWay = (e.arrow || "one-way") === "two-way";
-      for (let pIdx = 0; pIdx < 2; pIdx++) {
-        const rawDist = (timeSec * speedPxPerSec + pIdx * spacing) % geo.totalLen;
-        const headDist = isTwoWay && pIdx === 1 ? geo.totalLen - rawDist : rawDist;
-        const dirSign = isTwoWay && pIdx === 1 ? 1 : -1;
-        const tail1 = getPointAtArcDistance(geo, headDist + dirSign * 10);
-        const tail2 = getPointAtArcDistance(geo, headDist + dirSign * 5);
-        const head = getPointAtArcDistance(geo, headDist);
-
-        ctx.fillStyle = lightCanvas ? "rgba(0, 85, 204, 0.16)" : "rgba(56, 189, 248, 0.16)";
-        ctx.beginPath();
-        ctx.arc(tail1.x, tail1.y, 3.6, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = lightCanvas ? "rgba(0, 85, 204, 0.32)" : "rgba(56, 189, 248, 0.32)";
-        ctx.beginPath();
-        ctx.arc(tail2.x, tail2.y, 4.6, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = lightCanvas ? strokeColor : "#e0f2fe";
-        ctx.beginPath();
-        ctx.arc(head.x, head.y, 3.2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    if (e.label && e.label.trim().length > 0) {
-      ctx.font = '700 11px "Charcoal", "Chicago", "Geneva", sans-serif';
-      ctx.textAlign = "center";
-      if (!e._labelGeo || e._labelVer !== state.geometryVersion || e._labelText !== e.label) {
-        const textW = Math.max(24, ctx.measureText(e.label).width + 14);
-        const lpt = resolveEdgeLabelPos(geo, textW, placedEdgeLabelBoxes, p.nodes);
-        e._labelGeo = { textW, x: lpt.x, y: lpt.y };
-        e._labelVer = state.geometryVersion;
-        e._labelText = e.label;
-      } else {
-        placedEdgeLabelBoxes.push({
-          x: e._labelGeo.x - e._labelGeo.textW * 0.5,
-          y: e._labelGeo.y - 9.5,
-          w: e._labelGeo.textW,
-          h: 19,
-        });
-      }
-      const { textW, x: lx, y: ly } = e._labelGeo;
-      ctx.fillStyle = lightCanvas ? "#ffffff" : "#161b26";
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = 1.25;
-      ctx.beginPath();
-      ctx.roundRect(lx - textW * 0.5, ly - 9.5, textW, 19, 3);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = lightCanvas ? "#000000" : "#f1f5f9";
-      ctx.fillText(e.label, lx, ly + 3.5);
-    }
-
-    if (e.id === state.selectedEdgeId) {
-      ctx.strokeStyle = "rgba(245, 130, 31, 0.55)";
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.moveTo(geo.p0.x, geo.p0.y);
-      ctx.lineTo(geo.midPoint.x, geo.midPoint.y);
-      ctx.lineTo(geo.p3.x, geo.p3.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      ctx.beginPath();
-      ctx.arc(geo.midPoint.x, geo.midPoint.y, 6, 0, Math.PI * 2);
-      ctx.fillStyle = "#fdb827";
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 1.6;
-      ctx.fill();
-      ctx.stroke();
-
-      for (const ep of [geo.p0, geo.p3]) {
-        ctx.beginPath();
-        ctx.arc(ep.x, ep.y, 5.5, 0, Math.PI * 2);
-        ctx.fillStyle = "#009ddc";
-        ctx.strokeStyle = "#000000";
-        ctx.lineWidth = 1.6;
-        ctx.fill();
-        ctx.stroke();
-      }
-    }
-  }
-
+  renderEdgesPass(ctx, p, timeSec, lightCanvas, viewTL, viewBR, selectColor, true);
   if (state.connectingFrom || state.reconnectingEdge) {
     let startPt = { x: 0, y: 0 };
     if (state.connectingFrom) {
@@ -7722,7 +7056,6 @@ function renderLoop(timestamp) {
     ctx.setLineDash([5, 4]);
     ctx.stroke();
     ctx.setLineDash([]);
-
     if (state.snapTargetPort) {
       ctx.beginPath();
       ctx.arc(state.snapTargetPort.port.x, state.snapTargetPort.port.y, 10, 0, Math.PI * 2);
@@ -7731,8 +7064,6 @@ function renderLoop(timestamp) {
       ctx.stroke();
     }
   }
-
-  // Frustum-Culled Minimalist Nodes with Apple 90s Platinum Hard Drop Shadow (per-layer order)
   for (let i = 0; i < p.nodes.length; i++) {
     const n = p.nodes[i];
     if (n.hidden) continue;
@@ -7744,14 +7075,12 @@ function renderLoop(timestamp) {
     ) {
       continue;
     }
-
     const selected = state.selectedNodeIds.has(n.id);
     if (selected) {
       ctx.strokeStyle = lightCanvas ? "rgba(0, 85, 204, 0.25)" : "rgba(56, 189, 248, 0.22)";
       ctx.lineWidth = 4;
       ctx.strokeRect(n.x - 2.5, n.y - 2.5, n.w + 5, n.h + 5);
     }
-
     ctx.save();
     if (n.opacity !== undefined && n.opacity < 1) {
       ctx.globalAlpha = n.opacity;
@@ -7769,14 +7098,11 @@ function renderLoop(timestamp) {
       ctx.shadowBlur = 0;
     }
     drawNodeWithBorderStyle(ctx, n, selected, selectColor, 1.65, timeSec);
-
-    // Draw node title & subtitle inside layer pass so upper layers properly occlude lower ones
     ctx.shadowColor = "transparent";
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
     drawFittedNodeText(ctx, n, lightCanvas);
     ctx.restore();
-
     const linking = Boolean(state.connectingFrom || state.reconnectingEdge);
     const showPorts =
       state.hoveredNodeId === n.id ||
@@ -7802,13 +7128,10 @@ function renderLoop(timestamp) {
       }
     }
   }
-
-  // Single-Selected Node Resize & Quick-Connect Overlay
   const selectedNode = nodeMap.get(state.selectedNodeId);
   if (selectedNode && state.selectedNodeIds.size === 1) {
     ctx.fillStyle = selectColor;
     ctx.fillRect(selectedNode.x + selectedNode.w - 4.5, selectedNode.y + selectedNode.h - 4.5, 9, 9);
-
     ctx.font = '700 10.5px "Charcoal", sans-serif';
     for (const arrow of getQuickArrows(selectedNode)) {
       ctx.beginPath();
@@ -7822,8 +7145,6 @@ function renderLoop(timestamp) {
       ctx.fillText(arrow.label, arrow.x, arrow.y + 3.5);
     }
   }
-
-  // Live Ghost Preview When Dragging a Stencil from the Left Panel onto the Canvas
   if (state.draggingStencil && state.draggingStencil.active && state.draggingStencil.overCanvas) {
     const { item, ghostX, ghostY } = state.draggingStencil;
     const ghostNode = {
@@ -7841,12 +7162,10 @@ function renderLoop(timestamp) {
     ctx.strokeStyle = selectColor;
     ctx.lineWidth = 2;
     drawNodeShapeGeometry(ctx, ghostNode, false);
-
     ctx.setLineDash([4, 4]);
     ctx.strokeStyle = selectColor;
     ctx.strokeRect(ghostX - 4, ghostY - 4, item.w + 8, item.h + 8);
     ctx.setLineDash([]);
-
     const pos = getNodeTextPlacement(ghostNode);
     ctx.font = '700 12.5px "Charcoal", "Chicago", sans-serif';
     ctx.fillStyle = lightCanvas ? "#000000" : "#f1f5f9";
@@ -7854,8 +7173,6 @@ function renderLoop(timestamp) {
     ctx.fillText(ghostNode.title, pos.cx, pos.titleY);
     ctx.restore();
   }
-
-  // Rubber-Band Marquee Selection Box
   if (state.marqueeBox) {
     const mx = Math.min(state.marqueeBox.startX, state.marqueeBox.endX);
     const my = Math.min(state.marqueeBox.startY, state.marqueeBox.endY);
@@ -7869,14 +7186,10 @@ function renderLoop(timestamp) {
     ctx.strokeRect(mx, my, mw, mh);
     ctx.setLineDash([]);
   }
-
-  // Live Co-Op Remote Locks & Cursors
   if (typeof renderCollabOverlays === "function") {
     renderCollabOverlays(ctx, p);
   }
-
   ctx.restore();
-
   frameCounter++;
   if (state.minimapDirty && (!state.draggingNode || frameCounter % 3 === 0)) {
     state.minimapDirty = false;
@@ -7895,23 +7208,16 @@ function renderLoop(timestamp) {
     minimapCtx.strokeRect(viewTL.x, viewTL.y, viewBR.x - viewTL.x, viewBR.y - viewTL.y);
     minimapCtx.restore();
   }
-
   if (frameCounter % 4 === 0) {
     syncArrangeInputsIfDirty();
   }
-
   if (frameCounter % 12 === 0) {
     const nextStatus = `${p.nodes.length} items, ${p.edges.length} flows | Selected: ${state.selectedNodeIds.size + state.selectedEdgeIds.size} | Zoom: ${Math.round(p.zoom * 100)}% | ${state.fps} FPS`;
     if (statusBarEl.textContent !== nextStatus) statusBarEl.textContent = nextStatus;
   }
-
   requestAnimationFrame(renderLoop);
 }
 requestAnimationFrame(renderLoop);
-
-// ============================================================================
-// REALTIME CO-OP SHARING & BUTTON-MASHING OWNERSHIP MINIGAME
-// ============================================================================
 const COLLAB_COLORS = ["#0077b5", "#2d8a1e", "#d95b00", "#7a267b", "#c92027", "#000080"];
 const collabOverlayEl = document.getElementById("collab-overlay");
 const collabShareUrlEl = document.getElementById("collab-share-url");
@@ -7920,7 +7226,6 @@ const collabPeersListEl = document.getElementById("collab-peers-list");
 const collabPeerCountEl = document.getElementById("collab-peer-count");
 const collabLiveDotEl = document.getElementById("collab-live-dot");
 const collabBtnLabelEl = document.getElementById("collab-btn-label");
-
 const duelOverlayEl = document.getElementById("duel-overlay");
 const duelModalBoxEl = document.getElementById("duel-modal-box");
 const duelNodeTitleEl = document.getElementById("duel-node-title");
@@ -7932,7 +7237,6 @@ const duelBarP1El = document.getElementById("duel-bar-p1");
 const duelBarP2El = document.getElementById("duel-bar-p2");
 const duelResultBannerEl = document.getElementById("duel-result-banner");
 const btnDuelMashEl = document.getElementById("btn-duel-mash");
-
 function loadCollabUserName() {
   try {
     return localStorage.getItem("rustflow_collab_name") || `User-${Math.floor(100 + Math.random() * 900)}`;
@@ -7940,7 +7244,6 @@ function loadCollabUserName() {
     return `User-${Math.floor(100 + Math.random() * 900)}`;
   }
 }
-
 const collab = {
   ws: null,
   connected: false,
@@ -7957,7 +7260,6 @@ const collab = {
   syncTimer: null,
   lastCursorAt: 0,
 };
-
 function serializeCollabSnapshot() {
   return {
     activePageId: state.activePageId,
@@ -7970,7 +7272,6 @@ function serializeCollabSnapshot() {
     })),
   };
 }
-
 function applyRemoteSnapshot(snap) {
   if (!snap || !Array.isArray(snap.pages) || !snap.pages.length) return;
   collab.suppressSync = true;
@@ -8011,13 +7312,11 @@ function applyRemoteSnapshot(snap) {
     collab.suppressSync = false;
   }
 }
-
 function sendCollab(obj) {
   if (collab.ws && collab.ws.readyState === WebSocket.OPEN) {
     collab.ws.send(JSON.stringify(obj));
   }
 }
-
 function scheduleCollabSync(immediate = false, editingNodeId = null) {
   if (!collab.connected || collab.suppressSync) return;
   const now = performance.now();
@@ -8040,7 +7339,6 @@ function scheduleCollabSync(immediate = false, editingNodeId = null) {
     }, 65);
   }
 }
-
 function collabSendCursor(wx, wy) {
   if (!collab.connected) return;
   const now = performance.now();
@@ -8048,17 +7346,14 @@ function collabSendCursor(wx, wy) {
   collab.lastCursorAt = now;
   sendCollab({ type: "cursor", x: Math.round(wx), y: Math.round(wy), pageId: state.activePageId });
 }
-
 function collabClaimNode(nodeId, nodeTitle) {
   if (!collab.connected || nodeId === undefined || nodeId === null) return;
   sendCollab({ type: "claim_node", nodeId, nodeTitle });
 }
-
 function collabReleaseNode(nodeId) {
   if (!collab.connected || nodeId === undefined || nodeId === null) return;
   sendCollab({ type: "release_node", nodeId });
 }
-
 function updateCollabUi() {
   if (collabLiveDotEl) collabLiveDotEl.classList.toggle("connected", collab.connected);
   const count = collab.connected ? collab.peers.size : 0;
@@ -8088,7 +7383,6 @@ function updateCollabUi() {
     }
   }
 }
-
 function renderDuelModal(duel) {
   if (!duelOverlayEl) return;
   collab.activeDuel = duel;
@@ -8097,7 +7391,6 @@ function renderDuelModal(duel) {
   const p2 = fighters[1] || { id: "2", name: "Player 2", color: "#e03a3e", clicks: 1 };
   const total = Math.max(1, p1.clicks + p2.clicks);
   const p1Pct = Math.max(8, Math.min(92, (p1.clicks / total) * 100));
-
   duelNodeTitleEl.textContent = duel.nodeTitle || `Node #${duel.nodeId}`;
   duelP1LabelEl.textContent = `${p1.name}${p1.id === collab.clientId ? " (You)" : ""}: ${p1.clicks}`;
   duelP2LabelEl.textContent = `${p2.name}${p2.id === collab.clientId ? " (You)" : ""}: ${p2.clicks}`;
@@ -8108,7 +7401,6 @@ function renderDuelModal(duel) {
   duelResultBannerEl.style.display = "none";
   btnDuelMashEl.disabled = false;
   duelOverlayEl.classList.add("open");
-
   if (!collab.duelTimerRAF) {
     const tickTimer = () => {
       if (!collab.activeDuel) {
@@ -8124,7 +7416,6 @@ function renderDuelModal(duel) {
     collab.duelTimerRAF = requestAnimationFrame(tickTimer);
   }
 }
-
 function triggerLocalMash() {
   if (!collab.activeDuel) return;
   sendCollab({
@@ -8138,7 +7429,6 @@ function triggerLocalMash() {
     duelModalBoxEl.classList.add("duel-shake");
   }
 }
-
 btnDuelMashEl?.addEventListener("click", triggerLocalMash);
 window.addEventListener("keydown", (e) => {
   if (collab.activeDuel && duelOverlayEl?.classList.contains("open")) {
@@ -8149,7 +7439,6 @@ window.addEventListener("keydown", (e) => {
     }
   }
 }, true);
-
 function connectCollabRoom(roomId) {
   if (collab.ws) {
     try { collab.ws.close(); } catch {}
@@ -8158,20 +7447,16 @@ function connectCollabRoom(roomId) {
   const u = new URL(location.href);
   u.searchParams.set("room", roomId);
   history.replaceState(null, "", u.toString());
-
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   const ws = new WebSocket(`${proto}//${location.host}/ws?room=${encodeURIComponent(roomId)}`);
   collab.ws = ws;
-
   ws.onopen = () => {
     collab.connected = true;
     updateCollabUi();
   };
-
   ws.onmessage = (ev) => {
     let msg;
     try { msg = JSON.parse(ev.data); } catch { return; }
-
     if (msg.type === "welcome") {
       collab.clientId = msg.clientId;
       sendCollab({
@@ -8243,7 +7528,6 @@ function connectCollabRoom(roomId) {
       showToast(won ? `Won ownership of #${msg.nodeId}!` : `${msg.winnerName} took ownership of #${msg.nodeId}`);
     }
   };
-
   ws.onclose = () => {
     collab.connected = false;
     collab.peers.clear();
@@ -8251,10 +7535,8 @@ function connectCollabRoom(roomId) {
     updateCollabUi();
   };
 }
-
 function renderCollabOverlays(ctx, p) {
   if (!collab.connected) return;
-  // 1. Remote Node Locks
   for (const [nodeId, lock] of collab.locks.entries()) {
     if (lock.ownerId === collab.clientId) continue;
     const n = nodeMap.get(nodeId);
@@ -8275,7 +7557,6 @@ function renderCollabOverlays(ctx, p) {
     ctx.fillText(tag, n.x + 1, n.y - 9);
     ctx.restore();
   }
-  // 2. Remote Peer Cursors
   for (const peer of collab.peers.values()) {
     if (peer.id === collab.clientId || !peer.cursor || peer.cursor.pageId !== p.id) continue;
     const { x, y } = peer.cursor;
@@ -8296,7 +7577,6 @@ function renderCollabOverlays(ctx, p) {
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 1.2;
     ctx.stroke();
-
     ctx.font = '700 10px "Geneva", sans-serif';
     const tw = ctx.measureText(peer.name).width + 8;
     ctx.fillStyle = peer.color || "#0077b5";
@@ -8308,7 +7588,6 @@ function renderCollabOverlays(ctx, p) {
     ctx.restore();
   }
 }
-
 document.getElementById("btn-share-collab")?.addEventListener("click", () => {
   if (!collab.connected) {
     const rid = collab.roomId || `rfd-${Math.random().toString(36).slice(2, 8)}`;
@@ -8318,7 +7597,6 @@ document.getElementById("btn-share-collab")?.addEventListener("click", () => {
   updateCollabUi();
   collabOverlayEl?.classList.add("open");
 });
-
 document.getElementById("btn-close-collab")?.addEventListener("click", () => collabOverlayEl?.classList.remove("open"));
 document.getElementById("btn-collab-done")?.addEventListener("click", () => collabOverlayEl?.classList.remove("open"));
 document.getElementById("btn-collab-copy")?.addEventListener("click", () => {
@@ -8347,17 +7625,11 @@ collabUserNameEl?.addEventListener("change", (e) => {
   sendCollab({ type: "rename", name: collab.name });
   updateCollabUi();
 });
-
-// Auto-join room if opened via shared link (?room=...)
 const initialRoomParam = new URLSearchParams(location.search).get("room");
 if (initialRoomParam) {
   closeWelcomeModal();
   connectCollabRoom(initialRoomParam);
 }
-
-// ============================================================================
-// COPY AS IMAGE / ANIMATED GIF & RIGHT-CLICK CONTEXT MENU
-// ============================================================================
 function getExportTargetPage(selectionOnly = true) {
   const p = page();
   if (selectionOnly && state.selectedNodeIds.size > 0) {
@@ -8373,7 +7645,6 @@ function getExportTargetPage(selectionOnly = true) {
   }
   return { pageObj: p, label: "diagram" };
 }
-
 function uint8ToBase64(bytes) {
   let bin = "";
   const chunk = 0x8000;
@@ -8382,7 +7653,6 @@ function uint8ToBase64(bytes) {
   }
   return btoa(bin);
 }
-
 async function copyDiagramAsPng(selectionOnly = true) {
   const { pageObj, label } = getExportTargetPage(selectionOnly);
   const bounds = getDiagramExportBounds(pageObj, 28);
@@ -8392,10 +7662,8 @@ async function copyDiagramAsPng(selectionOnly = true) {
   off.height = Math.max(40, Math.round(bounds.height * scale));
   const octx = off.getContext("2d");
   renderDiagramFrameToContext(octx, pageObj, bounds, scale, 0);
-
   const blob = await new Promise((resolve) => off.toBlob(resolve, "image/png"));
   if (!blob) return;
-
   try {
     if (navigator.clipboard && window.ClipboardItem) {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
@@ -8403,7 +7671,6 @@ async function copyDiagramAsPng(selectionOnly = true) {
       return;
     }
   } catch {
-    // Fallback to download below
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -8413,23 +7680,19 @@ async function copyDiagramAsPng(selectionOnly = true) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   showToast(`Clipboard blocked — downloaded ${label} as PNG`);
 }
-
 async function copyDiagramAsAnimatedGif(selectionOnly = true) {
   const { pageObj, label } = getExportTargetPage(selectionOnly);
   showToast(`Rendering animated GIF of ${label}...`);
   await new Promise((r) => setTimeout(r, 15));
-
   const bounds = getDiagramExportBounds(pageObj, 26);
   const maxDim = Math.max(bounds.width, bounds.height);
   const scale = maxDim > 780 ? 780 / maxDim : 1.15;
   const wPx = Math.max(40, Math.round(bounds.width * scale));
   const hPx = Math.max(40, Math.round(bounds.height * scale));
-
   const off = document.createElement("canvas");
   off.width = wPx;
   off.height = hPx;
   const octx = off.getContext("2d", { willReadFrequently: true });
-
   const frameCount = 16;
   const frames = [];
   for (let f = 0; f < frameCount; f++) {
@@ -8437,11 +7700,8 @@ async function copyDiagramAsAnimatedGif(selectionOnly = true) {
     renderDiagramFrameToContext(octx, pageObj, bounds, scale, (f / frameCount) * 1.2);
     frames.push(octx.getImageData(0, 0, wPx, hPx).data);
   }
-
   const gifBytes = encodeGif89a(frames, wPx, hPx, 6);
   const gifBlob = new Blob([gifBytes], { type: "image/gif" });
-
-  // 1. Try native image/gif clipboard write
   try {
     if (navigator.clipboard && window.ClipboardItem) {
       await navigator.clipboard.write([new ClipboardItem({ "image/gif": gifBlob })]);
@@ -8449,10 +7709,7 @@ async function copyDiagramAsAnimatedGif(selectionOnly = true) {
       return;
     }
   } catch {
-    // Some browsers only allow image/png + text/html in ClipboardItem
   }
-
-  // 2. Fallback: write PNG + animated GIF HTML <img> to clipboard so both rich & image apps accept paste
   try {
     if (navigator.clipboard && window.ClipboardItem) {
       octx.clearRect(0, 0, wPx, hPx);
@@ -8465,9 +7722,7 @@ async function copyDiagramAsAnimatedGif(selectionOnly = true) {
       return;
     }
   } catch {
-    // Fallback to download below
   }
-
   const url = URL.createObjectURL(gifBlob);
   const a = document.createElement("a");
   a.href = url;
@@ -8476,13 +7731,10 @@ async function copyDiagramAsAnimatedGif(selectionOnly = true) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   showToast(`Downloaded Animated GIF (${label})`);
 }
-
 const ctxMenuEl = document.getElementById("ctx-menu");
-
 function closeCanvasContextMenu() {
   if (ctxMenuEl) ctxMenuEl.classList.remove("open");
 }
-
 function addCtxEntry(parent, label, hint, onClick, isDanger = false) {
   const row = document.createElement("div");
   row.className = "ctx-entry" + (isDanger ? " danger" : "");
@@ -8503,7 +7755,6 @@ function addCtxEntry(parent, label, hint, onClick, isDanger = false) {
   parent.appendChild(row);
   return row;
 }
-
 function addCtxSubmenu(parent, label, items) {
   const row = document.createElement("div");
   row.className = "ctx-entry";
@@ -8516,23 +7767,19 @@ function addCtxSubmenu(parent, label, items) {
   row.appendChild(sub);
   parent.appendChild(row);
 }
-
 function addCtxDivider(parent) {
   const d = document.createElement("div");
   d.className = "dropdown-divider";
   parent.appendChild(d);
 }
-
 function openCanvasContextMenu(clientX, clientY, wpt) {
   if (!ctxMenuEl) return;
   ctxMenuEl.innerHTML = "";
   const p = page();
-
   const hitNode = [...p.nodes]
     .reverse()
     .find((n) => !n.hidden && wpt.x >= n.x && wpt.x <= n.x + n.w && wpt.y >= n.y && wpt.y <= n.y + n.h);
   const hitEdge = hitNode ? null : hitTestEdge(wpt);
-
   if (hitNode) {
     if (!state.selectedNodeIds.has(hitNode.id)) {
       setSingleNodeSelection(hitNode.id);
@@ -8647,7 +7894,6 @@ function openCanvasContextMenu(clientX, clientY, wpt) {
       ["Separate Overlaps", "", layoutSeparateOverlaps],
     ]);
   }
-
   ctxMenuEl.classList.add("open");
   const mw = ctxMenuEl.offsetWidth || 220;
   const mh = ctxMenuEl.offsetHeight || 240;
@@ -8656,7 +7902,6 @@ function openCanvasContextMenu(clientX, clientY, wpt) {
   ctxMenuEl.style.left = `${Math.max(4, left)}px`;
   ctxMenuEl.style.top = `${Math.max(4, top)}px`;
 }
-
 canvas.addEventListener("contextmenu", (e) => {
   e.preventDefault();
   const sx = e.clientX - canvasRect.left;
@@ -8664,7 +7909,6 @@ canvas.addEventListener("contextmenu", (e) => {
   const wpt = screenToWorld(sx, sy);
   openCanvasContextMenu(e.clientX, e.clientY, wpt);
 });
-
 window.addEventListener("click", (e) => {
   if (ctxMenuEl && !ctxMenuEl.contains(e.target)) closeCanvasContextMenu();
 });

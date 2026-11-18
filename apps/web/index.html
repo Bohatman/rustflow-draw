@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Bohat Draw.io — Retro 90s Platinum Diagramming Studio</title>
     <style>
-      /* ==========================================================================
-         THEME TOKENS: APPLE 90s PLATINUM (DEFAULT) + DARK / LIGHT / SYSTEM 1 B&W
-         ========================================================================== */
       :root,
       :root[data-theme="apple90s"] {
         --bg-desktop: #8080a4;
@@ -34,7 +31,6 @@
         --font-ui: "Charcoal", "Chicago", "Geneva", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
         --font-mono: "Monaco", "Menlo", "Courier New", monospace;
       }
-
       :root[data-theme="light"] {
         --bg-desktop: #cbd5e1;
         --bg-canvas: #f8fafc;
@@ -60,7 +56,6 @@
         --font-ui: "Charcoal", "Chicago", "Geneva", -apple-system, BlinkMacSystemFont, sans-serif;
         --font-mono: "Monaco", "Menlo", monospace;
       }
-
       :root[data-theme="dark"] {
         --bg-desktop: #090d16;
         --bg-canvas: #0d121d;
@@ -86,7 +81,6 @@
         --font-ui: "Charcoal", "Chicago", "Geneva", -apple-system, BlinkMacSystemFont, sans-serif;
         --font-mono: "Monaco", "Menlo", monospace;
       }
-
       :root[data-theme="contrast"] {
         --bg-desktop: #000000;
         --bg-canvas: #ffffff;
@@ -112,7 +106,6 @@
         --font-ui: "Chicago", "Monaco", monospace;
         --font-mono: "Monaco", monospace;
       }
-
       * {
         box-sizing: border-box;
         margin: 0;
@@ -121,7 +114,6 @@
         font-family: var(--font-ui);
         -webkit-font-smoothing: antialiased;
       }
-
       body {
         width: 100vw;
         height: 100vh;
@@ -132,8 +124,6 @@
         background: var(--bg-desktop);
         color: var(--text-primary);
       }
-
-      /* Minimalist Monoline SVG Icon Helper */
       .icon-svg {
         width: 13px;
         height: 13px;
@@ -144,10 +134,6 @@
         fill: none;
         flex-shrink: 0;
       }
-
-      /* ==========================================================================
-         1. ICONIC APPLE 90s SYSTEM 7 / MAC OS 8 TOP MENU BAR
-         ========================================================================== */
       .menubar {
         height: 26px;
         background: var(--bg-panel);
@@ -159,15 +145,12 @@
         padding: 0 10px;
         z-index: 60;
       }
-
       .menubar-left {
         display: flex;
         align-items: center;
         height: 100%;
         gap: 1px;
       }
-
-      /* 6-Color 90s Apple Rainbow Badge + Brand */
       .brand-logo {
         font-weight: 700;
         font-size: 12.5px;
@@ -179,7 +162,6 @@
         align-items: center;
         gap: 7px;
       }
-
       .apple-rainbow-icon {
         width: 14px;
         height: 14px;
@@ -211,7 +193,6 @@
         border: 1px solid rgba(0, 0, 0, 0.55);
         background: rgba(255, 255, 255, 0.22);
       }
-
       .menu-item {
         position: relative;
         padding: 0 10px;
@@ -228,7 +209,6 @@
         background: var(--accent-soft);
         color: var(--accent-text);
       }
-
       .dropdown-menu {
         display: none;
         position: absolute;
@@ -245,7 +225,6 @@
       .menu-item.open .dropdown-menu {
         display: block;
       }
-
       .dropdown-entry {
         padding: 5px 12px;
         font-size: 12px;
@@ -275,7 +254,6 @@
         border-bottom: 1px solid var(--bevel-light);
         margin: 3px 0;
       }
-
       .menubar-right {
         display: flex;
         align-items: center;
@@ -291,10 +269,6 @@
         border-left: 1px solid var(--bevel-dark);
         box-shadow: -1px 0 0 var(--bevel-light);
       }
-
-      /* ==========================================================================
-         2. PLATINUM BEVELED QUICK CONTROL STRIP (TOOLBAR)
-         ========================================================================== */
       .quick-toolbar {
         min-height: 32px;
         height: auto;
@@ -326,8 +300,6 @@
         margin: 0 2px;
         flex-shrink: 0;
       }
-
-      /* Tactile 90s Apple Platinum 3D Beveled Buttons & Inputs */
       button,
       select {
         font-size: 11.5px;
@@ -358,7 +330,6 @@
         color: #ffffff;
         box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.4);
       }
-
       input[type="text"],
       input[type="number"] {
         width: 100%;
@@ -378,10 +349,6 @@
         outline: 2px solid var(--accent-bright);
         outline-offset: -1px;
       }
-
-      /* ==========================================================================
-         3. CLASSIC MAC OS 8 PINSTRIPE WINDOW CHROME & 3-COLUMN WORKSPACE
-         ========================================================================== */
       .workspace {
         flex: 1;
         display: grid;
@@ -391,11 +358,9 @@
         overflow: hidden;
         position: relative;
         background: var(--bg-desktop);
-        /* Classic Mac OS 8 Desktop stipple pattern */
         background-image: radial-gradient(rgba(0, 0, 0, 0.16) 1px, transparent 0);
         background-size: 4px 4px;
       }
-
       .mac-window {
         background: var(--bg-panel);
         border: 1.5px solid var(--border-outer);
@@ -404,8 +369,6 @@
         flex-direction: column;
         overflow: hidden;
       }
-
-      /* Authentic 90s Apple Platinum Pinstripe Window Title Bar */
       .mac-titlebar {
         height: 22px;
         padding: 0 6px;
@@ -442,8 +405,6 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
-
-      /* Left Sidebar: Stencil Palette Window */
       .sidebar-left-body {
         padding: 8px;
         overflow-y: auto;
@@ -552,8 +513,6 @@
         box-shadow: inset 1px 1px 0 #000000;
         transform: translate(1px, 1px);
       }
-
-      /* Center Canvas Window */
       .canvas-container {
         position: relative;
         width: 100%;
@@ -578,8 +537,6 @@
         box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.65);
         pointer-events: none;
       }
-
-      /* Right Sidebar: Format Inspector Window */
       .format-subheader {
         padding: 6px 10px;
         font-size: 11px;
@@ -713,7 +670,6 @@
         border: 1px solid var(--border-outer);
         background: #ffffff;
       }
-      /* Photoshop-style Layers & Arrange Grids */
       .arrange-btn-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -796,10 +752,6 @@
         font-size: 9.5px;
         opacity: 0.75;
       }
-
-      /* ==========================================================================
-         4. MACINTOSH FINDER FOOTER & PAGE TABS
-         ========================================================================== */
       footer {
         height: 28px;
         background: var(--bg-panel);
@@ -840,10 +792,6 @@
         box-shadow: inset 1px 1px 0 var(--bevel-dark);
         padding: 2px 8px;
       }
-
-      /* ==========================================================================
-         5. CLASSIC MAC SYSTEM 7 / OS 8 DIALOG MODALS & TOASTS
-         ========================================================================== */
       .cmd-overlay {
         position: fixed;
         inset: 0;
@@ -949,7 +897,6 @@
         padding: 1px 6px;
         color: var(--text-primary);
       }
-      /* Symbol Studio & Palette Action Bar */
       .palette-actions {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1040,7 +987,6 @@
         background: var(--bg-panel);
         border-top: 2px solid var(--border-outer);
       }
-      /* Welcome Startup Dialog (Create New Empty Space vs Load from File) */
       .welcome-body {
         padding: 16px;
         background: var(--bg-subtle);
@@ -1097,7 +1043,6 @@
         background: var(--bg-hover);
         color: var(--text-primary);
       }
-      /* Mobile / Tablet Drawer Controls (hidden on desktop) */
       .mobile-only-btn {
         display: none;
       }
@@ -1121,8 +1066,6 @@
       #rustflow-canvas {
         touch-action: none;
       }
-
-      /* Co-Op Share & Button-Mashing Duel Modals */
       .collab-live-dot {
         display: inline-block;
         width: 7px;
@@ -1222,8 +1165,6 @@
       .duel-shake {
         animation: duelShake 0.14s ease-in-out;
       }
-
-      /* Right-Click Canvas Context Menu (Retro 90s Platinum) */
       .ctx-menu {
         display: none;
         position: fixed;
@@ -1278,10 +1219,6 @@
         opacity: 0.7;
         font-family: var(--font-mono);
       }
-
-      /* ==========================================================================
-         RESPONSIVE BREAKPOINTS (TABLET <= 1024px & SMARTPHONE <= 768px)
-         ========================================================================== */
       @media (max-width: 1024px) {
         .mobile-only-btn {
           display: inline-flex;
@@ -1324,7 +1261,6 @@
           display: flex;
         }
       }
-
       @media (max-width: 768px) {
         .menubar {
           padding: 0 6px;
@@ -1389,18 +1325,15 @@
           grid-template-columns: 1fr !important;
         }
       }
-
     </style>
   </head>
   <body>
-    <!-- Row 1: Iconic Apple 90s System 7 / Mac OS 8 Menu Bar -->
     <nav class="menubar" id="menubar">
       <div class="menubar-left">
         <div class="brand-logo" title="Bohat Draw.io — Retro 90s Platinum Edition">
           <span class="apple-rainbow-icon"></span>
           <span>Bohat Draw</span>
         </div>
-
         <div class="menu-item" data-menu="file">
           File
           <div class="dropdown-menu">
@@ -1418,7 +1351,6 @@
             <div class="dropdown-entry" data-action="export-json"><span>Export Native JSON...</span><span class="dropdown-shortcut">.json</span></div>
           </div>
         </div>
-
         <div class="menu-item" data-menu="edit">
           Edit
           <div class="dropdown-menu">
@@ -1438,7 +1370,6 @@
             <div class="dropdown-entry" data-action="delete"><span>Clear / Delete</span><span class="dropdown-shortcut">Del</span></div>
           </div>
         </div>
-
         <div class="menu-item" data-menu="view">
           View
           <div class="dropdown-menu">
@@ -1455,7 +1386,6 @@
             <div class="dropdown-entry" data-action="theme-contrast"><span>Theme: Mono 1-Bit CRT</span></div>
           </div>
         </div>
-
         <div class="menu-item" data-menu="arrange">
           Arrange
           <div class="dropdown-menu">
@@ -1477,7 +1407,6 @@
             <div class="dropdown-entry" data-action="ungroup-section"><span>Ungroup / Detach Children</span></div>
           </div>
         </div>
-
         <div class="menu-item" data-menu="extras">
           Special
           <div class="dropdown-menu">
@@ -1488,7 +1417,6 @@
           </div>
         </div>
       </div>
-
       <div class="menubar-right">
         <span style="color: var(--text-muted);">Drag Stencils · <b>Shift+Drag</b> Marquee · <b>?</b> Help</span>
         <div class="mac-app-badge">
@@ -1498,8 +1426,6 @@
         </div>
       </div>
     </nav>
-
-    <!-- Row 2: Platinum Beveled Quick Control Strip -->
     <div class="quick-toolbar">
       <button id="btn-toggle-shapes" class="mobile-only-btn" title="Show / Hide Shapes Panel">
         <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -1604,11 +1530,8 @@
         ⌘K
       </button>
     </div>
-
-    <!-- Main 3-Column Macintosh Platinum Workspace -->
     <div class="drawer-backdrop" id="drawer-backdrop"></div>
     <div class="workspace">
-      <!-- Left Window: Drag-and-Drop Stencil Palette -->
       <aside class="mac-window" id="panel-shapes">
         <div class="mac-titlebar">
           <span class="mac-window-box"></span>
@@ -1630,8 +1553,6 @@
           <div id="palette-list"></div>
         </div>
       </aside>
-
-      <!-- Center Window: Infinite Drafting Canvas -->
       <main class="mac-window">
         <div class="mac-titlebar">
           <span class="mac-window-box"></span>
@@ -1645,8 +1566,6 @@
           <canvas id="minimap-canvas" class="minimap" width="176" height="112"></canvas>
         </div>
       </main>
-
-      <!-- Right Window: Context-Sensitive Format Inspector -->
       <aside class="mac-window" id="panel-inspector">
         <div class="mac-titlebar">
           <span class="mac-window-box"></span>
@@ -1666,14 +1585,10 @@
         <div class="format-body" id="format-body"></div>
       </aside>
     </div>
-
-    <!-- Macintosh Finder Bottom Bar -->
     <footer>
       <div class="page-tabs" id="page-tabs"></div>
       <div class="status-bar" id="status-bar">FPS: 60 | Zoom: 100% | Selected: 1 | Nodes: 5 | Edges: 6</div>
     </footer>
-
-    <!-- Command Launcher Dialog -->
     <div class="cmd-overlay" id="cmd-overlay">
       <div class="cmd-modal">
         <div class="mac-titlebar">
@@ -1685,8 +1600,6 @@
         <div id="cmd-list" class="cmd-list"></div>
       </div>
     </div>
-
-    <!-- Keyboard Shortcuts Dialog -->
     <div class="cmd-overlay" id="shortcuts-overlay">
       <div class="cmd-modal" style="width: 610px;">
         <div class="mac-titlebar">
@@ -1718,8 +1631,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Custom Symbol Studio & External Symbol Importer Dialog -->
     <div class="cmd-overlay" id="symbol-studio-overlay">
       <div class="cmd-modal" style="width: 650px;">
         <div class="mac-titlebar">
@@ -1728,7 +1639,6 @@
           <span class="mac-window-box"></span>
         </div>
         <div class="studio-body">
-          <!-- Left Column: Interactive Vector Symbol Drafting Pad -->
           <div class="studio-canvas-wrap">
             <div style="font-size:10.5px; font-weight:700; color:var(--text-muted); width:100%; display:flex; justify-content:space-between;">
               <span>1. Draw Vector Symbol</span>
@@ -1754,8 +1664,6 @@
               </select>
             </div>
           </div>
-
-          <!-- Right Column: Metadata + Import from External Sources (SVG / File / URL / JSON) -->
           <div class="studio-col">
             <div class="format-row">
               <div style="flex:1;">
@@ -1774,7 +1682,6 @@
                 </select>
               </div>
             </div>
-
             <div class="format-row">
               <div style="flex:1;">
                 <label>Default Size (W × H)</label>
@@ -1791,7 +1698,6 @@
                 </div>
               </div>
             </div>
-
             <div style="border-top:1px solid var(--border-color); padding-top:6px; margin-top:2px;">
               <label>2. Or Import Symbol From Other Source</label>
               <div class="format-row" style="margin-top:4px;">
@@ -1799,12 +1705,10 @@
                 <button type="button" id="btn-sym-export-pack" title="Export your custom symbols as a shareable .json pack">Export Pack (.json)</button>
               </div>
             </div>
-
             <div>
               <label>Paste Raw &lt;svg&gt; Code or SVG Path (d="...")</label>
               <input id="sym-svg-input" type="text" placeholder="Paste <svg>...</svg> or M 10 10 L 90 50 Z" />
             </div>
-
             <div>
               <label>Or External Symbol / Icon URL</label>
               <input id="sym-url-input" type="text" placeholder="https://cdn.simpleicons.org/rust/000080" />
@@ -1820,8 +1724,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Startup Welcome Dialog: Create New Empty Space OR Load from File -->
     <div class="cmd-overlay open" id="welcome-overlay">
       <div class="cmd-modal" style="width: 620px;">
         <div class="mac-titlebar">
@@ -1837,9 +1739,7 @@
               <div style="font-size:11px; color:var(--text-muted);">Start with a clean empty drafting canvas or load an existing <b>.drawio</b> / <b>.json</b> diagram file.</div>
             </div>
           </div>
-
           <div class="welcome-cards">
-            <!-- Card 1: Create New Empty Space -->
             <div class="welcome-card">
               <div>
                 <div class="welcome-card-title">
@@ -1858,8 +1758,6 @@
                 + Create Empty Space
               </button>
             </div>
-
-            <!-- Card 2: Load Diagram from File -->
             <div class="welcome-card">
               <div>
                 <div class="welcome-card-title">
@@ -1886,8 +1784,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Live Co-Op Share Dialog -->
     <div class="cmd-overlay" id="collab-overlay">
       <div class="duel-modal" style="width: 460px;">
         <div class="mac-titlebar">
@@ -1921,8 +1817,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Button-Mashing Ownership Minigame Modal -->
     <div class="cmd-overlay" id="duel-overlay" style="z-index: 650;">
       <div class="duel-modal" id="duel-modal-box">
         <div class="mac-titlebar">
@@ -1949,10 +1843,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Right-Click Context Menu -->
     <div id="ctx-menu" class="ctx-menu"></div>
-
     <script type="module" src="/src/app.js?v=10"></script>
   </body>
 </html>
