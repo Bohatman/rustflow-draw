@@ -1,0 +1,12 @@
+[package]
+name = "rustflow-ui-bridge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared state bindings, stencil catalog, format inspector, and command bridge for WASM and Tauri"
+
+[dependencies]
+rustflow-core = { path = "../core" }
+rustflow-renderer = { path = "../renderer" }
+rustflow-layout = { path = "../layout" }
+rustflow-io-formats = { path = "../io-formats" }

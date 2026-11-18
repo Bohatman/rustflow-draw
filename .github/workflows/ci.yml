@@ -1,0 +1,49 @@
+name: CI — RustFlow Draw Quality Gate
+
+on:
+  push:
+    branches: ["main", "feat/**"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint-and-test:
+    name: Format, Clippy & Workspace Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Run strict clippy linter
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Run unit, VRT, and benchmark tests
+        run: cargo test --workspace
+      - name: Verify Web app syntax
+        run: |
+          node --check apps/web/server.mjs
+          node --check apps/web/src/app.js
+
+  cross-compile-check:
+    name: Cross-Compilation Target Matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - wasm32-unknown-unknown
+          - x86_64-unknown-linux-gnu
+          - x86_64-pc-windows-msvc
+          - aarch64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Check core engine crates for ${{ matrix.target }}
+        run: cargo check -p rustflow-core -p rustflow-renderer -p rustflow-layout -p rustflow-io-formats -p rustflow-ui-bridge --target ${{ matrix.target }}

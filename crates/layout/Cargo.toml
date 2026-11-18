@@ -1,0 +1,9 @@
+[package]
+name = "rustflow-layout"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Auto-layout engines (Hierarchical, Force-Directed, Grid) and spring transitions"
+
+[dependencies]
+rustflow-core = { path = "../core" }

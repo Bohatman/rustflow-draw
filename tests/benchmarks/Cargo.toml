@@ -1,0 +1,12 @@
+[package]
+name = "rustflow-benchmarks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+rustflow-core = { path = "../../crates/core" }
+rustflow-renderer = { path = "../../crates/renderer" }
+rustflow-layout = { path = "../../crates/layout" }
+rustflow-io-formats = { path = "../../crates/io-formats" }

@@ -1,0 +1,9 @@
+[package]
+name = "rustflow-renderer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "wgpu/WGSL shader pipelines, Bezier tessellation, edge animations, and headless rasterizer"
+
+[dependencies]
+rustflow-core = { path = "../core" }
