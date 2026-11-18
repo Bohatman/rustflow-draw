@@ -2,7 +2,7 @@
 <html lang="en" data-theme="apple90s">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>RustFlow Draw 8.5 — Macintosh Platinum Diagramming Engine</title>
     <style>
       /* ==========================================================================
@@ -125,6 +125,7 @@
       body {
         width: 100vw;
         height: 100vh;
+        height: 100dvh;
         overflow: hidden;
         display: flex;
         flex-direction: column;
@@ -364,6 +365,9 @@
 
       input[type="text"],
       input[type="number"] {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
         font-size: 12px;
         font-weight: 600;
         border-radius: 0px;
@@ -474,8 +478,51 @@
         background: var(--bg-hover);
         border: 1px solid var(--border-color);
         box-shadow: inset 1px 1px 0 var(--bevel-light);
-        padding: 2px 6px;
+        padding: 3px 6px;
         margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+      }
+      .palette-section-title:hover {
+        background: var(--bg-well);
+        color: var(--accent-bright);
+      }
+      .palette-cat-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        margin-bottom: 4px;
+      }
+      .cat-chip {
+        font-size: 9.5px;
+        font-weight: 700;
+        padding: 1px 5px;
+        border: 1px solid var(--border-outer);
+        background: var(--bg-subtle);
+        color: var(--text-muted);
+        cursor: pointer;
+        box-shadow: inset 1px 1px 0 var(--bevel-light);
+      }
+      .cat-chip.active {
+        background: var(--accent);
+        color: #ffffff;
+      }
+      textarea {
+        width: 100%;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        padding: 5px 7px;
+        background: var(--bg-well);
+        color: var(--text-primary);
+        border: 1.5px solid var(--border-outer);
+        box-shadow: inset 1px 1px 0px var(--bevel-dark);
+        outline: none;
+        resize: vertical;
+        cursor: text;
+        user-select: text;
       }
       .stencil-grid {
         display: grid;
@@ -550,7 +597,7 @@
       }
       .format-tabs {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 3px;
         padding: 5px 8px 0 8px;
         border-bottom: 1.5px solid var(--border-outer);
@@ -590,6 +637,7 @@
         flex-direction: column;
         gap: 6px;
         padding: 8px;
+        min-width: 0;
         background: var(--bg-panel);
         border: 1px solid var(--border-color);
         box-shadow: inset 1px 1px 0 var(--bevel-light), inset -1px -1px 0 var(--bevel-dark);
@@ -601,11 +649,16 @@
       }
       .format-row {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 6px;
         align-items: center;
         font-size: 11.5px;
         font-weight: 600;
+        min-width: 0;
+      }
+      .format-row > * {
+        min-width: 0;
+        max-width: 100%;
       }
       .swatch-grid {
         display: grid;
@@ -663,6 +716,89 @@
         object-fit: cover;
         border: 1px solid var(--border-outer);
         background: #ffffff;
+      }
+      /* Photoshop-style Layers & Arrange Grids */
+      .arrange-btn-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+      }
+      .arrange-btn-grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 4px;
+      }
+      .arrange-btn-grid button,
+      .arrange-btn-grid-2 button {
+        padding: 4px 5px;
+        font-size: 10.5px;
+      }
+      .layer-toolbar {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 3px;
+      }
+      .layer-toolbar button {
+        padding: 3px 4px;
+        font-size: 10px;
+      }
+      .layer-list {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        max-height: 420px;
+        overflow-y: auto;
+      }
+      .layer-row {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 6px;
+        background: var(--bg-well);
+        border: 1.5px solid var(--border-color);
+        box-shadow: inset 1px 1px 0 var(--bevel-light);
+        cursor: pointer;
+        user-select: none;
+        font-size: 11px;
+      }
+      .layer-row:hover {
+        border-color: var(--accent-bright);
+      }
+      .layer-row.active {
+        background: var(--accent-soft);
+        color: var(--accent-text);
+        border-color: var(--border-outer);
+      }
+      .layer-row.is-hidden {
+        opacity: 0.55;
+      }
+      .layer-row.drag-over {
+        border-top: 2.5px solid var(--accent-bright);
+      }
+      .layer-icon-btn {
+        padding: 1px 4px;
+        min-width: 20px;
+        font-size: 10px;
+        line-height: 1.2;
+        box-shadow: none;
+      }
+      .layer-swatch {
+        width: 12px;
+        height: 12px;
+        border: 1.5px solid #000000;
+        flex-shrink: 0;
+      }
+      .layer-name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 700;
+      }
+      .layer-meta {
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        opacity: 0.75;
       }
 
       /* ==========================================================================
@@ -965,6 +1101,243 @@
         background: var(--bg-hover);
         color: var(--text-primary);
       }
+      /* Mobile / Tablet Drawer Controls (hidden on desktop) */
+      .mobile-only-btn {
+        display: none;
+      }
+      .drawer-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        z-index: 290;
+      }
+      .drawer-backdrop.open {
+        display: block;
+      }
+      .drawer-close-btn {
+        display: none;
+        font-size: 11px;
+        line-height: 1;
+        padding: 1px 5px;
+        height: 16px;
+      }
+      #rustflow-canvas {
+        touch-action: none;
+      }
+
+      /* Co-Op Share & Button-Mashing Duel Modals */
+      .collab-live-dot {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #888888;
+        border: 1px solid #000000;
+      }
+      .collab-live-dot.connected {
+        background: #61bb46;
+        box-shadow: 0 0 4px #61bb46;
+      }
+      .collab-peers-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 6px;
+        background: var(--bg-well);
+        border: 1px solid var(--border-color);
+        min-height: 34px;
+      }
+      .collab-peer-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 2px 7px;
+        font-size: 11px;
+        font-weight: 700;
+        background: var(--bg-subtle);
+        border: 1px solid var(--border-outer);
+      }
+      .duel-modal {
+        width: 440px;
+        max-width: calc(100vw - 16px);
+        background: var(--bg-panel);
+        border: 2px solid var(--border-outer);
+        box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.85), inset 1px 1px 0 var(--bevel-light), inset -1px -1px 0 var(--bevel-dark);
+      }
+      .duel-body {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: var(--bg-subtle);
+      }
+      .duel-timer-track {
+        height: 10px;
+        background: var(--bg-well);
+        border: 1.5px solid var(--border-outer);
+        overflow: hidden;
+      }
+      .duel-timer-fill {
+        height: 100%;
+        width: 100%;
+        background: #fdb827;
+        transition: width 0.08s linear;
+      }
+      .duel-tug-track {
+        height: 22px;
+        display: flex;
+        border: 2px solid var(--border-outer);
+        background: var(--bg-well);
+        overflow: hidden;
+      }
+      .duel-bar-p1 {
+        height: 100%;
+        background: #0077b5;
+        transition: width 0.06s linear;
+      }
+      .duel-bar-p2 {
+        height: 100%;
+        background: #e03a3e;
+        transition: width 0.06s linear;
+      }
+      .duel-mash-btn {
+        width: 100%;
+        padding: 14px 12px;
+        font-size: 15px;
+        font-weight: 800;
+        justify-content: center;
+        background: #fdb827;
+        color: #000000;
+        border: 2px solid #000000;
+        box-shadow: 3px 3px 0 #000000, inset 1.5px 1.5px 0 #fff2b2;
+        touch-action: manipulation;
+      }
+      .duel-mash-btn:active {
+        transform: translate(2px, 2px);
+        box-shadow: 1px 1px 0 #000000;
+      }
+      @keyframes duelShake {
+        0%, 100% { transform: translate(0, 0); }
+        25% { transform: translate(-3px, 2px); }
+        50% { transform: translate(3px, -2px); }
+        75% { transform: translate(-2px, -2px); }
+      }
+      .duel-shake {
+        animation: duelShake 0.14s ease-in-out;
+      }
+
+      /* ==========================================================================
+         RESPONSIVE BREAKPOINTS (TABLET <= 1024px & SMARTPHONE <= 768px)
+         ========================================================================== */
+      @media (max-width: 1024px) {
+        .mobile-only-btn {
+          display: inline-flex;
+        }
+        .drawer-close-btn {
+          display: inline-flex;
+        }
+        .menubar-right > span {
+          display: none;
+        }
+        .quick-toolbar {
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .quick-toolbar::-webkit-scrollbar {
+          display: none;
+        }
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+        #panel-shapes,
+        #panel-inspector {
+          display: none;
+          position: fixed;
+          top: 62px;
+          bottom: 30px;
+          width: min(296px, 86vw);
+          z-index: 300;
+        }
+        #panel-shapes {
+          left: 4px;
+        }
+        #panel-inspector {
+          right: 4px;
+        }
+        #panel-shapes.drawer-open,
+        #panel-inspector.drawer-open {
+          display: flex;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .menubar {
+          padding: 0 6px;
+        }
+        .brand-logo {
+          padding: 0 6px 0 2px;
+          font-size: 11.5px;
+        }
+        .menu-item {
+          padding: 0 6px;
+          font-size: 11px;
+        }
+        .mac-app-badge {
+          display: none;
+        }
+        .quick-toolbar {
+          padding: 4px 6px;
+          gap: 4px;
+        }
+        .quick-toolbar button,
+        .quick-toolbar select {
+          height: 28px;
+          padding: 3px 8px;
+          font-size: 11.5px;
+        }
+        .minimap {
+          width: 112px;
+          height: 72px;
+          right: 8px;
+          bottom: 8px;
+        }
+        footer {
+          padding: 0 6px;
+          gap: 6px;
+        }
+        .page-tabs {
+          overflow-x: auto;
+          scrollbar-width: none;
+          max-width: 55vw;
+        }
+        .page-tabs::-webkit-scrollbar {
+          display: none;
+        }
+        .status-bar {
+          font-size: 9.5px;
+          padding: 2px 5px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .cmd-modal,
+        .welcome-modal,
+        .studio-modal {
+          width: calc(100vw - 16px) !important;
+          max-width: calc(100vw - 16px) !important;
+          max-height: calc(100dvh - 24px);
+          overflow-y: auto;
+        }
+        .shortcuts-grid,
+        .welcome-actions,
+        .studio-grid {
+          grid-template-columns: 1fr !important;
+        }
+      }
+
     </style>
   </head>
   <body>
@@ -1036,8 +1409,18 @@
             <div class="dropdown-entry" data-action="layout-grid"><span>Auto-Layout: Grid</span></div>
             <div class="dropdown-entry" data-action="layout-radial"><span>Auto-Layout: Radial Ring</span></div>
             <div class="dropdown-divider"></div>
+            <div class="dropdown-entry" data-action="layout-overlap"><span>Layout: Overlap Stack</span></div>
+            <div class="dropdown-entry" data-action="layout-cascade"><span>Layout: Cascade Pile</span></div>
+            <div class="dropdown-entry" data-action="layout-heap"><span>Layout: Heap / Pile Up</span></div>
+            <div class="dropdown-entry" data-action="layout-separate"><span>Layout: Separate Overlaps</span></div>
+            <div class="dropdown-divider"></div>
             <div class="dropdown-entry" data-action="bring-front"><span>Bring to Front</span><span class="dropdown-shortcut">⌘]</span></div>
+            <div class="dropdown-entry" data-action="bring-forward"><span>Bring Forward</span><span class="dropdown-shortcut">⇧⌘]</span></div>
+            <div class="dropdown-entry" data-action="send-backward"><span>Send Backward</span><span class="dropdown-shortcut">⇧⌘[</span></div>
             <div class="dropdown-entry" data-action="send-back"><span>Send to Back</span><span class="dropdown-shortcut">⌘[</span></div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-entry" data-action="group-section"><span>Group into Section</span><span class="dropdown-shortcut">⇧⌘G</span></div>
+            <div class="dropdown-entry" data-action="ungroup-section"><span>Ungroup / Detach Children</span></div>
           </div>
         </div>
 
@@ -1064,6 +1447,15 @@
 
     <!-- Row 2: Platinum Beveled Quick Control Strip -->
     <div class="quick-toolbar">
+      <button id="btn-toggle-shapes" class="mobile-only-btn" title="Show / Hide Shapes Panel">
+        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Shapes
+      </button>
+      <button id="btn-toggle-inspector" class="mobile-only-btn" title="Show / Hide Inspector & Layers">
+        <svg class="icon-svg" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+        Inspector
+      </button>
+      <div class="toolbar-sep mobile-only-btn"></div>
       <button id="btn-new-empty" title="Create New Empty Space (Shift+Ctrl+N)">
         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         New
@@ -1146,6 +1538,10 @@
         <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="9" y="15" width="6" height="6" rx="1"/><path d="M6 9v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9"/></svg>
         Layout
       </button>
+      <button id="btn-share-collab" title="Share Live Co-Edit Link">
+        <span class="collab-live-dot" id="collab-live-dot"></span>
+        <span id="collab-btn-label">Share</span>
+      </button>
       <button id="btn-shortcuts" title="Keyboard Shortcuts (?)">
         <svg class="icon-svg" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg>
       </button>
@@ -1156,13 +1552,14 @@
     </div>
 
     <!-- Main 3-Column Macintosh Platinum Workspace -->
+    <div class="drawer-backdrop" id="drawer-backdrop"></div>
     <div class="workspace">
       <!-- Left Window: Drag-and-Drop Stencil Palette -->
-      <aside class="mac-window">
+      <aside class="mac-window" id="panel-shapes">
         <div class="mac-titlebar">
           <span class="mac-window-box"></span>
           <span class="mac-titlebar-label">Stencils &amp; Symbols</span>
-          <span class="mac-window-box"></span>
+          <button class="drawer-close-btn" id="btn-close-shapes" title="Close Shapes">×</button>
         </div>
         <div class="sidebar-left-body">
           <input id="palette-search" class="search-input" type="text" placeholder="Search symbols..." />
@@ -1171,9 +1568,10 @@
             <button id="btn-import-symbol-file" title="Import .svg, .png, .jpg, or .json symbol file">Import File</button>
           </div>
           <input type="file" id="symbol-file-input" accept=".svg,image/*,.json" multiple style="display:none" />
+          <div class="palette-cat-bar" id="palette-cat-bar"></div>
           <div class="palette-hint">
             <span>Drag to canvas or click</span>
-            <span id="palette-count-label" style="font-family:var(--font-mono);">28 items</span>
+            <span id="palette-count-label" style="font-family:var(--font-mono);">31 items</span>
           </div>
           <div id="palette-list"></div>
         </div>
@@ -1195,11 +1593,11 @@
       </main>
 
       <!-- Right Window: Context-Sensitive Format Inspector -->
-      <aside class="mac-window">
+      <aside class="mac-window" id="panel-inspector">
         <div class="mac-titlebar">
           <span class="mac-window-box"></span>
           <span class="mac-titlebar-label">Inspector</span>
-          <span class="mac-window-box"></span>
+          <button class="drawer-close-btn" id="btn-close-inspector" title="Close Inspector">×</button>
         </div>
         <div class="format-subheader">
           <span id="format-context-title">Format</span>
@@ -1209,6 +1607,7 @@
           <div class="format-tab active" data-tab="style">Style</div>
           <div class="format-tab" data-tab="text">Text</div>
           <div class="format-tab" data-tab="arrange">Arrange</div>
+          <div class="format-tab" data-tab="layers">Layers</div>
         </div>
         <div class="format-body" id="format-body"></div>
       </aside>
@@ -1430,6 +1829,69 @@
         <div class="studio-footer">
           <button type="button" id="btn-welcome-sample" title="Load the sample RustFlow & Cloud architecture pages">Load Sample Architecture</button>
           <span style="font-size:10.5px; color:var(--text-muted);">Tip: Press <b>⌘O</b> anytime to open a file</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Co-Op Share Dialog -->
+    <div class="cmd-overlay" id="collab-overlay">
+      <div class="duel-modal" style="width: 460px;">
+        <div class="mac-titlebar">
+          <span class="mac-window-box" id="btn-close-collab" style="cursor:pointer;" title="Close"></span>
+          <span class="mac-titlebar-label">Realtime Co-Op &amp; Share Link</span>
+          <span class="mac-window-box"></span>
+        </div>
+        <div class="duel-body">
+          <div style="font-size:11.5px; color:var(--text-muted); line-height:1.45;">
+            Share this link to co-edit in real time. If two users grab or edit the same item at the same time, a <b>Button-Mashing Duel</b> decides who owns it!
+          </div>
+          <div>
+            <label style="font-size:10.5px; font-weight:700; display:block; margin-bottom:3px;">Your Display Name</label>
+            <input id="collab-user-name" type="text" maxlength="24" placeholder="Enter your name..." />
+          </div>
+          <div>
+            <label style="font-size:10.5px; font-weight:700; display:block; margin-bottom:3px;">Shareable Co-Edit Link</label>
+            <div style="display:flex; gap:6px;">
+              <input id="collab-share-url" type="text" readonly style="flex:1;" />
+              <button type="button" id="btn-collab-copy" class="primary">Copy Link</button>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:10.5px; font-weight:700; display:block; margin-bottom:3px;">Active Co-Editors (<span id="collab-peer-count">0</span>)</label>
+            <div class="collab-peers-list" id="collab-peers-list"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; gap:6px;">
+            <button type="button" id="btn-collab-leave" class="danger">Leave Room</button>
+            <button type="button" id="btn-collab-done" class="primary">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Button-Mashing Ownership Minigame Modal -->
+    <div class="cmd-overlay" id="duel-overlay" style="z-index: 650;">
+      <div class="duel-modal" id="duel-modal-box">
+        <div class="mac-titlebar">
+          <span class="mac-window-box"></span>
+          <span class="mac-titlebar-label">OWNERSHIP CLASH — BUTTON MASH!</span>
+          <span class="mac-window-box"></span>
+        </div>
+        <div class="duel-body">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:700;">
+            <span>Contested Item: <span id="duel-node-title" style="color:var(--accent-bright);">Item</span></span>
+            <span id="duel-timer-text" style="font-family:var(--font-mono); color:#c92027;">5.0s</span>
+          </div>
+          <div class="duel-timer-track"><div class="duel-timer-fill" id="duel-timer-fill"></div></div>
+          <div style="display:flex; justify-content:space-between; font-size:11.5px; font-weight:700;">
+            <span id="duel-p1-label">Player 1: 0</span>
+            <span id="duel-p2-label">Player 2: 0</span>
+          </div>
+          <div class="duel-tug-track">
+            <div class="duel-bar-p1" id="duel-bar-p1" style="width:50%;"></div>
+            <div class="duel-bar-p2" id="duel-bar-p2" style="width:50%;"></div>
+          </div>
+          <div id="duel-result-banner" style="display:none; text-align:center; padding:6px; font-weight:800; font-size:13px; border:1.5px solid #000; background:#fff9e6;"></div>
+          <button type="button" class="duel-mash-btn" id="btn-duel-mash">MASH! (SPACE / CLICK / TAP)</button>
         </div>
       </div>
     </div>
