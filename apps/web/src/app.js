@@ -523,11 +523,18 @@ function saveSnapshot() {
   }
 }
 
+let canvasCssW = 800;
+let canvasCssH = 600;
+let canvasDpr = Math.min(2, window.devicePixelRatio || 1);
+
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   canvasRect = rect;
-  canvas.width = Math.max(1, Math.floor(rect.width));
-  canvas.height = Math.max(1, Math.floor(rect.height));
+  canvasCssW = Math.max(1, Math.floor(rect.width));
+  canvasCssH = Math.max(1, Math.floor(rect.height));
+  canvasDpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.floor(canvasCssW * canvasDpr);
+  canvas.height = Math.floor(canvasCssH * canvasDpr);
   cachedGridKey = "";
   state.minimapDirty = true;
 }
@@ -1168,7 +1175,7 @@ function handleMenuAction(action) {
   }
 }
 
-function setZoomImmediate(targetZoom, cx = canvas.width / 2, cy = canvas.height / 2) {
+function setZoomImmediate(targetZoom, cx = canvasCssW / 2, cy = canvasCssH / 2) {
   const p = page();
   state.viewAnim = null;
   const before = screenToWorld(cx, cy);
@@ -1179,7 +1186,7 @@ function setZoomImmediate(targetZoom, cx = canvas.width / 2, cy = canvas.height 
   updateZoomLabel();
 }
 
-function animateZoom(targetZoom, cx = canvas.width / 2, cy = canvas.height / 2) {
+function animateZoom(targetZoom, cx = canvasCssW / 2, cy = canvasCssH / 2) {
   const clampedZoom = Math.min(8.0, Math.max(0.1, targetZoom));
   const before = screenToWorld(cx, cy);
   const targetPanX = cx - before.x * clampedZoom;
@@ -1217,11 +1224,11 @@ function fitToScreen() {
   const contentW = Math.max(100, maxX - minX);
   const contentH = Math.max(100, maxY - minY);
   const pad = 70;
-  const zoomX = (canvas.width - pad * 2) / contentW;
-  const zoomY = (canvas.height - pad * 2) / contentH;
+  const zoomX = (canvasCssW - pad * 2) / contentW;
+  const zoomY = (canvasCssH - pad * 2) / contentH;
   const targetZoom = Math.min(2.0, Math.max(0.2, Math.min(zoomX, zoomY)));
-  const targetPanX = (canvas.width - contentW * targetZoom) * 0.5 - minX * targetZoom;
-  const targetPanY = (canvas.height - contentH * targetZoom) * 0.5 - minY * targetZoom;
+  const targetPanX = (canvasCssW - contentW * targetZoom) * 0.5 - minX * targetZoom;
+  const targetPanY = (canvasCssH - contentH * targetZoom) * 0.5 - minY * targetZoom;
   animateViewTo(targetPanX, targetPanY, targetZoom);
   showToast("Fit Diagram to Screen");
 }
@@ -2498,7 +2505,7 @@ if (entityImageInput) {
         showToast(`Attached ${file.name} to #${pendingImageTargetNode.id}`);
       } else {
         const p = page();
-        const center = screenToWorld(canvas.width / 2 - 85, canvas.height / 2 - 50);
+        const center = screenToWorld(canvasCssW / 2 - 85, canvasCssH / 2 - 50);
         const newNode = {
           id: ++state.nextId,
           title: file.name.replace(/\.[^.]+$/, ""),
@@ -2535,7 +2542,7 @@ if (btnUploadImgToolbar) {
 }
 
 function addStencilToCanvasCenter(item) {
-  const center = screenToWorld(canvas.width / 2 - item.w / 2, canvas.height / 2 - item.h / 2);
+  const center = screenToWorld(canvasCssW / 2 - item.w / 2, canvasCssH / 2 - item.h / 2);
   createNodeFromStencil(item, Math.round(center.x / 20) * 20, Math.round(center.y / 20) * 20);
   if (window.innerWidth <= 1024) closeAllDrawers();
 }
@@ -7355,7 +7362,7 @@ function drawInfiniteGridFast(p) {
     const oy = ((p.pan.y % step) + step) % step;
     ctx.translate(ox, oy);
     ctx.fillStyle = cachedGridPattern;
-    ctx.fillRect(-ox, -oy, canvas.width, canvas.height);
+    ctx.fillRect(-ox, -oy, canvasCssW + step, canvasCssH + step);
     ctx.restore();
   }
 }
@@ -7428,14 +7435,58 @@ function drawEdgeArrowheads(ctx, e, geo, strokeColor) {
 }
 
 let frameCounter = 0;
+let lastActivityAt = performance.now();
+let forceRenderFrame = true;
+
+function wakeRender() {
+  lastActivityAt = performance.now();
+  forceRenderFrame = true;
+}
+
+for (const evName of ["mousedown", "mousemove", "mouseup", "wheel", "touchstart", "touchmove", "touchend", "keydown", "input", "change", "click", "resize"]) {
+  window.addEventListener(evName, wakeRender, { passive: true, capture: true });
+}
+
+function pageHasLiveAnimations(p) {
+  if (
+    state.layoutAnim ||
+    state.viewAnim ||
+    state.draggingNode ||
+    state.resizingNode ||
+    state.draggingEdgeBend ||
+    state.reconnectingEdge ||
+    state.draggingStencil ||
+    state.marqueeBox ||
+    state.panning ||
+    state.connectingFrom ||
+    (typeof collab !== "undefined" && collab.connected)
+  ) {
+    return true;
+  }
+  for (let i = 0; i < p.edges.length; i++) {
+    const a = p.edges[i].anim;
+    if (a === "pulse" || a === "ants") return true;
+  }
+  for (let i = 0; i < p.nodes.length; i++) {
+    if (p.nodes[i].borderAnim) return true;
+  }
+  return false;
+}
 
 function renderLoop(timestamp) {
+  const p = page();
+  if (!forceRenderFrame && timestamp - lastActivityAt > 250 && !pageHasLiveAnimations(p)) {
+    state.lastFrameTime = timestamp;
+    requestAnimationFrame(renderLoop);
+    return;
+  }
+  forceRenderFrame = false;
+
   const dt = Math.max(1, timestamp - state.lastFrameTime);
   state.fps = Math.round(state.fps * 0.92 + (1000 / dt) * 0.08);
   state.lastFrameTime = timestamp;
 
   const timeSec = timestamp * 0.001;
-  const p = page();
   const lightCanvas = isLightCanvasTheme();
   const selectColor = state.theme === "apple90s" ? "#0055cc" : state.theme === "contrast" ? "#000000" : "#38bdf8";
 
@@ -7469,6 +7520,7 @@ function renderLoop(timestamp) {
     }
   }
 
+  ctx.setTransform(canvasDpr, 0, 0, canvasDpr, 0, 0);
   ctx.fillStyle =
     state.theme === "apple90s"
       ? "#f5f3ec"
@@ -7477,12 +7529,12 @@ function renderLoop(timestamp) {
       : state.theme === "contrast"
       ? "#ffffff"
       : "#0d121d";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, canvasCssW, canvasCssH);
 
   drawInfiniteGridFast(p);
 
   const viewTL = screenToWorld(0, 0);
-  const viewBR = screenToWorld(canvas.width, canvas.height);
+  const viewBR = screenToWorld(canvasCssW, canvasCssH);
 
   ctx.save();
   ctx.translate(p.pan.x, p.pan.y);
@@ -7838,7 +7890,8 @@ function renderLoop(timestamp) {
   }
 
   if (frameCounter % 12 === 0) {
-    statusBarEl.textContent = `${p.nodes.length} items, ${p.edges.length} flows | Selected: ${state.selectedNodeIds.size + state.selectedEdgeIds.size} | Zoom: ${Math.round(p.zoom * 100)}% | ${state.fps} FPS`;
+    const nextStatus = `${p.nodes.length} items, ${p.edges.length} flows | Selected: ${state.selectedNodeIds.size + state.selectedEdgeIds.size} | Zoom: ${Math.round(p.zoom * 100)}% | ${state.fps} FPS`;
+    if (statusBarEl.textContent !== nextStatus) statusBarEl.textContent = nextStatus;
   }
 
   requestAnimationFrame(renderLoop);
