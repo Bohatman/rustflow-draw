@@ -1079,6 +1079,12 @@ function handleMenuAction(action) {
     case "copy":
       copySelection();
       break;
+    case "copy-png":
+      copyDiagramAsPng(true);
+      break;
+    case "copy-gif":
+      copyDiagramAsAnimatedGif(true);
+      break;
     case "paste":
       pasteSelection();
       break;
@@ -2764,6 +2770,8 @@ canvas.addEventListener("drop", (e) => {
 });
 
 canvas.addEventListener("mousedown", (e) => {
+  closeCanvasContextMenu();
+  if (e.button === 2) return;
   inlineEditor.style.display = "none";
   state.layoutAnim = null;
   state.viewAnim = null;
@@ -7100,6 +7108,8 @@ const COMMANDS = [
   { label: "Workspace: Open Startup Welcome Dialog", shortcut: "File", run: openWelcomeModal },
   { label: "Select All Nodes & Edges", shortcut: "Ctrl+A", run: selectAll },
   { label: "Copy Selection", shortcut: "Ctrl+C", run: copySelection },
+  { label: "Copy as PNG Image (for other apps)", shortcut: "Edit", run: () => copyDiagramAsPng(true) },
+  { label: "Copy as Animated GIF (for other apps)", shortcut: "Edit", run: () => copyDiagramAsAnimatedGif(true) },
   { label: "Cut Selection", shortcut: "Ctrl+X", run: cutSelection },
   { label: "Paste Selection", shortcut: "Ctrl+V", run: pasteSelection },
   { label: "Duplicate Selection", shortcut: "Ctrl+D", run: duplicateSelected },
@@ -7190,6 +7200,7 @@ window.addEventListener("keydown", (e) => {
   }
 
   if (e.key === "Escape") {
+    closeCanvasContextMenu();
     closeCommandPalette();
     closeShortcutsModal();
     closeSymbolStudioModal();
@@ -8343,3 +8354,317 @@ if (initialRoomParam) {
   closeWelcomeModal();
   connectCollabRoom(initialRoomParam);
 }
+
+// ============================================================================
+// COPY AS IMAGE / ANIMATED GIF & RIGHT-CLICK CONTEXT MENU
+// ============================================================================
+function getExportTargetPage(selectionOnly = true) {
+  const p = page();
+  if (selectionOnly && state.selectedNodeIds.size > 0) {
+    const selNodes = p.nodes.filter((n) => state.selectedNodeIds.has(n.id) && !n.hidden);
+    if (selNodes.length > 0) {
+      const selIds = new Set(selNodes.map((n) => n.id));
+      const selEdges = p.edges.filter((e) => selIds.has(e.source) && selIds.has(e.target));
+      return {
+        pageObj: { ...p, nodes: selNodes, edges: selEdges },
+        label: selNodes.length === 1 ? selNodes[0].title || "item" : `${selNodes.length} items`,
+      };
+    }
+  }
+  return { pageObj: p, label: "diagram" };
+}
+
+function uint8ToBase64(bytes) {
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
+
+async function copyDiagramAsPng(selectionOnly = true) {
+  const { pageObj, label } = getExportTargetPage(selectionOnly);
+  const bounds = getDiagramExportBounds(pageObj, 28);
+  const scale = 2;
+  const off = document.createElement("canvas");
+  off.width = Math.max(40, Math.round(bounds.width * scale));
+  off.height = Math.max(40, Math.round(bounds.height * scale));
+  const octx = off.getContext("2d");
+  renderDiagramFrameToContext(octx, pageObj, bounds, scale, 0);
+
+  const blob = await new Promise((resolve) => off.toBlob(resolve, "image/png"));
+  if (!blob) return;
+
+  try {
+    if (navigator.clipboard && window.ClipboardItem) {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      showToast(`Copied ${label} as PNG image — paste into any app!`);
+      return;
+    }
+  } catch {
+    // Fallback to download below
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "bohat-draw-selection.png";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`Clipboard blocked — downloaded ${label} as PNG`);
+}
+
+async function copyDiagramAsAnimatedGif(selectionOnly = true) {
+  const { pageObj, label } = getExportTargetPage(selectionOnly);
+  showToast(`Rendering animated GIF of ${label}...`);
+  await new Promise((r) => setTimeout(r, 15));
+
+  const bounds = getDiagramExportBounds(pageObj, 26);
+  const maxDim = Math.max(bounds.width, bounds.height);
+  const scale = maxDim > 780 ? 780 / maxDim : 1.15;
+  const wPx = Math.max(40, Math.round(bounds.width * scale));
+  const hPx = Math.max(40, Math.round(bounds.height * scale));
+
+  const off = document.createElement("canvas");
+  off.width = wPx;
+  off.height = hPx;
+  const octx = off.getContext("2d", { willReadFrequently: true });
+
+  const frameCount = 16;
+  const frames = [];
+  for (let f = 0; f < frameCount; f++) {
+    octx.clearRect(0, 0, wPx, hPx);
+    renderDiagramFrameToContext(octx, pageObj, bounds, scale, (f / frameCount) * 1.2);
+    frames.push(octx.getImageData(0, 0, wPx, hPx).data);
+  }
+
+  const gifBytes = encodeGif89a(frames, wPx, hPx, 6);
+  const gifBlob = new Blob([gifBytes], { type: "image/gif" });
+
+  // 1. Try native image/gif clipboard write
+  try {
+    if (navigator.clipboard && window.ClipboardItem) {
+      await navigator.clipboard.write([new ClipboardItem({ "image/gif": gifBlob })]);
+      showToast(`Copied ${label} as Animated GIF — paste into any app!`);
+      return;
+    }
+  } catch {
+    // Some browsers only allow image/png + text/html in ClipboardItem
+  }
+
+  // 2. Fallback: write PNG + animated GIF HTML <img> to clipboard so both rich & image apps accept paste
+  try {
+    if (navigator.clipboard && window.ClipboardItem) {
+      octx.clearRect(0, 0, wPx, hPx);
+      renderDiagramFrameToContext(octx, pageObj, bounds, scale, 0);
+      const pngBlob = await new Promise((resolve) => off.toBlob(resolve, "image/png"));
+      const gifDataUrl = `data:image/gif;base64,${uint8ToBase64(gifBytes)}`;
+      const htmlBlob = new Blob([`<img src="${gifDataUrl}" alt="Bohat Draw Animated Diagram" />`], { type: "text/html" });
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob, "text/html": htmlBlob })]);
+      showToast(`Copied ${label} (Animated HTML + PNG) — paste into other apps!`);
+      return;
+    }
+  } catch {
+    // Fallback to download below
+  }
+
+  const url = URL.createObjectURL(gifBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "bohat-draw-animated.gif";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`Downloaded Animated GIF (${label})`);
+}
+
+const ctxMenuEl = document.getElementById("ctx-menu");
+
+function closeCanvasContextMenu() {
+  if (ctxMenuEl) ctxMenuEl.classList.remove("open");
+}
+
+function addCtxEntry(parent, label, hint, onClick, isDanger = false) {
+  const row = document.createElement("div");
+  row.className = "ctx-entry" + (isDanger ? " danger" : "");
+  const lbl = document.createElement("span");
+  lbl.textContent = label;
+  row.appendChild(lbl);
+  if (hint) {
+    const h = document.createElement("span");
+    h.className = "ctx-hint";
+    h.textContent = hint;
+    row.appendChild(h);
+  }
+  row.onclick = (ev) => {
+    ev.stopPropagation();
+    closeCanvasContextMenu();
+    onClick();
+  };
+  parent.appendChild(row);
+  return row;
+}
+
+function addCtxSubmenu(parent, label, items) {
+  const row = document.createElement("div");
+  row.className = "ctx-entry";
+  row.innerHTML = `<span>${label}</span><span class="ctx-hint">▸</span>`;
+  const sub = document.createElement("div");
+  sub.className = "ctx-sub";
+  for (const [subLbl, subHint, fn, danger] of items) {
+    addCtxEntry(sub, subLbl, subHint, fn, danger);
+  }
+  row.appendChild(sub);
+  parent.appendChild(row);
+}
+
+function addCtxDivider(parent) {
+  const d = document.createElement("div");
+  d.className = "dropdown-divider";
+  parent.appendChild(d);
+}
+
+function openCanvasContextMenu(clientX, clientY, wpt) {
+  if (!ctxMenuEl) return;
+  ctxMenuEl.innerHTML = "";
+  const p = page();
+
+  const hitNode = [...p.nodes]
+    .reverse()
+    .find((n) => !n.hidden && wpt.x >= n.x && wpt.x <= n.x + n.w && wpt.y >= n.y && wpt.y <= n.y + n.h);
+  const hitEdge = hitNode ? null : hitTestEdge(wpt);
+
+  if (hitNode) {
+    if (!state.selectedNodeIds.has(hitNode.id)) {
+      setSingleNodeSelection(hitNode.id);
+      renderFormatPanel();
+    }
+    addCtxEntry(ctxMenuEl, "Edit Label", "F2", openInlineEditorForSelection);
+    addCtxEntry(ctxMenuEl, "Copy", "⌘C", copySelection);
+    addCtxEntry(ctxMenuEl, "Duplicate", "⌘D", duplicateSelected);
+    addCtxDivider(ctxMenuEl);
+    addCtxSubmenu(ctxMenuEl, "Copy to Other App", [
+      ["Copy as PNG Image", "2x PNG", () => copyDiagramAsPng(true)],
+      ["Copy as Animated GIF", "GIF89a", () => copyDiagramAsAnimatedGif(true)],
+      ["Export Animated SVG", "SVG", exportAnimatedSvg],
+    ]);
+    addCtxSubmenu(ctxMenuEl, "Layer Order", [
+      ["Bring to Front", "⌘]", bringToFront],
+      ["Bring Forward", "⇧⌘]", bringForward],
+      ["Send Backward", "⇧⌘[", sendBackward],
+      ["Send to Back", "⌘[", sendToBack],
+    ]);
+    addCtxSubmenu(
+      ctxMenuEl,
+      "Border Line Style",
+      BORDER_STYLE_OPTIONS.map(([val, lbl]) => [
+        lbl,
+        (hitNode.borderStyle || "solid") === val ? "✓" : "",
+        () => {
+          saveSnapshot();
+          for (const nid of state.selectedNodeIds) {
+            const nd = nodeMap.get(nid);
+            if (nd) nd.borderStyle = val;
+          }
+          renderFormatPanel();
+        },
+      ])
+    );
+    addCtxSubmenu(ctxMenuEl, "Section / Hierarchy", [
+      ["Group into Section", "⇧⌘G", groupSelectedIntoSection],
+      ["Ungroup / Detach", "", ungroupSelectedSection],
+      ["Fit Section to Children", "", () => fitSectionToChildren(hitNode)],
+    ]);
+    addCtxDivider(ctxMenuEl);
+    addCtxEntry(ctxMenuEl, hitNode.locked ? "Unlock Layer" : "Lock Layer", "", () => {
+      saveSnapshot();
+      hitNode.locked = !hitNode.locked;
+      renderFormatPanel();
+    });
+    addCtxEntry(ctxMenuEl, "Hide Layer", "", () => {
+      saveSnapshot();
+      hitNode.hidden = true;
+      state.selectedNodeIds.delete(hitNode.id);
+      syncPrimarySelectionFromSets();
+      renderFormatPanel();
+    });
+    addCtxEntry(ctxMenuEl, "Delete", "Del", () => deleteSelected(true), true);
+  } else if (hitEdge) {
+    setSingleEdgeSelection(hitEdge.id);
+    renderFormatPanel();
+    addCtxEntry(ctxMenuEl, "Edit Edge Label", "F2", openInlineEditorForSelection);
+    addCtxDivider(ctxMenuEl);
+    addCtxSubmenu(ctxMenuEl, "Routing Style", [
+      ["Bezier Curve", hitEdge.kind === "bezier" ? "✓" : "", () => { saveSnapshot(); hitEdge.kind = "bezier"; hitEdge._ver = -1; renderFormatPanel(); }],
+      ["SmoothStep", hitEdge.kind === "smoothstep" ? "✓" : "", () => { saveSnapshot(); hitEdge.kind = "smoothstep"; hitEdge._ver = -1; renderFormatPanel(); }],
+      ["Orthogonal", hitEdge.kind === "orthogonal" ? "✓" : "", () => { saveSnapshot(); hitEdge.kind = "orthogonal"; hitEdge._ver = -1; renderFormatPanel(); }],
+      ["Straight Line", hitEdge.kind === "straight" ? "✓" : "", () => { saveSnapshot(); hitEdge.kind = "straight"; hitEdge._ver = -1; renderFormatPanel(); }],
+    ]);
+    addCtxSubmenu(ctxMenuEl, "Arrow Style", [
+      ["1-Way (→)", (hitEdge.arrow || "one-way") === "one-way" ? "✓" : "", () => { saveSnapshot(); hitEdge.arrow = "one-way"; delete hitEdge.sourceArrow; delete hitEdge.targetArrow; renderFormatPanel(); }],
+      ["2-Way (↔)", hitEdge.arrow === "two-way" ? "✓" : "", () => { saveSnapshot(); hitEdge.arrow = "two-way"; delete hitEdge.sourceArrow; delete hitEdge.targetArrow; renderFormatPanel(); }],
+      ["No Arrow (—)", hitEdge.arrow === "none" ? "✓" : "", () => { saveSnapshot(); hitEdge.arrow = "none"; delete hitEdge.sourceArrow; delete hitEdge.targetArrow; renderFormatPanel(); }],
+      ["Reverse (←)", hitEdge.arrow === "reverse" ? "✓" : "", () => { saveSnapshot(); hitEdge.arrow = "reverse"; delete hitEdge.sourceArrow; delete hitEdge.targetArrow; renderFormatPanel(); }],
+      ["Open (—>)", hitEdge.arrow === "open" ? "✓" : "", () => { saveSnapshot(); hitEdge.arrow = "open"; delete hitEdge.sourceArrow; delete hitEdge.targetArrow; renderFormatPanel(); }],
+      ["UML Diamond (—◇)", hitEdge.arrow === "diamond" ? "✓" : "", () => { saveSnapshot(); hitEdge.arrow = "diamond"; delete hitEdge.sourceArrow; delete hitEdge.targetArrow; renderFormatPanel(); }],
+    ]);
+    addCtxSubmenu(ctxMenuEl, "Flow Animation", [
+      ["Pulse Particles", hitEdge.anim === "pulse" ? "✓" : "", () => { saveSnapshot(); hitEdge.anim = "pulse"; renderFormatPanel(); }],
+      ["Dashed Flow", hitEdge.anim === "ants" ? "✓" : "", () => { saveSnapshot(); hitEdge.anim = "ants"; renderFormatPanel(); }],
+      ["Static", hitEdge.anim === "none" ? "✓" : "", () => { saveSnapshot(); hitEdge.anim = "none"; renderFormatPanel(); }],
+    ]);
+    addCtxEntry(ctxMenuEl, "Reverse Direction", "", () => {
+      saveSnapshot();
+      const tn = hitEdge.source, tp = hitEdge.sourcePort;
+      hitEdge.source = hitEdge.target;
+      hitEdge.sourcePort = hitEdge.targetPort;
+      hitEdge.target = tn;
+      hitEdge.targetPort = tp;
+      hitEdge._ver = -1;
+      renderFormatPanel();
+    });
+    addCtxEntry(ctxMenuEl, "Reset Bend", "", () => {
+      saveSnapshot();
+      hitEdge.bend = null;
+      hitEdge._ver = -1;
+    });
+    addCtxDivider(ctxMenuEl);
+    addCtxEntry(ctxMenuEl, "Delete Edge", "Del", () => deleteSelected(true), true);
+  } else {
+    addCtxEntry(ctxMenuEl, "Paste", "⌘V", pasteSelection);
+    addCtxEntry(ctxMenuEl, "Select All", "⌘A", selectAll);
+    addCtxEntry(ctxMenuEl, "Fit Diagram to Screen", "⌘1", fitToScreen);
+    addCtxDivider(ctxMenuEl);
+    addCtxSubmenu(ctxMenuEl, "Copy Diagram to Other App", [
+      ["Copy as PNG Image", "2x PNG", () => copyDiagramAsPng(false)],
+      ["Copy as Animated GIF", "GIF89a", () => copyDiagramAsAnimatedGif(false)],
+      ["Export Animated SVG", "SVG", exportAnimatedSvg],
+    ]);
+    addCtxSubmenu(ctxMenuEl, "Arrange / Pile Layouts", [
+      ["Hierarchical", "⇧⌘L", runHierarchicalLayout],
+      ["Overlap Stack", "", layoutOverlapStack],
+      ["Cascade Pile", "", layoutCascadePile],
+      ["Heap / Pile Up", "", layoutHeapPile],
+      ["Separate Overlaps", "", layoutSeparateOverlaps],
+    ]);
+  }
+
+  ctxMenuEl.classList.add("open");
+  const mw = ctxMenuEl.offsetWidth || 220;
+  const mh = ctxMenuEl.offsetHeight || 240;
+  const left = Math.min(clientX, window.innerWidth - mw - 8);
+  const top = Math.min(clientY, window.innerHeight - mh - 8);
+  ctxMenuEl.style.left = `${Math.max(4, left)}px`;
+  ctxMenuEl.style.top = `${Math.max(4, top)}px`;
+}
+
+canvas.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  const sx = e.clientX - canvasRect.left;
+  const sy = e.clientY - canvasRect.top;
+  const wpt = screenToWorld(sx, sy);
+  openCanvasContextMenu(e.clientX, e.clientY, wpt);
+});
+
+window.addEventListener("click", (e) => {
+  if (ctxMenuEl && !ctxMenuEl.contains(e.target)) closeCanvasContextMenu();
+});
