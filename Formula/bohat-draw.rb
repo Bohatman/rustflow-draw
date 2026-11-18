@@ -1,8 +1,8 @@
 class BohatDraw < Formula
-  desc "Bohat Draw.io (RustFlow Draw) — Apple 90s Platinum desktop diagramming app with realtime co-op"
+  desc "Bohat Draw.io (RustFlow Draw) — Retro 90s Platinum desktop diagramming app with realtime co-op"
   homepage "https://github.com/Bohatman/rustflow-draw"
   url "https://github.com/Bohatman/rustflow-draw.git",
-      tag: "v0.1.1"
+      tag: "v0.1.2"
   license any_of: ["MIT", "Apache-2.0"]
   head "https://github.com/Bohatman/rustflow-draw.git", branch: "feat/phase-1-engine"
 

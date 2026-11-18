@@ -1122,7 +1122,7 @@ function handleMenuAction(action) {
       document.documentElement.setAttribute("data-theme", state.theme);
       renderPalette(document.getElementById("palette-search")?.value || "");
       renderFormatPanel();
-      showToast(`Theme: ${state.theme === "apple90s" ? "Apple 90s Platinum" : state.theme}`);
+      showToast(`Theme: ${state.theme === "apple90s" ? "Retro 90s Platinum" : state.theme}`);
       break;
     case "layout-hier":
       runHierarchicalLayout();
@@ -1734,12 +1734,12 @@ function renderFormatPanel() {
         </div>
       </div>
       <div class="format-section">
-        <label>Macintosh Appearance Theme</label>
+        <label>Appearance Theme</label>
         <select id="diag-theme">
-          <option value="apple90s" ${state.theme === "apple90s" ? "selected" : ""}>Apple 90s Platinum (OS 8.5)</option>
+          <option value="apple90s" ${state.theme === "apple90s" ? "selected" : ""}>Retro 90s Platinum</option>
           <option value="dark" ${state.theme === "dark" ? "selected" : ""}>Dark Platinum</option>
           <option value="light" ${state.theme === "light" ? "selected" : ""}>Light Modern</option>
-          <option value="contrast" ${state.theme === "contrast" ? "selected" : ""}>System 1.0 B&amp;W CRT</option>
+          <option value="contrast" ${state.theme === "contrast" ? "selected" : ""}>Mono 1-Bit CRT</option>
         </select>
       </div>
       <div class="format-section" style="border-bottom:none;">
@@ -4948,7 +4948,7 @@ function renderPageTabs() {
   const container = document.getElementById("page-tabs");
   const titleEl = document.getElementById("window-canvas-title");
   if (titleEl) {
-    titleEl.textContent = `${page().name} — Macintosh Platinum`;
+    titleEl.textContent = `${page().name} — Platinum 90s`;
   }
   container.innerHTML = "";
   for (const p of state.pages) {

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>RustFlow Draw 8.5 — Macintosh Platinum Diagramming Engine</title>
+    <title>Bohat Draw.io — Retro 90s Platinum Diagramming Studio</title>
     <style>
       /* ==========================================================================
          THEME TOKENS: APPLE 90s PLATINUM (DEFAULT) + DARK / LIGHT / SYSTEM 1 B&W
@@ -182,11 +182,11 @@
 
       .apple-rainbow-icon {
         width: 14px;
-        height: 15px;
-        border: 1px solid #000;
-        border-radius: 3px 3px 5px 5px;
+        height: 14px;
+        border: 1.5px solid #000;
+        border-radius: 2px;
         background: linear-gradient(
-          180deg,
+          135deg,
           #61bb46 0%,
           #61bb46 16.6%,
           #fdb827 16.6%,
@@ -200,20 +200,16 @@
           #009ddc 83.3%,
           #009ddc 100%
         );
-        box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.45);
+        box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.55);
         position: relative;
         flex-shrink: 0;
       }
       .apple-rainbow-icon::before {
         content: "";
         position: absolute;
-        top: -4px;
-        left: 6px;
-        width: 4px;
-        height: 3px;
-        background: #61bb46;
-        border: 1px solid #000;
-        border-radius: 3px 0 3px 0;
+        inset: 3px;
+        border: 1px solid rgba(0, 0, 0, 0.55);
+        background: rgba(255, 255, 255, 0.22);
       }
 
       .menu-item {
@@ -1344,9 +1340,9 @@
     <!-- Row 1: Iconic Apple 90s System 7 / Mac OS 8 Menu Bar -->
     <nav class="menubar" id="menubar">
       <div class="menubar-left">
-        <div class="brand-logo" title="RustFlow Draw — Macintosh System 8.5 Platinum Edition">
+        <div class="brand-logo" title="Bohat Draw.io — Retro 90s Platinum Edition">
           <span class="apple-rainbow-icon"></span>
-          <span>RustFlow</span>
+          <span>Bohat Draw</span>
         </div>
 
         <div class="menu-item" data-menu="file">
@@ -1395,10 +1391,10 @@
             <div class="dropdown-divider"></div>
             <div class="dropdown-entry" data-action="toggle-grid"><span>Cycle Grid Style</span><span class="dropdown-shortcut">⌘G</span></div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-entry" data-action="theme-apple90s"><span>Theme: Apple 90s Platinum</span></div>
+            <div class="dropdown-entry" data-action="theme-apple90s"><span>Theme: Retro 90s Platinum</span></div>
             <div class="dropdown-entry" data-action="theme-dark"><span>Theme: Dark Platinum</span></div>
             <div class="dropdown-entry" data-action="theme-light"><span>Theme: Light Modern</span></div>
-            <div class="dropdown-entry" data-action="theme-contrast"><span>Theme: System 1.0 B&amp;W</span></div>
+            <div class="dropdown-entry" data-action="theme-contrast"><span>Theme: Mono 1-Bit CRT</span></div>
           </div>
         </div>
 
@@ -1440,7 +1436,7 @@
         <div class="mac-app-badge">
           <span id="mac-clock">9:41 AM</span>
           <span>·</span>
-          <span>Mac OS 8.5</span>
+          <span>Bohat Draw</span>
         </div>
       </div>
     </nav>
@@ -1581,7 +1577,7 @@
       <main class="mac-window">
         <div class="mac-titlebar">
           <span class="mac-window-box"></span>
-          <span class="mac-titlebar-label" id="window-canvas-title">RustFlow Canvas — Macintosh Platinum</span>
+          <span class="mac-titlebar-label" id="window-canvas-title">Bohat Draw Canvas — Platinum 90s</span>
           <span class="mac-window-box"></span>
         </div>
         <div class="canvas-container">
@@ -1624,7 +1620,7 @@
       <div class="cmd-modal">
         <div class="mac-titlebar">
           <span class="mac-window-box"></span>
-          <span class="mac-titlebar-label">Macintosh Command Launcher</span>
+          <span class="mac-titlebar-label">Command Launcher</span>
           <span class="mac-window-box"></span>
         </div>
         <input id="cmd-input" class="cmd-input" type="text" placeholder="Type a command or shape name (Esc to close)..." />
@@ -1637,7 +1633,7 @@
       <div class="cmd-modal" style="width: 610px;">
         <div class="mac-titlebar">
           <span class="mac-window-box" id="btn-close-shortcuts" style="cursor:pointer;" title="Close"></span>
-          <span class="mac-titlebar-label">Macintosh Keyboard Shortcuts</span>
+          <span class="mac-titlebar-label">Keyboard Shortcuts</span>
           <span class="mac-window-box"></span>
         </div>
         <div class="shortcuts-grid">
@@ -1670,7 +1666,7 @@
       <div class="cmd-modal" style="width: 650px;">
         <div class="mac-titlebar">
           <span class="mac-window-box" id="btn-close-symbol-studio" style="cursor:pointer;" title="Close"></span>
-          <span class="mac-titlebar-label">Macintosh Symbol Studio — Create &amp; Import Stencils</span>
+          <span class="mac-titlebar-label">Symbol Studio — Create &amp; Import Stencils</span>
           <span class="mac-window-box"></span>
         </div>
         <div class="studio-body">
@@ -1772,7 +1768,7 @@
       <div class="cmd-modal" style="width: 620px;">
         <div class="mac-titlebar">
           <span class="mac-window-box" id="btn-close-welcome" style="cursor:pointer;" title="Close"></span>
-          <span class="mac-titlebar-label">Welcome to RustFlow Draw — Macintosh System 8.5</span>
+          <span class="mac-titlebar-label">Welcome to Bohat Draw.io</span>
           <span class="mac-window-box"></span>
         </div>
         <div class="welcome-body">
