@@ -673,7 +673,11 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                 }),
         )
         .show(ctx, |ui| {
+            let max_panel_w = ui.max_rect().width();
+            ui.set_max_width(max_panel_w);
             platinum_window_frame(app.theme_mode).show(ui, |ui| {
+                let frame_w = ui.available_width();
+                ui.set_max_width(frame_w);
                 ui.set_min_size(ui.available_size());
                 ui.vertical(|ui| {
                     let query = app.palette_search.trim().to_lowercase();
@@ -726,10 +730,11 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
 
                     Frame::new().inner_margin(Margin::same(8)).show(ui, |ui| {
                         let inner_w = ui.available_width();
+                        ui.set_max_width(inner_w);
                         ui.horizontal(|ui| {
                             let has_q = !app.palette_search.is_empty();
-                            let clear_w = if has_q { 22.0 } else { 0.0 };
-                            let search_w = (inner_w - 64.0 - clear_w).max(80.0);
+                            let clear_w = if has_q { 24.0 } else { 0.0 };
+                            let search_w = (inner_w - 74.0 - clear_w).max(60.0);
                             ui.add(
                                 egui::TextEdit::singleline(&mut app.palette_search)
                                     .hint_text("Search 130+ symbols...")
@@ -740,7 +745,7 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                             }
                             if ui
                                 .add_sized(
-                                    [56.0, 22.0],
+                                    [54.0, 22.0],
                                     egui::Button::new(RichText::new("+ New").color(Color32::WHITE).size(11.0))
                                         .fill(Color32::from_rgb(0, 0, 128)),
                                 )
@@ -939,7 +944,7 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                             (Some(StencilCategory::Flowchart), "Flow", None),
                         ];
                         let gap = 3.0_f32;
-                        let pill_w = ((inner_w - gap * 4.0) / 5.0).floor().max(38.0);
+                        let pill_w = ((inner_w - gap * 4.0 - 2.0) / 5.0).floor().max(32.0);
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = gap;
                             for &(cat_opt, label, dot_col) in &quick_row {
@@ -1048,7 +1053,7 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                         ui.add_space(4.0);
                         ui.horizontal(|ui| {
                             ui.label(RichText::new("View").size(10.5).weak());
-                            let vw = ((inner_w - 34.0 - 6.0) / 3.0).floor().max(48.0);
+                            let vw = ((inner_w - 38.0 - 10.0) / 3.0).floor().max(42.0);
                             for (mode, lbl) in [
                                 (PaletteViewMode::IconOnly, "Icon"),
                                 (PaletteViewMode::IconAndName, "Icon+Name"),
@@ -1621,7 +1626,11 @@ pub fn render_inspector_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                 }),
         )
         .show(ctx, |ui| {
+            let max_panel_w = ui.max_rect().width();
+            ui.set_max_width(max_panel_w);
             platinum_window_frame(app.theme_mode).show(ui, |ui| {
+                let frame_w = ui.available_width();
+                ui.set_max_width(frame_w);
                 ui.set_min_size(ui.available_size());
                 ui.vertical(|ui| {
                     let badge = if app.bridge.selection.selected_nodes.len() > 1 {
@@ -1638,8 +1647,10 @@ pub fn render_inspector_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                     }
 
                     Frame::new().inner_margin(Margin::same(8)).show(ui, |ui| {
+                        let inner_w = ui.available_width();
+                        ui.set_max_width(inner_w);
                         let gap = ui.spacing().item_spacing.x;
-                        let tab_w = ((ui.available_width() - gap * 3.0) / 4.0).floor().max(48.0);
+                        let tab_w = ((inner_w - gap * 3.0 - 2.0) / 4.0).floor().max(42.0);
                         ui.horizontal(|ui| {
                             for (tab, label) in [
                                 (StudioInspectorTab::Style, "Style"),

@@ -1112,6 +1112,10 @@ impl BohatDrawApp {
 }
 
 impl eframe::App for BohatDrawApp {
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        desktop_bg_color(self.theme_mode).to_normalized_gamma_f32()
+    }
+
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if !self.theme_applied {
             apply_theme(ctx, self.theme_mode);
