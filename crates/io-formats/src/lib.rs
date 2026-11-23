@@ -2,9 +2,10 @@
 //! animated SVG exporter, high-DPI rasterizer, and PDF exporter.
 
 use rustflow_core::{
-    ColorRgba, Edge, EdgeAnimation, EdgeKind, Node, Point, Rect, SceneGraph, SemVer, Viewport,
+    ColorRgba, Edge, EdgeAnimation, EdgeKind, Node, Point, Rect, SceneGraph, SemVer, ShapeKind,
+    Viewport,
 };
-use rustflow_renderer::{tessellate_edge_path, HeadlessFramebuffer};
+use rustflow_renderer::{tessellate_edge_path, ExportBgStyle, HeadlessFramebuffer};
 
 pub const NATIVE_FORMAT_VERSION: &str = "1.0.0";
 
@@ -13,6 +14,7 @@ pub enum FormatError {
     InvalidJson(String),
     InvalidDrawioXml(String),
     UnsupportedVersion(String),
+    EncodeError(String),
 }
 
 impl std::fmt::Display for FormatError {
@@ -21,6 +23,7 @@ impl std::fmt::Display for FormatError {
             FormatError::InvalidJson(msg) => write!(f, "Invalid native JSON: {msg}"),
             FormatError::InvalidDrawioXml(msg) => write!(f, "Invalid .drawio XML: {msg}"),
             FormatError::UnsupportedVersion(v) => write!(f, "Unsupported format version: {v}"),
+            FormatError::EncodeError(msg) => write!(f, "Encode error: {msg}"),
         }
     }
 }
@@ -333,6 +336,70 @@ fn parse_cell_id(raw: &str) -> Option<u64> {
         .ok()
 }
 
+fn parse_css_hex(hex: &str) -> Option<ColorRgba> {
+    let clean = hex.trim().trim_start_matches('#');
+    if clean.len() != 6 {
+        return None;
+    }
+    let r = u8::from_str_radix(&clean[0..2], 16).ok()? as f32 / 255.0;
+    let g = u8::from_str_radix(&clean[2..4], 16).ok()? as f32 / 255.0;
+    let b = u8::from_str_radix(&clean[4..6], 16).ok()? as f32 / 255.0;
+    Some(ColorRgba::new(r, g, b, 1.0))
+}
+
+fn parse_drawio_shape(style: &str) -> ShapeKind {
+    let s = style.to_ascii_lowercase();
+    if s.contains("rhombus") {
+        ShapeKind::Diamond
+    } else if s.contains("ellipse") {
+        ShapeKind::Ellipse
+    } else if s.contains("cylinder") {
+        ShapeKind::Cylinder
+    } else if s.contains("cloud") {
+        ShapeKind::Cloud
+    } else if s.contains("hexagon") {
+        ShapeKind::Hexagon
+    } else if s.contains("parallelogram") {
+        ShapeKind::Parallelogram
+    } else if s.contains("umlactor") || s.contains("shape=actor") {
+        ShapeKind::Actor
+    } else if s.contains("document") {
+        ShapeKind::Document
+    } else if s.contains("note") {
+        ShapeKind::Note
+    } else if s.contains("callout") {
+        ShapeKind::Callout
+    } else if s.contains("swimlane") || s.contains("group") || s.contains("section") {
+        ShapeKind::Section
+    } else if s.contains("folder") || s.contains("package") {
+        ShapeKind::Package
+    } else if s.contains("component") {
+        ShapeKind::Component
+    } else if s.contains("server") {
+        ShapeKind::Server
+    } else if s.contains("firewall") {
+        ShapeKind::Firewall
+    } else if s.contains("shield") {
+        ShapeKind::Shield
+    } else if s.contains("queue") {
+        ShapeKind::Queue
+    } else if s.contains("rounded=1") {
+        ShapeKind::RoundedRect
+    } else {
+        ShapeKind::ReactFlowCard
+    }
+}
+
+fn extract_style_prop(style: &str, key: &str) -> Option<String> {
+    let prefix = format!("{key}=");
+    for part in style.split(';') {
+        if let Some(val) = part.trim().strip_prefix(&prefix) {
+            return Some(val.to_string());
+        }
+    }
+    None
+}
+
 /// Import a `SceneGraph` from Draw.io (`mxfile` / `mxGraphModel`) XML with zero-panic error handling.
 pub fn import_drawio_xml(xml: &str) -> Result<SceneGraph, FormatError> {
     if !xml.contains("<mxfile") || !xml.contains("<mxGraphModel") {
@@ -342,6 +409,7 @@ pub fn import_drawio_xml(xml: &str) -> Result<SceneGraph, FormatError> {
     }
 
     let mut scene = SceneGraph::new();
+    let mut id_map: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
     let lines: Vec<&str> = xml.lines().map(str::trim).collect();
     let mut i = 0;
     while i < lines.len() {
@@ -349,9 +417,11 @@ pub fn import_drawio_xml(xml: &str) -> Result<SceneGraph, FormatError> {
         if line.starts_with("<mxCell ") && line.contains("vertex=\"1\"") {
             let id_str = extract_xml_attr(line, "id")
                 .ok_or_else(|| FormatError::InvalidDrawioXml("vertex missing id".into()))?;
-            let id = parse_cell_id(&id_str)
-                .ok_or_else(|| FormatError::InvalidDrawioXml("invalid vertex id".into()))?;
+            let id = parse_cell_id(&id_str).unwrap_or_else(|| scene.allocate_id());
+            id_map.insert(id_str, id);
             let value = extract_xml_attr(line, "value").unwrap_or_default();
+            let style = extract_xml_attr(line, "style").unwrap_or_default();
+            let shape = parse_drawio_shape(&style);
 
             let mut x = 0.0;
             let mut y = 0.0;
@@ -372,23 +442,35 @@ pub fn import_drawio_xml(xml: &str) -> Result<SceneGraph, FormatError> {
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(60.0);
             }
-            scene.insert_node(Node::new_react_flow_card(
-                id,
-                value,
-                Rect::new(x, y, width, height),
-            ));
+            let mut node = Node::new_shape(id, value, Rect::new(x, y, width, height), shape);
+            if let Some(fill_hex) = extract_style_prop(&style, "fillColor") {
+                if let Some(c) = parse_css_hex(&fill_hex) {
+                    node.style.fill = c;
+                }
+            }
+            if let Some(stroke_hex) = extract_style_prop(&style, "strokeColor") {
+                if let Some(c) = parse_css_hex(&stroke_hex) {
+                    node.style.stroke = c;
+                }
+            }
+            scene.insert_node(node);
         } else if line.starts_with("<mxCell ") && line.contains("edge=\"1\"") {
             let id_str = extract_xml_attr(line, "id")
                 .ok_or_else(|| FormatError::InvalidDrawioXml("edge missing id".into()))?;
-            let id = parse_cell_id(&id_str)
-                .ok_or_else(|| FormatError::InvalidDrawioXml("invalid edge id".into()))?;
+            let id = parse_cell_id(&id_str).unwrap_or_else(|| scene.allocate_id());
             let source_str = extract_xml_attr(line, "source")
                 .ok_or_else(|| FormatError::InvalidDrawioXml("edge missing source".into()))?;
             let target_str = extract_xml_attr(line, "target")
                 .ok_or_else(|| FormatError::InvalidDrawioXml("edge missing target".into()))?;
-            let source = parse_cell_id(&source_str)
+            let source = id_map
+                .get(&source_str)
+                .copied()
+                .or_else(|| parse_cell_id(&source_str))
                 .ok_or_else(|| FormatError::InvalidDrawioXml("invalid source id".into()))?;
-            let target = parse_cell_id(&target_str)
+            let target = id_map
+                .get(&target_str)
+                .copied()
+                .or_else(|| parse_cell_id(&target_str))
                 .ok_or_else(|| FormatError::InvalidDrawioXml("invalid target id".into()))?;
             let label = extract_xml_attr(line, "value").unwrap_or_default();
             let style = extract_xml_attr(line, "style").unwrap_or_default();
@@ -542,6 +624,159 @@ pub fn export_pdf_document(scene: &SceneGraph) -> Vec<u8> {
         stream
     );
     pdf.into_bytes()
+}
+
+pub fn compute_fit_viewport(scene: &SceneGraph, width: u32, height: u32, padding: f32) -> Viewport {
+    let mut vp = Viewport::new(width as f32, height as f32);
+    let mut bounds: Option<Rect> = None;
+    for n in scene.nodes() {
+        if !n.visible {
+            continue;
+        }
+        bounds = Some(match bounds {
+            Some(acc) => acc.union(&n.bounds),
+            None => n.bounds,
+        });
+    }
+    let Some(rect) = bounds else {
+        return vp;
+    };
+    let padded = rect.expand(padding);
+    let sx = (width as f32 / padded.width.max(1.0)).min(2.0);
+    let sy = (height as f32 / padded.height.max(1.0)).min(2.0);
+    let zoom = sx.min(sy).clamp(Viewport::MIN_ZOOM, Viewport::MAX_ZOOM);
+    vp.zoom = zoom;
+    vp.pan.x = (width as f32 - padded.width * zoom) * 0.5 - padded.x * zoom;
+    vp.pan.y = (height as f32 - padded.height * zoom) * 0.5 - padded.y * zoom;
+    vp
+}
+
+pub fn export_png_bytes(
+    scene: &SceneGraph,
+    width: u32,
+    height: u32,
+    time_seconds: f32,
+    clear_rgba: [u8; 4],
+) -> Result<Vec<u8>, FormatError> {
+    export_png_bytes_with_bg(scene, width, height, time_seconds, clear_rgba, ExportBgStyle::Dots)
+}
+
+pub fn export_png_bytes_with_bg(
+    scene: &SceneGraph,
+    width: u32,
+    height: u32,
+    time_seconds: f32,
+    clear_rgba: [u8; 4],
+    bg_style: ExportBgStyle,
+) -> Result<Vec<u8>, FormatError> {
+    let vp = compute_fit_viewport(scene, width, height, 36.0);
+    let mut fb = HeadlessFramebuffer::new(width, height, clear_rgba);
+    fb.render_scene_with_bg(scene, &vp, time_seconds, bg_style);
+    let mut raw = Vec::with_capacity((width * height * 4) as usize);
+    for px in &fb.pixels {
+        raw.extend_from_slice(px);
+    }
+    let mut out = Vec::new();
+    {
+        let mut encoder = png::Encoder::new(&mut out, width, height);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder
+            .write_header()
+            .map_err(|e| FormatError::EncodeError(format!("PNG header error: {e}")))?;
+        writer
+            .write_image_data(&raw)
+            .map_err(|e| FormatError::EncodeError(format!("PNG write error: {e}")))?;
+    }
+    Ok(out)
+}
+
+pub fn export_animated_gif_bytes(
+    scene: &SceneGraph,
+    width: u32,
+    height: u32,
+    frames: usize,
+    fps: u16,
+    clear_rgba: [u8; 4],
+) -> Result<Vec<u8>, FormatError> {
+    export_animated_gif_bytes_with_bg(
+        scene,
+        width,
+        height,
+        frames,
+        fps,
+        clear_rgba,
+        ExportBgStyle::Dots,
+    )
+}
+
+pub fn export_animated_gif_bytes_with_bg(
+    scene: &SceneGraph,
+    width: u32,
+    height: u32,
+    frames: usize,
+    fps: u16,
+    clear_rgba: [u8; 4],
+    bg_style: ExportBgStyle,
+) -> Result<Vec<u8>, FormatError> {
+    let frame_count = frames.clamp(2, 48);
+    let fps_clamped = fps.clamp(4, 24);
+    let delay_cs = (100u16 / fps_clamped).max(4);
+    let vp = compute_fit_viewport(scene, width, height, 36.0);
+    let mut out = Vec::new();
+    {
+        let mut encoder = gif::Encoder::new(&mut out, width as u16, height as u16, &[])
+            .map_err(|e| FormatError::EncodeError(format!("GIF init error: {e}")))?;
+        encoder
+            .set_repeat(gif::Repeat::Infinite)
+            .map_err(|e| FormatError::EncodeError(format!("GIF repeat error: {e}")))?;
+        for f in 0..frame_count {
+            let t = f as f32 / fps_clamped as f32;
+            let mut fb = HeadlessFramebuffer::new(width, height, clear_rgba);
+            fb.render_scene_with_bg(scene, &vp, t, bg_style);
+            let mut rgba = Vec::with_capacity((width * height * 4) as usize);
+            for px in &fb.pixels {
+                rgba.extend_from_slice(px);
+            }
+            let mut frame = gif::Frame::from_rgba_speed(width as u16, height as u16, &mut rgba, 10);
+            frame.delay = delay_cs;
+            encoder
+                .write_frame(&frame)
+                .map_err(|e| FormatError::EncodeError(format!("GIF frame error: {e}")))?;
+        }
+    }
+    Ok(out)
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct SerdeScenePayload {
+    version: String,
+    nodes: Vec<Node>,
+    edges: Vec<Edge>,
+}
+
+pub fn export_scene_serde_json(scene: &SceneGraph) -> Result<String, FormatError> {
+    let payload = SerdeScenePayload {
+        version: NATIVE_FORMAT_VERSION.to_string(),
+        nodes: scene.nodes().to_vec(),
+        edges: scene.edges().to_vec(),
+    };
+    serde_json::to_string_pretty(&payload)
+        .map_err(|e| FormatError::EncodeError(format!("JSON serialize error: {e}")))
+}
+
+pub fn import_scene_serde_json(json: &str) -> Result<SceneGraph, FormatError> {
+    let payload: SerdeScenePayload = serde_json::from_str(json)
+        .map_err(|e| FormatError::EncodeError(format!("JSON parse error: {e}")))?;
+    let mut scene = SceneGraph::new();
+    for node in payload.nodes {
+        scene.insert_node(node);
+    }
+    for edge in payload.edges {
+        scene.insert_edge(edge);
+    }
+    scene.normalize_layer_order();
+    Ok(scene)
 }
 
 #[cfg(test)]

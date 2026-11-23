@@ -1,13 +1,13 @@
-# Bohat Draw.io (RustFlow Draw)
+# Bohat Draw.io (RustFlow Draw) — 100% Rust
 
-A high-performance, Retro 90s Platinum diagramming studio with Draw.io-style UX, animated edge flows, Photoshop-style layers, Section/Parent/Child grouping, and realtime cooperative editing with a **Button-Mashing Ownership Minigame**.
+A 100% Rust, 120fps Retro 90s Platinum diagramming studio built with `egui`/`eframe` (Native Desktop + WebAssembly) and an `axum` HTTP/WebSocket collaboration server. Features 170+ vector cloud & architecture symbols (AWS, Azure, GCP, Kubernetes, Docker, ISO Flowchart), manual & auto edge routing, animated edge flows, Photoshop-style hierarchical layers, and realtime cooperative editing with an **Ownership Duel Minigame**.
 
-- **Targets:** Desktop App (macOS WKWebView / Linux App Window), Web (PC, Tablet, Smartphone), & Rust Core Engine
-- **Zero External Node Dependencies:** Pure Node.js HTTP + RFC 6455 WebSocket server with Brotli/Gzip pre-compressed production bundles.
+- **Targets:** Native Desktop (`bohat-draw`) & WebAssembly (`apps/studio/dist`) across **PC, Mac, Smartphone, and Tablet**
+- **100% Rust Architecture:** Zero Node.js, zero JavaScript/TypeScript framework dependencies.
 
 ---
 
-## 1. Installation
+## 1. Installation & Running
 
 ### Option A: Install via Homebrew (macOS & Linux)
 ```bash
@@ -15,34 +15,35 @@ brew tap Bohatman/tap
 brew install bohat-draw
 ```
 
-Run as a **standalone desktop application** (no browser tab):
+Run as a **standalone native desktop application**:
 ```bash
 bohat-draw
 ```
 
-Run in **headless server mode** (default port `6129`, for LAN/web & realtime co-op):
+Run in **Web + Realtime Co-Op server mode** (default port `6129`):
 ```bash
 bohat-draw --server
 # Or as a background service:
 brew services start bohat-draw
 ```
 
-### Option B: Run from Source (Node.js 20+)
+### Option B: Build & Run from Source (Rust + Trunk)
 ```bash
 git clone https://github.com/Bohatman/rustflow-draw.git
-cd rustflow-draw/apps/web
+cd rustflow-draw
 
-# Development mode
-npm run dev
+# Run native desktop app
+cargo run --release -p rustflow-studio
 
-# Or build & run production bundle (http://0.0.0.0:6129)
-npm run build
-npm start
+# Or run the Web + WebSocket server (serves prebuilt WASM in apps/studio/dist on http://0.0.0.0:6129)
+cargo run --release -p rustflow-studio -- --server
+
+# Rebuild WebAssembly bundle (optional, requires trunk)
+cd apps/studio && trunk build --release
 ```
 
 ### Option C: Linux `systemd --user` Background Service
 ```bash
-# Enable user lingering so the service stays online after logout
 loginctl enable-linger "$USER"
 
 mkdir -p ~/.config/systemd/user
@@ -53,101 +54,51 @@ systemctl --user enable --now bohat-drawio
 
 ---
 
-## 2. Features & How to Use
+## 2. Key Features
 
-### Canvas, Navigation & Multi-Device Support
-- **PC:** Drag empty canvas to pan, scroll/pinch to zoom, `Ctrl/Cmd + 1` to fit diagram to screen, `Shift + Drag` for rubber-band box selection.
-- **Tablet & Smartphone:** Single-finger drag/pan, double-tap to edit text, two-finger pinch-to-zoom & pan, and slide-over **Shapes** / **Inspector** drawers from the top toolbar.
-- **Themes:** Switch between **Retro 90s Platinum**, **Dark Platinum**, **Light Modern**, and **Mono 1-Bit CRT** via **View** menu or the Inspector.
+### Cross-Device Responsive UX (PC, Mac, Smartphone, Tablet)
+- **Desktop (PC & Mac):** Full 3-column Platinum studio with virtualized **Symbols & Cloud** left palette, 120fps GPU-tiled canvas with interactive **Minimap**, and **Inspector** right panel.
+- **Smartphone & Tablet:** Auto-collapses side panels on launch so the canvas gets 100% of the viewport; single-row horizontally scrollable top menubar and toolbar with quick **`Symbols`**, **`Inspector`**, and **`Pan` / `Select`** toggles; 2-finger pinch-to-zoom & pan; 1-finger canvas pan in `Pan` mode; auto-closes the Symbols drawer when tapping a symbol on smartphones.
 
-### Stencils, Shapes & Left Panel Categories
-- **Add Items:** Drag any symbol from the left **Stencils & Symbols** panel onto the canvas (with live ghost preview & smart alignment guides), or click to add at center.
-- **Category Filter & Collapse:** Click category chips (`All`, `Flowchart & Basic`, `Architecture`, `UML & BPMN`, `Network & Infra`, `Wireframes`) to show/hide categories (`Alt+Click` to isolate one), or click a section header (`▾` / `▸`) to collapse/expand. Searching reveals matches across all categories.
-- **Custom Symbol Studio (`+ Create` / `+ Symbol`):** Draw custom vector shapes, paste SVG paths, or import `.svg`, `.png`, `.jpg`, or `.json` files into your persistent palette.
+### Copy Selection / Select All Directly as Picture into PowerPoint & Slides
+- Press **`Ctrl/Cmd + A`** (`Select All`) or select any subset of nodes/edges and press **`Ctrl/Cmd + C`** (or click **Copy**):
+  - Automatically renders the selection (including all AWS/Azure/GCP vector icons and connecting edges) as a crisp **2x HiDPI PNG picture** on a clean background and places it directly onto the system/browser clipboard.
+  - Switch to **PowerPoint, Keynote, Google Slides, Word, or Slack** and press **`Ctrl/Cmd + V`** to paste directly as a picture, or paste inside Bohat Draw to duplicate the selected nodes and edges.
 
-### Specialized Items
-- **Image Node (`image_node`):** Renders an image directly on the canvas (drop an image file from your OS or use the **Image** toolbar button). Configure **Contain / Cover / Stretch** fit, optional border, and **Reset to Image Aspect Ratio** in the **Style** tab.
-- **Folder Tree (`folder_tree`):** Edit indentation-based file/folder trees in the **Text** tab (`2 spaces = 1 level`, trailing `/` marks a folder). Click folder carets (`▸` / `▾`) directly on the canvas to expand or collapse branches.
-- **Collapsible Panel (`collapsible`):** Click the header chevron (`▾` / `▸`) on the canvas to collapse/expand content, or edit the body text and collapsed state in the **Text** tab.
+### 170+ Vector Cloud & Diagram Symbols + 3 Left-Panel View Modes
+- **Providers & Categories:** 76 AWS services (EC2, Lambda, MSK, Managed Flink, S3, RDS, DynamoDB, Bedrock, VPC, EKS, etc.), 33 Microsoft Azure services, Google Cloud (GCP), Infra & DevOps (Kubernetes, Docker, Terraform, Kafka, Prometheus), Standard Icons, Flowchart & ISO, Network, UML, BPMN, and Wireframes.
+- **Filterable Multi-Select Category Box** + quick provider pills (`All | AWS | Azure | GCP | Flow`) + cloud sub-group filter chips (`Compute | Storage | DB | Net | Msg | Data | Sec | Ops | AI`).
+- **3 View Modes:**
+  - **`Icon`**: 3-column visual icon tiles
+  - **`Icon+Name`**: 1-per-row Finder-style list with vector icon, full service name, and subgroup tag
+  - **`Name`**: Compact 1-per-row text list
 
-### Multi-Port Connections & Animated Flows
-- **Hover-Reveal Ports:** Connection dots appear when hovering over an item (or when dragging an edge near a target). Supports `Auto` (1/3/5 per side by size) or `1`, `3`, `5`, `7` ports per side in the **Arrange** tab.
-- **Routing & Arrow Styles:** Choose `Bezier`, `SmoothStep`, `Orthogonal`, or `Straight` routing, with `1-Way (→)`, `2-Way (↔)`, `No Arrow (—)`, `Reverse (←)`, `Open`, `Diamond (◇)`, `Socket (○)`, or custom start/end markers.
-- **Flow Animations:** `Pulse` particles, `Dashed` marching flow, or `Static`. Drag an edge's midpoint handle to bend it; double-click the midpoint to reset.
-
-### Section / Parent / Child Hierarchy
-- **Section Container (`Section / Group`):** Drag items into a Section to automatically attach them; drag them out to detach.
-- **Move & Nudge Together:** Moving or Arrow-nudging a Parent or Section moves all of its nested children together.
-- **Group / Ungroup:** Select items and press `⇧⌘G` (or **Arrange → Group into Section**) to wrap them in a Section. Use the **Arrange** tab to set **Parent**, toggle **Section Container**, **Fit to Children**, or **Detach**.
-
-### Photoshop-Style Layers Panel & Border Styles
-- **Layers Tab:** Open the **Layers** tab in the right Inspector to view the hierarchical stack (children nested under parents).
-  - Drag layer rows to reorder `z`-index (parents stay below their children so they never cover them).
-  - Toggle **Visibility (`👁` / `○`)**, **Lock (`🔒` / `🔓`)**, and **Opacity (`10%–100%`)**.
-- **Border Line Styles:** In the **Style** tab, customize item **Border Style** (`Solid`, `Dashed`, `Dotted`, `Dash-Dot`, `Double`, `No Border`), **Border Width**, and optional **Animate Border** (disabled by default).
-
-### Overlap, Heap / Pile Up & Auto-Layouts
-Available in the **Arrange** menu, **Arrange** tab, and `⌘K` Command Launcher:
-- **Overlap Stack:** Tight alternating overlapping horizontal stack with ascending `z`-order.
-- **Cascade Pile:** Classic diagonal window-style cascade (`+28px, +24px`).
-- **Heap / Pile Up:** Compact organic pile around the selection centroid.
-- **Separate Overlaps:** Iteratively pushes overlapping items apart cleanly.
-- **Graph Auto-Layouts:** `Hierarchical` (`⇧⌘L`), `Uniform Grid`, and `Radial Ring`, plus **Align** (`Left/Center/Right/Top/Middle/Bottom`) and **Distribute** (`H/V`) for multi-selections.
-
-### Realtime Co-Editing & Button-Mashing Ownership Minigame
-1. Click **Share** in the top toolbar to start a live room and copy the shareable `?room=...` link.
-2. Anyone opening the link joins the live canvas with real-time cursor tracking, item sync, and `"<Name> editing"` lock indicators.
-3. **Ownership Clash Minigame:** If two co-editors try to move, resize, or edit the same item at the same time, a **5-second Button-Mashing Duel** pops up — mash **Space / Enter / Click / Tap** to win ownership of the item!
-
-### Export & Import
-- **`.drawio` XML (`⌘S`):** Bidirectional export and import preserving shapes, ports, layers, opacity, border styles, and Section/Parent hierarchy.
-- **Animated `.gif`:** Self-contained GIF89a export with live edge flow animations.
-- **High-DPI `.png`** and **Animated `.svg` (`⌘E`)**.
+### Smart & Manual Edge Routing + Flow Animations
+- **4 Routing Styles:** `Bezier`, `SmoothStep`, `Orthogonal`, and `Straight`.
+- **Manual Waypoint Override:** Drag blue midpoint `+` handles on any selected edge to insert custom waypoints; drag amber diamond handles to bend the path; double-click a waypoint or click **`Reset Auto`** in the Inspector / context menu to return to automatic routing.
+- **Animated Flows:** `Marching Ants`, `Pulse Particles`, or `Static` lines with customizable arrowheads and curved `Along Path` labels.
 
 ---
 
-## 3. Keyboard Shortcuts
-
-| Action | Shortcut |
-| :--- | :--- |
-| Command Launcher | `Ctrl/Cmd + K` |
-| Keyboard Shortcuts | `?` |
-| New Empty Workspace | `Shift + Ctrl/Cmd + N` |
-| Open Diagram File | `Ctrl/Cmd + O` |
-| Save `.drawio` XML | `Ctrl/Cmd + S` |
-| Export Animated SVG | `Ctrl/Cmd + E` |
-| Select All / Copy / Cut / Paste / Duplicate | `Ctrl/Cmd + A / C / X / V / D` |
-| Undo / Redo | `Ctrl/Cmd + Z` / `Ctrl/Cmd + Y` (`Shift + Cmd + Z`) |
-| Group into Section | `Shift + Ctrl/Cmd + G` |
-| Bring Front / Forward / Send Backward / Back | `Cmd + ]` / `Shift+Cmd+]` / `Shift+Cmd+[` / `Cmd + [` |
-| Auto-Layout Hierarchical | `Shift + Ctrl/Cmd + L` |
-| Zoom In / Out / 100% / Fit | `Cmd + +` / `Cmd + -` / `Cmd + 0` / `Cmd + 1` |
-| Cycle Grid Style | `Ctrl/Cmd + G` |
-| Edit Label Inline | `F2` / `Enter` / Double-Click |
-
----
-
-## 4. Repository Structure & Rust Core
+## 3. Repository Structure
 
 ```text
 rustflow-draw/
 ├── Cargo.toml                 # Rust workspace manifest
-├── Formula/bohat-draw.rb      # Homebrew formula (standalone app + --server)
+├── Formula/bohat-draw.rb      # Homebrew formula (native desktop + --server with WASM dist)
 ├── crates/
-│   ├── core/                  # Scene graph, R-Tree, Command Undo/Redo, CRDT, Telemetry, Plugins
-│   ├── renderer/              # wgpu WGSL shaders, Bezier/Orthogonal tessellation, headless rasterizer
-│   ├── layout/                # Sugiyama Hierarchical, Force-Directed, Grid & Spring transitions
-│   ├── io-formats/            # SemVer Native JSON, bidirectional .drawio XML, Animated SVG & PDF
-│   └── ui-bridge/             # Shared state bindings, Stencil catalog, Format Inspector & Shortcuts
+│   ├── core/                  # Scene graph, 133 SymbolIcon variants, R-Tree, Undo/Redo, CRDT
+│   ├── renderer/              # Bezier/Ortho/Waypoint tessellation, 2x PNG & GIF89a vector rasterizer
+│   ├── layout/                # Hierarchical, Force-Directed, Grid, Align/Distribute & Pile layouts
+│   ├── io-formats/            # Native JSON, bidirectional .drawio XML, Animated SVG, PNG, GIF, PDF
+│   ├── collab-protocol/       # Realtime WebSocket sync & Ownership Duel protocol
+│   └── ui-bridge/             # Shared state bindings & 170+ stencil catalog
 ├── apps/
-│   ├── web/                   # Production web app, bundler (build.mjs), and WebSocket server (server.mjs)
-│   └── desktop/               # Rust desktop CLI & macOS WKWebView app shell (BohatDrawApp.swift)
-├── tests/                     # Visual regression & benchmark suites
-└── scripts/verify-sdlc.sh     # SDLC quality gate (fmt, clippy, test, web check)
+│   ├── studio/                # 100% Rust egui/eframe Native + WASM studio (with prebuilt apps/studio/dist)
+│   ├── server/                # Rust axum HTTP + WebSocket server with Brotli/Gzip compression
+│   └── desktop/               # CLI headless/benchmark entry point
+└── tests/                     # Visual regression & 10k-node benchmark suites
 ```
-
-```bash
-# Run Rust tests
 cargo test
 
 # Run SDLC verification script

@@ -1,27 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-export NODE_ENV="${NODE_ENV:-production}"
 export PORT="${PORT:-6129}"
+export BOHAT_STATIC_DIR="${BOHAT_STATIC_DIR:-/home/bohat/projects/rustflow-draw/apps/studio/dist}"
 
-NODE_BIN=""
-if command -v node >/dev/null 2>&1; then
-  NODE_BIN="$(command -v node)"
-elif [ -x "/home/bohat/.local/share/fnm/node-versions/v22.22.3/installation/bin/node" ]; then
-  NODE_BIN="/home/bohat/.local/share/fnm/node-versions/v22.22.3/installation/bin/node"
-else
-  for candidate in /home/bohat/.local/share/fnm/node-versions/*/installation/bin/node; do
-    if [ -x "$candidate" ]; then
-      NODE_BIN="$candidate"
-    fi
-  done
+BIN="/home/bohat/projects/rustflow-draw/target/release/bohat-draw"
+if [ ! -x "$BIN" ]; then
+  echo "Building 100% Rust release binary..." >&2
+  cargo build --release -p rustflow-studio --manifest-path /home/bohat/projects/rustflow-draw/Cargo.toml
 fi
 
-if [ -z "$NODE_BIN" ]; then
-  echo "Error: node binary not found" >&2
-  exit 1
-fi
-
-"$NODE_BIN" /home/bohat/projects/rustflow-draw/apps/web/build.mjs
-
-exec "$NODE_BIN" /home/bohat/projects/rustflow-draw/apps/web/server.mjs
+exec "$BIN" --server

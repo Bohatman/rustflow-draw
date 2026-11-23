@@ -6,4 +6,6 @@ license.workspace = true
 description = "wgpu/WGSL shader pipelines, Bezier tessellation, edge animations, and headless rasterizer"
 
 [dependencies]
+ab_glyph = "0.2"
+epaint_default_fonts = "0.31"
 rustflow-core = { path = "../core" }

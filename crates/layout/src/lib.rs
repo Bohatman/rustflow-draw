@@ -213,6 +213,193 @@ impl LayoutTransition {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlignMode {
+    Left,
+    CenterH,
+    Right,
+    Top,
+    CenterV,
+    Bottom,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DistributeAxis {
+    Horizontal,
+    Vertical,
+}
+
+pub fn align_nodes(scene: &mut SceneGraph, ids: &[NodeId], mode: AlignMode) {
+    let nodes: Vec<(NodeId, rustflow_core::Rect)> = ids
+        .iter()
+        .filter_map(|&id| scene.get_node(id).map(|n| (id, n.bounds)))
+        .collect();
+    if nodes.len() < 2 {
+        return;
+    }
+    let min_x = nodes.iter().map(|(_, r)| r.x).fold(f32::INFINITY, f32::min);
+    let max_r = nodes.iter().map(|(_, r)| r.right()).fold(f32::NEG_INFINITY, f32::max);
+    let min_y = nodes.iter().map(|(_, r)| r.y).fold(f32::INFINITY, f32::min);
+    let max_b = nodes.iter().map(|(_, r)| r.bottom()).fold(f32::NEG_INFINITY, f32::max);
+    let mid_x = (min_x + max_r) * 0.5;
+    let mid_y = (min_y + max_b) * 0.5;
+
+    for (id, r) in nodes {
+        let target = match mode {
+            AlignMode::Left => Point::new(min_x, r.y),
+            AlignMode::CenterH => Point::new(mid_x - r.width * 0.5, r.y),
+            AlignMode::Right => Point::new(max_r - r.width, r.y),
+            AlignMode::Top => Point::new(r.x, min_y),
+            AlignMode::CenterV => Point::new(r.x, mid_y - r.height * 0.5),
+            AlignMode::Bottom => Point::new(r.x, max_b - r.height),
+        };
+        scene.move_node_to(id, target);
+    }
+}
+
+pub fn distribute_nodes(scene: &mut SceneGraph, ids: &[NodeId], axis: DistributeAxis) {
+    let mut nodes: Vec<(NodeId, rustflow_core::Rect)> = ids
+        .iter()
+        .filter_map(|&id| scene.get_node(id).map(|n| (id, n.bounds)))
+        .collect();
+    if nodes.len() < 3 {
+        return;
+    }
+    match axis {
+        DistributeAxis::Horizontal => {
+            nodes.sort_by(|a, b| a.1.x.total_cmp(&b.1.x));
+            let first = nodes.first().unwrap().1.x;
+            let last_r = nodes.last().unwrap().1.right();
+            let total_w: f32 = nodes.iter().map(|(_, r)| r.width).sum();
+            let gap = ((last_r - first) - total_w) / (nodes.len() - 1) as f32;
+            let mut cursor = first;
+            for (id, r) in nodes {
+                scene.move_node_to(id, Point::new(cursor, r.y));
+                cursor += r.width + gap;
+            }
+        }
+        DistributeAxis::Vertical => {
+            nodes.sort_by(|a, b| a.1.y.total_cmp(&b.1.y));
+            let first = nodes.first().unwrap().1.y;
+            let last_b = nodes.last().unwrap().1.bottom();
+            let total_h: f32 = nodes.iter().map(|(_, r)| r.height).sum();
+            let gap = ((last_b - first) - total_h) / (nodes.len() - 1) as f32;
+            let mut cursor = first;
+            for (id, r) in nodes {
+                scene.move_node_to(id, Point::new(r.x, cursor));
+                cursor += r.height + gap;
+            }
+        }
+    }
+}
+
+pub fn layout_overlap_stack(scene: &mut SceneGraph, ids: &[NodeId]) {
+    let nodes: Vec<(NodeId, rustflow_core::Rect)> = ids
+        .iter()
+        .filter_map(|&id| scene.get_node(id).map(|n| (id, n.bounds)))
+        .collect();
+    if nodes.len() < 2 {
+        return;
+    }
+    let anchor = nodes[0].1.center();
+    for (i, (id, r)) in nodes.iter().enumerate() {
+        let pos = Point::new(anchor.x - r.width * 0.5, anchor.y - r.height * 0.5);
+        scene.move_node_to(*id, pos);
+        if let Some(n) = scene.get_node_mut(*id) {
+            n.z_index = i as i32;
+        }
+    }
+    scene.normalize_layer_order();
+}
+
+pub fn layout_cascade_pile(scene: &mut SceneGraph, ids: &[NodeId], dx: f32, dy: f32) {
+    let nodes: Vec<(NodeId, rustflow_core::Rect)> = ids
+        .iter()
+        .filter_map(|&id| scene.get_node(id).map(|n| (id, n.bounds)))
+        .collect();
+    if nodes.len() < 2 {
+        return;
+    }
+    let base_x = nodes[0].1.x;
+    let base_y = nodes[0].1.y;
+    for (i, (id, _)) in nodes.iter().enumerate() {
+        scene.move_node_to(*id, Point::new(base_x + dx * i as f32, base_y + dy * i as f32));
+        if let Some(n) = scene.get_node_mut(*id) {
+            n.z_index = i as i32;
+        }
+    }
+    scene.normalize_layer_order();
+}
+
+pub fn layout_heap_pile(scene: &mut SceneGraph, ids: &[NodeId]) {
+    let nodes: Vec<(NodeId, rustflow_core::Rect)> = ids
+        .iter()
+        .filter_map(|&id| scene.get_node(id).map(|n| (id, n.bounds)))
+        .collect();
+    if nodes.len() < 2 {
+        return;
+    }
+    let cx = nodes.iter().map(|(_, r)| r.center().x).sum::<f32>() / nodes.len() as f32;
+    let cy = nodes.iter().map(|(_, r)| r.center().y).sum::<f32>() / nodes.len() as f32;
+    for (i, (id, r)) in nodes.iter().enumerate() {
+        let angle = (i as f32) * 2.3999632;
+        let radius = 14.0 * (i as f32).sqrt();
+        let x = cx + angle.cos() * radius - r.width * 0.5;
+        let y = cy + angle.sin() * radius - r.height * 0.5;
+        scene.move_node_to(*id, Point::new(x, y));
+        if let Some(n) = scene.get_node_mut(*id) {
+            n.z_index = i as i32;
+        }
+    }
+    scene.normalize_layer_order();
+}
+
+pub fn layout_separate_overlaps(scene: &mut SceneGraph, ids: &[NodeId], padding: f32) {
+    let mut items: Vec<(NodeId, rustflow_core::Rect)> = ids
+        .iter()
+        .filter_map(|&id| scene.get_node(id).map(|n| (id, n.bounds)))
+        .collect();
+    if items.len() < 2 {
+        return;
+    }
+    for _ in 0..24 {
+        let mut moved = false;
+        for i in 0..items.len() {
+            for j in (i + 1)..items.len() {
+                let a = items[i].1.expand(padding * 0.5);
+                let b = items[j].1.expand(padding * 0.5);
+                if a.intersects(&b) {
+                    let ac = a.center();
+                    let bc = b.center();
+                    let mut dx = bc.x - ac.x;
+                    let dy = bc.y - ac.y;
+                    if dx.abs() < 0.01 && dy.abs() < 0.01 {
+                        dx = 1.0;
+                    }
+                    let ox = (a.width + b.width) * 0.5 - dx.abs();
+                    let oy = (a.height + b.height) * 0.5 - dy.abs();
+                    if ox < oy {
+                        let shift = (ox * 0.5 + 1.0) * dx.signum();
+                        items[i].1.x -= shift;
+                        items[j].1.x += shift;
+                    } else {
+                        let shift = (oy * 0.5 + 1.0) * dy.signum();
+                        items[i].1.y -= shift;
+                        items[j].1.y += shift;
+                    }
+                    moved = true;
+                }
+            }
+        }
+        if !moved {
+            break;
+        }
+    }
+    for (id, r) in items {
+        scene.move_node_to(id, Point::new(r.x, r.y));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

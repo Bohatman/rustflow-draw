@@ -6,6 +6,9 @@ members = [
     "crates/layout",
     "crates/io-formats",
     "crates/ui-bridge",
+    "crates/collab-protocol",
+    "apps/server",
+    "apps/studio",
     "apps/desktop",
     "tests/visual-regression",
     "tests/benchmarks",
@@ -15,3 +18,8 @@ members = [
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1

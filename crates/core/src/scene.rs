@@ -2,6 +2,8 @@
 
 use crate::spatial::{RTree, SpatialEntry};
 use crate::{Point, Rect};
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 
 pub type NodeId = u64;
 pub type EdgeId = u64;
@@ -9,7 +11,7 @@ pub type PortId = u64;
 pub type GroupId = u64;
 pub type PageId = u64;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ColorRgba {
     pub r: f32,
     pub g: f32,
@@ -39,14 +41,212 @@ impl ColorRgba {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThemeMode {
     Light,
     Dark,
     HighContrast,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum BorderStyle {
+    #[default]
+    Solid,
+    Dashed,
+    Dotted,
+    DashDot,
+    Double,
+    None,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum PortDensity {
+    #[default]
+    Auto,
+    Fixed(u8),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SymbolLayer {
+    pub shape: ShapeKind,
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+    pub fill: ColorRgba,
+    pub stroke: ColorRgba,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FolderTreeItem {
+    pub label: String,
+    pub depth: u8,
+    pub is_folder: bool,
+    pub expanded: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LayerRow {
+    pub node_id: NodeId,
+    pub depth: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SymbolIcon {
+    // AWS Compute & Containers
+    AwsEc2,
+    AwsLambda,
+    AwsEcs,
+    AwsEks,
+    AwsEcr,
+    AwsFargate,
+    AwsAppRunner,
+    AwsElasticBeanstalk,
+    AwsLightsail,
+    AwsBatch,
+    AwsOutposts,
+    // AWS Storage
+    AwsS3,
+    AwsEbs,
+    AwsEfs,
+    AwsGlacier,
+    AwsBackup,
+    // AWS Database
+    AwsRds,
+    AwsDynamoDb,
+    AwsAurora,
+    AwsElastiCache,
+    AwsRedshift,
+    AwsDocumentDb,
+    AwsNeptune,
+    AwsTimestream,
+    AwsMemoryDb,
+    AwsKeyspaces,
+    // AWS Networking
+    AwsVpc,
+    AwsApiGateway,
+    AwsCloudFront,
+    AwsRoute53,
+    AwsElb,
+    AwsDirectConnect,
+    AwsTransitGateway,
+    AwsPrivateLink,
+    AwsGlobalAccelerator,
+    AwsNatGateway,
+    // AWS Messaging & App Integration
+    AwsSqs,
+    AwsSns,
+    AwsEventBridge,
+    AwsStepFunctions,
+    AwsAppSync,
+    AwsSes,
+    AwsMq,
+    AwsAmplify,
+    // AWS Analytics & Streaming
+    AwsMsk,
+    AwsFlink,
+    AwsKinesis,
+    AwsDataFirehose,
+    AwsAthena,
+    AwsGlue,
+    AwsEmr,
+    AwsOpenSearch,
+    AwsQuickSight,
+    AwsLakeFormation,
+    // AWS Security, Governance & DevOps
+    AwsIam,
+    AwsCognito,
+    AwsKms,
+    AwsWaf,
+    AwsShield,
+    AwsGuardDuty,
+    AwsSecretsManager,
+    AwsCloudWatch,
+    AwsCloudTrail,
+    AwsConfig,
+    AwsOrganizations,
+    AwsCodePipeline,
+    AwsCodeBuild,
+    AwsXRay,
+    AwsSsm,
+    AwsCloudFormation,
+    // AWS AI / ML
+    AwsBedrock,
+    AwsSageMaker,
+    AwsRekognition,
+    AwsTextract,
+    AwsPolly,
+    AwsQ,
+    // Azure Compute
+    AzureVm,
+    AzureAks,
+    AzureFunctions,
+    AzureAppService,
+    AzureContainerApps,
+    AzureContainerInstances,
+    AzureSpringApps,
+    // Azure Storage
+    AzureBlob,
+    AzureFiles,
+    AzureDisk,
+    AzureDataLake,
+    // Azure Database
+    AzureSql,
+    AzureCosmosDb,
+    AzurePostgres,
+    AzureRedis,
+    AzureSynapse,
+    // Azure Networking
+    AzureVnet,
+    AzureFrontDoor,
+    AzureAppGateway,
+    AzureLoadBalancer,
+    AzureDns,
+    AzureFirewall,
+    AzureApiManagement,
+    // Azure Messaging & Integration
+    AzureServiceBus,
+    AzureEventHubs,
+    AzureEventGrid,
+    AzureLogicApps,
+    // Azure Security & Ops
+    AzureEntraId,
+    AzureKeyVault,
+    AzureMonitor,
+    AzureDevOps,
+    // Azure AI / ML
+    AzureOpenAi,
+    AzureAiSearch,
+    // GCP
+    GcpCloudRun,
+    GcpGke,
+    GcpBigQuery,
+    GcpPubSub,
+    GcpCloudStorage,
+    GcpCloudSql,
+    // Infra & DevOps
+    Kubernetes,
+    Docker,
+    Postgres,
+    Redis,
+    Kafka,
+    Nginx,
+    LoadBalancer,
+    Cdn,
+    // Standard Icons
+    User,
+    Users,
+    Globe,
+    Lock,
+    Key,
+    Api,
+    Webhook,
+    Monitor,
+    Terminal,
+    AiModel,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ShapeKind {
     ReactFlowCard,
     Rectangle,
@@ -73,17 +273,26 @@ pub enum ShapeKind {
     Interface,
     BrowserWindow,
     MobileScreen,
+    Section,
+    ImageNode,
+    FolderTree,
+    Collapsible,
+    Subprocess,
+    Delay,
+    ManualInput,
+    OffPage,
+    Triangle,
     CustomSvg { view_box: Rect, path_data: String },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PortDirection {
     Input,
     Output,
     Bidirectional,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PortSide {
     Top,
     Right,
@@ -91,8 +300,7 @@ pub enum PortSide {
     Left,
 }
 
-/// Explicit React Flow connection Handle / Port on a node boundary.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Port {
     pub id: PortId,
     pub name: String,
@@ -133,7 +341,7 @@ impl Port {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NodeStyle {
     pub fill: ColorRgba,
     pub gradient_to: Option<ColorRgba>,
@@ -144,6 +352,10 @@ pub struct NodeStyle {
     pub shadow_blur: f32,
     pub shadow_elevation: f32,
     pub header_fill: Option<ColorRgba>,
+    #[serde(default)]
+    pub border_style: BorderStyle,
+    #[serde(default)]
+    pub border_anim: bool,
 }
 
 impl Default for NodeStyle {
@@ -157,19 +369,21 @@ impl Default for NodeStyle {
             corner_radius: 10.0,
             shadow_blur: 14.0,
             shadow_elevation: 4.0,
-            header_fill: Some(ColorRgba::new(0.95, 0.96, 0.99, 1.0)),
+            header_fill: None,
+            border_style: BorderStyle::Solid,
+            border_anim: false,
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TextAlign {
     Left,
     Center,
     Right,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TextStyle {
     pub font_family: String,
     pub font_weight: u16,
@@ -192,8 +406,11 @@ impl Default for TextStyle {
     }
 }
 
-/// A diagram node combining React Flow card styling + Draw.io stencil shapes.
-#[derive(Debug, Clone, PartialEq)]
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Node {
     pub id: NodeId,
     pub title: String,
@@ -208,12 +425,27 @@ pub struct Node {
     pub locked: bool,
     pub group_id: Option<GroupId>,
     pub parent_id: Option<NodeId>,
+    #[serde(default = "default_true")]
+    pub visible: bool,
+    #[serde(default)]
+    pub is_section: bool,
+    #[serde(default)]
+    pub port_density: PortDensity,
+    #[serde(default)]
+    pub collapsed: bool,
+    #[serde(default)]
+    pub tree_items: Vec<FolderTreeItem>,
+    #[serde(default)]
+    pub image_data: Option<Vec<u8>>,
+    #[serde(default)]
+    pub custom_layers: Vec<SymbolLayer>,
+    #[serde(default)]
+    pub icon: Option<SymbolIcon>,
 }
 
 impl Node {
     pub fn new_react_flow_card(id: NodeId, title: impl Into<String>, bounds: Rect) -> Self {
-        let base_port = id * 10;
-        Self {
+        let mut node = Self {
             id,
             title: title.into(),
             body: String::new(),
@@ -222,32 +454,96 @@ impl Node {
             shape: ShapeKind::ReactFlowCard,
             style: NodeStyle::default(),
             text_style: TextStyle::default(),
-            ports: vec![
-                Port::new(base_port + 1, "in-top", PortDirection::Input, PortSide::Top),
-                Port::new(
-                    base_port + 2,
-                    "out-right",
-                    PortDirection::Output,
-                    PortSide::Right,
-                ),
-                Port::new(
-                    base_port + 3,
-                    "out-bottom",
-                    PortDirection::Output,
-                    PortSide::Bottom,
-                ),
-                Port::new(
-                    base_port + 4,
-                    "in-left",
-                    PortDirection::Input,
-                    PortSide::Left,
-                ),
-            ],
+            ports: Vec::new(),
             z_index: 0,
             locked: false,
             group_id: None,
             parent_id: None,
+            visible: true,
+            is_section: false,
+            port_density: PortDensity::Auto,
+            collapsed: false,
+            tree_items: Vec::new(),
+            image_data: None,
+            custom_layers: Vec::new(),
+            icon: None,
+        };
+        node.rebuild_ports();
+        node
+    }
+
+    pub fn new_shape(
+        id: NodeId,
+        title: impl Into<String>,
+        bounds: Rect,
+        shape: ShapeKind,
+    ) -> Self {
+        let mut node = Self::new_react_flow_card(id, title, bounds);
+        node.is_section = matches!(shape, ShapeKind::Section);
+        if matches!(shape, ShapeKind::Section) {
+            node.style.fill = ColorRgba::new(0.92, 0.94, 0.98, 0.55);
+            node.style.stroke = ColorRgba::new(0.39, 0.45, 0.62, 1.0);
+            node.style.border_style = BorderStyle::Dashed;
+            node.style.stroke_width = 1.5;
+            node.style.corner_radius = 8.0;
+        } else if matches!(shape, ShapeKind::FolderTree) {
+            node.tree_items = vec![
+                FolderTreeItem { label: "src".into(), depth: 0, is_folder: true, expanded: true },
+                FolderTreeItem { label: "main.rs".into(), depth: 1, is_folder: false, expanded: false },
+                FolderTreeItem { label: "canvas.rs".into(), depth: 1, is_folder: false, expanded: false },
+                FolderTreeItem { label: "Cargo.toml".into(), depth: 0, is_folder: false, expanded: false },
+            ];
+        } else if matches!(shape, ShapeKind::Collapsible) {
+            node.body = "Click header chevron to collapse or expand details.".into();
         }
+        node.shape = shape;
+        node.rebuild_ports();
+        node
+    }
+
+    pub fn rebuild_ports(&mut self) {
+        let auto_count = |len: f32| -> u8 {
+            if len >= 340.0 {
+                7
+            } else if len >= 220.0 {
+                5
+            } else if len >= 72.0 {
+                3
+            } else {
+                1
+            }
+        };
+        let horiz_count = match self.port_density {
+            PortDensity::Auto => auto_count(self.bounds.width),
+            PortDensity::Fixed(n) => n.clamp(1, 7),
+        };
+        let vert_count = match self.port_density {
+            PortDensity::Auto => auto_count(self.bounds.height),
+            PortDensity::Fixed(n) => n.clamp(1, 7),
+        };
+        let base_port = self.id * 100;
+        let mut ports = Vec::with_capacity((horiz_count as usize + vert_count as usize) * 2);
+        for (side_idx, (side, dir, prefix, count)) in [
+            (PortSide::Top, PortDirection::Input, "top", horiz_count),
+            (PortSide::Right, PortDirection::Output, "right", vert_count),
+            (PortSide::Bottom, PortDirection::Output, "bottom", horiz_count),
+            (PortSide::Left, PortDirection::Input, "left", vert_count),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            for i in 0..count {
+                let t = (i as f32 + 1.0) / (count as f32 + 1.0);
+                ports.push(Port {
+                    id: base_port + (side_idx as u64) * 16 + (i as u64) + 1,
+                    name: format!("{prefix}-{i}"),
+                    direction: dir,
+                    side,
+                    offset: t,
+                });
+            }
+        }
+        self.ports = ports;
     }
 
     pub fn port_position(&self, port_id: PortId) -> Option<Point> {
@@ -262,7 +558,7 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EdgeKind {
     Bezier,
     SmoothStep,
@@ -270,7 +566,7 @@ pub enum EdgeKind {
     Orthogonal,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum EdgeAnimation {
     None,
     MarchingAnts {
@@ -287,7 +583,52 @@ pub enum EdgeAnimation {
     },
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum EdgeArrowStyle {
+    #[default]
+    OneWay,
+    TwoWay,
+    None,
+    Open,
+    Diamond,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum EdgeLabelPlacement {
+    Center,
+    Above,
+    Below,
+    #[default]
+    AlongPath,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EdgeLabelStyle {
+    pub font_size: f32,
+    pub text_color: ColorRgba,
+    pub bg_color: ColorRgba,
+    pub show_bg: bool,
+    pub position: f32,
+    pub offset_y: f32,
+    #[serde(default)]
+    pub placement: EdgeLabelPlacement,
+}
+
+impl Default for EdgeLabelStyle {
+    fn default() -> Self {
+        Self {
+            font_size: 11.5,
+            text_color: ColorRgba::SLATE_900,
+            bg_color: ColorRgba::new(1.0, 1.0, 1.0, 0.94),
+            show_bg: false,
+            position: 0.5,
+            offset_y: 0.0,
+            placement: EdgeLabelPlacement::AlongPath,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Edge {
     pub id: EdgeId,
     pub source_node: NodeId,
@@ -296,7 +637,11 @@ pub struct Edge {
     pub target_port: Option<PortId>,
     pub waypoints: Vec<Point>,
     pub kind: EdgeKind,
+    #[serde(default)]
+    pub arrow: EdgeArrowStyle,
     pub label: String,
+    #[serde(default)]
+    pub label_style: EdgeLabelStyle,
     pub stroke: ColorRgba,
     pub stroke_width: f32,
     pub animation: EdgeAnimation,
@@ -313,7 +658,9 @@ impl Edge {
             target_port: None,
             waypoints: Vec::new(),
             kind: EdgeKind::Bezier,
+            arrow: EdgeArrowStyle::OneWay,
             label: String::new(),
+            label_style: EdgeLabelStyle::default(),
             stroke: ColorRgba::INDIGO_500,
             stroke_width: 2.0,
             animation: EdgeAnimation::None,
@@ -562,15 +909,17 @@ impl SceneGraph {
         }
     }
 
-    /// Frustum query returning visible nodes sorted by `z_index`.
     pub fn query_visible_nodes(&self, frustum: &Rect) -> Vec<&Node> {
         let ids = self.node_rtree.query_rect(frustum);
-        let mut visible: Vec<&Node> = self.nodes.iter().filter(|n| ids.contains(&n.id)).collect();
+        let mut visible: Vec<&Node> = self
+            .nodes
+            .iter()
+            .filter(|n| n.visible && ids.contains(&n.id))
+            .collect();
         visible.sort_by_key(|n| (n.z_index, n.id));
         visible
     }
 
-    /// Frustum query returning visible edges sorted by `z_index`.
     pub fn query_visible_edges(&self, frustum: &Rect) -> Vec<&Edge> {
         let ids = self.edge_rtree.query_rect(frustum);
         let mut visible: Vec<&Edge> = self.edges.iter().filter(|e| ids.contains(&e.id)).collect();
@@ -578,14 +927,233 @@ impl SceneGraph {
         visible
     }
 
-    /// Topmost node under a world point.
     pub fn hit_test_node(&self, world_pt: Point) -> Option<NodeId> {
         let candidates = self.node_rtree.query_point(world_pt);
         self.nodes
             .iter()
-            .filter(|n| candidates.contains(&n.id) && n.bounds.contains_point(world_pt))
+            .filter(|n| n.visible && candidates.contains(&n.id) && n.bounds.contains_point(world_pt))
             .max_by_key(|n| (n.z_index, n.id))
             .map(|n| n.id)
+    }
+
+    pub fn normalize_layer_order(&mut self) {
+        let mut order: Vec<(i32, NodeId)> = self.nodes.iter().map(|n| (n.z_index, n.id)).collect();
+        order.sort_by_key(|&(z, id)| (z, id));
+        let mut z_map: HashMap<NodeId, i32> = HashMap::new();
+        for (idx, &(_, id)) in order.iter().enumerate() {
+            z_map.insert(id, idx as i32);
+        }
+        let parent_of: HashMap<NodeId, Option<NodeId>> =
+            self.nodes.iter().map(|n| (n.id, n.parent_id)).collect();
+        for _ in 0..self.nodes.len().max(1) {
+            let mut changed = false;
+            for (&nid, &pid_opt) in &parent_of {
+                if let Some(pid) = pid_opt {
+                    let cz = z_map.get(&nid).copied().unwrap_or(0);
+                    let pz = z_map.get(&pid).copied().unwrap_or(0);
+                    if cz <= pz {
+                        z_map.insert(nid, pz + 1);
+                        changed = true;
+                    }
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        for node in &mut self.nodes {
+            if let Some(&z) = z_map.get(&node.id) {
+                node.z_index = z;
+            }
+        }
+    }
+
+    pub fn hierarchical_layers_for_panel(&self) -> Vec<LayerRow> {
+        let mut children_map: HashMap<Option<NodeId>, Vec<&Node>> = HashMap::new();
+        let existing: HashSet<NodeId> = self.nodes.iter().map(|n| n.id).collect();
+        for node in &self.nodes {
+            let parent = node.parent_id.filter(|pid| existing.contains(pid));
+            children_map.entry(parent).or_default().push(node);
+        }
+        for list in children_map.values_mut() {
+            list.sort_by(|a, b| b.z_index.cmp(&a.z_index).then_with(|| b.id.cmp(&a.id)));
+        }
+        let mut out = Vec::with_capacity(self.nodes.len());
+        fn dfs(
+            parent: Option<NodeId>,
+            depth: usize,
+            map: &HashMap<Option<NodeId>, Vec<&Node>>,
+            visited: &mut HashSet<NodeId>,
+            out: &mut Vec<LayerRow>,
+        ) {
+            if let Some(list) = map.get(&parent) {
+                for node in list {
+                    if visited.insert(node.id) {
+                        out.push(LayerRow {
+                            node_id: node.id,
+                            depth,
+                        });
+                        dfs(Some(node.id), depth + 1, map, visited, out);
+                    }
+                }
+            }
+        }
+        let mut visited = HashSet::new();
+        dfs(None, 0, &children_map, &mut visited, &mut out);
+        out
+    }
+
+    pub fn bring_to_front(&mut self, ids: &[NodeId]) {
+        let max_z = self.nodes.iter().map(|n| n.z_index).max().unwrap_or(0);
+        let set: HashSet<NodeId> = ids.iter().copied().collect();
+        let mut next = max_z + 1;
+        for node in &mut self.nodes {
+            if set.contains(&node.id) {
+                node.z_index = next;
+                next += 1;
+            }
+        }
+        self.normalize_layer_order();
+    }
+
+    pub fn send_to_back(&mut self, ids: &[NodeId]) {
+        let min_z = self.nodes.iter().map(|n| n.z_index).min().unwrap_or(0);
+        let set: HashSet<NodeId> = ids.iter().copied().collect();
+        let mut next = min_z - (ids.len() as i32) - 1;
+        for node in &mut self.nodes {
+            if set.contains(&node.id) {
+                node.z_index = next;
+                next += 1;
+            }
+        }
+        self.normalize_layer_order();
+    }
+
+    pub fn bring_forward(&mut self, ids: &[NodeId]) {
+        let set: HashSet<NodeId> = ids.iter().copied().collect();
+        for node in &mut self.nodes {
+            if set.contains(&node.id) {
+                node.z_index += 2;
+            }
+        }
+        self.normalize_layer_order();
+    }
+
+    pub fn send_backward(&mut self, ids: &[NodeId]) {
+        let set: HashSet<NodeId> = ids.iter().copied().collect();
+        for node in &mut self.nodes {
+            if set.contains(&node.id) {
+                node.z_index -= 2;
+            }
+        }
+        self.normalize_layer_order();
+    }
+
+    pub fn descendant_ids(&self, root: NodeId) -> Vec<NodeId> {
+        let mut out = Vec::new();
+        let mut stack = vec![root];
+        let mut seen = HashSet::new();
+        seen.insert(root);
+        while let Some(curr) = stack.pop() {
+            for node in &self.nodes {
+                if node.parent_id == Some(curr) && seen.insert(node.id) {
+                    out.push(node.id);
+                    stack.push(node.id);
+                }
+            }
+        }
+        out
+    }
+
+    pub fn move_node_with_descendants(&mut self, id: NodeId, dx: f32, dy: f32) {
+        let mut targets = vec![id];
+        targets.extend(self.descendant_ids(id));
+        for tid in targets {
+            if let Some(n) = self.get_node(tid) {
+                if !n.locked {
+                    let pt = Point::new(n.bounds.x + dx, n.bounds.y + dy);
+                    self.move_node_to(tid, pt);
+                }
+            }
+        }
+    }
+
+    pub fn group_into_section(&mut self, ids: &[NodeId], title: impl Into<String>) -> Option<NodeId> {
+        let mut union_rect: Option<Rect> = None;
+        for &id in ids {
+            if let Some(n) = self.get_node(id) {
+                union_rect = Some(match union_rect {
+                    Some(acc) => acc.union(&n.bounds),
+                    None => n.bounds,
+                });
+            }
+        }
+        let bounds = union_rect?.expand(28.0);
+        let section_bounds = Rect::new(bounds.x, bounds.y - 22.0, bounds.width, bounds.height + 22.0);
+        let sid = self.allocate_id();
+        let mut section = Node::new_shape(sid, title, section_bounds, ShapeKind::Section);
+        section.z_index = self.nodes.iter().map(|n| n.z_index).min().unwrap_or(0) - 1;
+        self.insert_node(section);
+        let id_set: HashSet<NodeId> = ids.iter().copied().collect();
+        for node in &mut self.nodes {
+            if id_set.contains(&node.id) && node.id != sid {
+                node.parent_id = Some(sid);
+            }
+        }
+        self.normalize_layer_order();
+        Some(sid)
+    }
+
+    pub fn fit_section_to_children(&mut self, section_id: NodeId) -> bool {
+        let mut union_rect: Option<Rect> = None;
+        for n in &self.nodes {
+            if n.parent_id == Some(section_id) {
+                union_rect = Some(match union_rect {
+                    Some(acc) => acc.union(&n.bounds),
+                    None => n.bounds,
+                });
+            }
+        }
+        let Some(bounds) = union_rect else {
+            return false;
+        };
+        let padded = Rect::new(
+            bounds.x - 24.0,
+            bounds.y - 44.0,
+            bounds.width + 48.0,
+            bounds.height + 68.0,
+        );
+        self.resize_node(section_id, padded, false)
+    }
+
+    pub fn detach_from_parent(&mut self, ids: &[NodeId]) {
+        let set: HashSet<NodeId> = ids.iter().copied().collect();
+        for node in &mut self.nodes {
+            if set.contains(&node.id) {
+                node.parent_id = None;
+            }
+        }
+        self.normalize_layer_order();
+    }
+
+    pub fn auto_attach_to_section(&mut self, node_id: NodeId) {
+        let Some(node) = self.get_node(node_id) else {
+            return;
+        };
+        if node.is_section {
+            return;
+        }
+        let center = node.bounds.center();
+        let found = self
+            .nodes
+            .iter()
+            .filter(|s| s.is_section && s.id != node_id && s.visible && s.bounds.contains_point(center))
+            .max_by_key(|s| (s.z_index, s.id))
+            .map(|s| s.id);
+        if let Some(n) = self.get_node_mut(node_id) {
+            n.parent_id = found;
+        }
+        self.normalize_layer_order();
     }
 
     /// Magnetic port snapping: find nearest port within `snap_radius` world units.

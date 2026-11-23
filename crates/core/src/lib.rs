@@ -17,9 +17,10 @@ pub use plugin::{
     RadialLayoutPlugin, SemVer,
 };
 pub use scene::{
-    ColorRgba, Edge, EdgeAnimation, EdgeId, EdgeKind, GroupId, Node, NodeId, NodeStyle, PageId,
-    Port, PortDirection, PortId, PortSide, QuickConnectDirection, SceneGraph, ShapeKind, TextAlign,
-    TextStyle, ThemeMode,
+    BorderStyle, ColorRgba, Edge, EdgeAnimation, EdgeArrowStyle, EdgeId, EdgeKind,
+    EdgeLabelPlacement, EdgeLabelStyle, FolderTreeItem, GroupId, LayerRow, Node, NodeId,
+    NodeStyle, PageId, Port, PortDensity, PortDirection, PortId, PortSide, QuickConnectDirection,
+    SceneGraph, ShapeKind, SymbolIcon, SymbolLayer, TextAlign, TextStyle, ThemeMode,
 };
 pub use selection::{
     compute_smart_guides, AlignmentGuide, GuideOrientation, SelectionState, SmartSnapResult,
@@ -28,7 +29,7 @@ pub use selection::{
 pub use spatial::{RTree, SpatialEntry};
 pub use telemetry::{build_dogfood_architecture_scene, DiagnosticEvent, TelemetryCollector};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
@@ -55,7 +56,7 @@ impl Point {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Rect {
     pub x: f32,
     pub y: f32,

@@ -1,0 +1,55 @@
+[package]
+name = "rustflow-studio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "100% Rust Bohat Draw.io Studio (Native Desktop + WASM via egui/eframe)"
+
+[[bin]]
+name = "bohat-draw"
+path = "src/main.rs"
+
+[dependencies]
+base64 = "0.22"
+eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "persistence", "wayland", "x11"] }
+egui = "0.31"
+ewebsock = "0.8"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+rustflow-collab-protocol = { path = "../../crates/collab-protocol" }
+rustflow-core = { path = "../../crates/core" }
+rustflow-io-formats = { path = "../../crates/io-formats" }
+rustflow-layout = { path = "../../crates/layout" }
+rustflow-renderer = { path = "../../crates/renderer" }
+rustflow-ui-bridge = { path = "../../crates/ui-bridge" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+arboard = "3"
+png = "0.17"
+rfd = "0.15"
+rustflow-server = { path = "../server" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+    "Blob",
+    "BlobPropertyBag",
+    "Clipboard",
+    "Document",
+    "Element",
+    "File",
+    "FileList",
+    "FileReader",
+    "HtmlAnchorElement",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "HtmlInputElement",
+    "Location",
+    "Navigator",
+    "Url",
+    "Window",
+] }
