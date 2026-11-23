@@ -550,7 +550,16 @@ pub fn render_bottom_bar(app: &mut BohatDrawApp, ctx: &egui::Context) {
                     _ => Color32::from_rgb(220, 220, 224),
                 })
                 .stroke(Stroke::new(1.0_f32, Color32::from_rgb(124, 124, 136)))
-                .inner_margin(Margin::symmetric(if is_phone { 4 } else { 8 }, 3)),
+                .inner_margin(if is_phone {
+                    Margin {
+                        left: 6,
+                        right: 6,
+                        top: 5,
+                        bottom: 18,
+                    }
+                } else {
+                    Margin::symmetric(8, 3)
+                }),
         )
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -563,11 +572,36 @@ pub fn render_bottom_bar(app: &mut BohatDrawApp, ctx: &egui::Context) {
                     .map(|p| (p.id, p.name.clone()))
                     .collect();
                 for (pid, pname) in pages {
-                    if ui.selectable_label(pid == active_id, &pname).clicked() && pid != active_id {
+                    let selected = pid == active_id;
+                    let resp = if is_phone {
+                        ui.add_sized(
+                            [68.0, 24.0],
+                            egui::Button::new(
+                                RichText::new(&pname).size(11.0).color(if selected {
+                                    Color32::WHITE
+                                } else {
+                                    Color32::from_rgb(20, 24, 36)
+                                }),
+                            )
+                            .fill(if selected {
+                                Color32::from_rgb(0, 0, 128)
+                            } else {
+                                Color32::from_rgb(238, 239, 244)
+                            }),
+                        )
+                    } else {
+                        ui.selectable_label(selected, &pname)
+                    };
+                    if resp.clicked() && !selected {
                         app.bridge.switch_page(pid);
                     }
                 }
-                if ui.small_button("+").on_hover_text("Add Page").clicked() {
+                let add_resp = if is_phone {
+                    ui.add_sized([28.0, 24.0], egui::Button::new(RichText::new("+").strong()))
+                } else {
+                    ui.small_button("+")
+                };
+                if add_resp.on_hover_text("Add Page").clicked() {
                     let next_num = app.bridge.document.pages().len() + 1;
                     app.bridge.add_page(format!("Page-{next_num}"));
                 }

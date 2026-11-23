@@ -8,8 +8,8 @@
   <title>Bohat Draw.io — 100% Rust</title>
   
 <script type="module">
-import init, * as bindings from '/bohat-draw-b32281658334fcd9.js';
-const wasm = await init({ module_or_path: '/bohat-draw-b32281658334fcd9_bg.wasm' });
+import init, * as bindings from '/bohat-draw-74ddb29add9ba9ee.js';
+const wasm = await init({ module_or_path: '/bohat-draw-74ddb29add9ba9ee_bg.wasm' });
 
 
 window.wasmBindings = bindings;
@@ -19,30 +19,72 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
 
 </script>
   <style>
+    :root {
+      --vvh: 100dvh;
+      --vv-top: 0px;
+    }
     html, body {
       margin: 0;
       padding: 0;
-      width: 100vw;
-      height: 100vh;
-      height: 100dvh;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       overscroll-behavior: none;
-      background: #d4d4d4;
+      background: #c8c8cc;
       touch-action: none;
       -webkit-user-select: none;
       user-select: none;
       -webkit-touch-callout: none;
     }
+    #app_shell {
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: var(--vv-top, 0px);
+      width: 100vw;
+      height: var(--vvh, 100dvh);
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+      overflow: hidden;
+      background: #c8c8cc;
+    }
     canvas#bohat_canvas {
       display: block;
-      width: 100%;
-      height: 100%;
+      width: 100% !important;
+      height: 100% !important;
       touch-action: none;
       outline: none;
     }
   </style>
-<link rel="modulepreload" href="/bohat-draw-b32281658334fcd9.js" crossorigin="anonymous" integrity="sha384-3XwqSBSYI/sXunrRtwQDYbLk1qzb80Tird6bgpgHd7y8gpbO5RB/LGq/3mB99ADB"><link rel="preload" href="/bohat-draw-b32281658334fcd9_bg.wasm" crossorigin="anonymous" integrity="sha384-oQcU+49fALVm+PTmZTE/mux8IadFvddSMslWodSVeUeisSi9jvKA7KWzoB+FQ5hv" as="fetch" type="application/wasm"></head>
+  <script>
+    (function() {
+      function syncViewport() {
+        var vv = window.visualViewport;
+        var h = vv ? vv.height : window.innerHeight;
+        var top = vv ? vv.offsetTop : 0;
+        document.documentElement.style.setProperty('--vvh', Math.floor(h) + 'px');
+        document.documentElement.style.setProperty('--vv-top', Math.floor(top) + 'px');
+      }
+      window.addEventListener('resize', syncViewport, { passive: true });
+      window.addEventListener('orientationchange', function() {
+        setTimeout(syncViewport, 60);
+        setTimeout(syncViewport, 240);
+      }, { passive: true });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', syncViewport, { passive: true });
+        window.visualViewport.addEventListener('scroll', syncViewport, { passive: true });
+      }
+      document.addEventListener('DOMContentLoaded', syncViewport);
+      syncViewport();
+    })();
+  </script>
+<link rel="modulepreload" href="/bohat-draw-74ddb29add9ba9ee.js" crossorigin="anonymous" integrity="sha384-3XwqSBSYI/sXunrRtwQDYbLk1qzb80Tird6bgpgHd7y8gpbO5RB/LGq/3mB99ADB"><link rel="preload" href="/bohat-draw-74ddb29add9ba9ee_bg.wasm" crossorigin="anonymous" integrity="sha384-1A8E5eg+lneVZODmeYg8TWc6BxNyL6uP5BKATTHVShhaWypvADxdkD2i4BdVXcHX" as="fetch" type="application/wasm"></head>
 <body>
-  <canvas id="bohat_canvas"></canvas>
+  <div id="app_shell">
+    <canvas id="bohat_canvas"></canvas>
+  </div>
 </body>
 </html>
