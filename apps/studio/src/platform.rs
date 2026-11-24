@@ -125,6 +125,44 @@ pub fn initial_room_from_url() -> Option<String> {
     std::env::var("BOHAT_ROOM").ok().filter(|s| !s.is_empty())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn native_autosave_path() -> std::path::PathBuf {
+    let base = std::env::var("HOME")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::env::temp_dir());
+    base.join(".local/share/bohat-draw/autosave.json")
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn save_local_autosave(json: &str) {
+    let path = native_autosave_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::write(path, json);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn load_local_autosave() -> Option<String> {
+    let content = std::fs::read_to_string(native_autosave_path()).ok()?;
+    if content.trim().is_empty() {
+        None
+    } else {
+        Some(content)
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn clear_local_autosave() {
+    let _ = std::fs::remove_file(native_autosave_path());
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn set_browser_dirty_flag(_dirty: bool) {}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn hide_browser_splash() {}
+
 #[cfg(target_arch = "wasm32")]
 fn trigger_browser_download(filename: &str, mime: &str, bytes: &[u8]) -> Result<(), String> {
     use wasm_bindgen::JsCast;
@@ -367,4 +405,51 @@ pub fn initial_room_from_url() -> Option<String> {
         }
     }
     None
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn save_local_autosave(json: &str) {
+    if let Some(win) = web_sys::window() {
+        if let Ok(Some(storage)) = win.local_storage() {
+            let _ = storage.set_item("bohat_draw_autosave_v1", json);
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn load_local_autosave() -> Option<String> {
+    let win = web_sys::window()?;
+    let storage = win.local_storage().ok()??;
+    let val = storage.get_item("bohat_draw_autosave_v1").ok()??;
+    if val.trim().is_empty() {
+        None
+    } else {
+        Some(val)
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn clear_local_autosave() {
+    if let Some(win) = web_sys::window() {
+        if let Ok(Some(storage)) = win.local_storage() {
+            let _ = storage.remove_item("bohat_draw_autosave_v1");
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn set_browser_dirty_flag(dirty: bool) {
+    let func = js_sys::Function::new_with_args("d", "window.__bohatDirty = !!d;");
+    let _ = func.call1(
+        &wasm_bindgen::JsValue::NULL,
+        &wasm_bindgen::JsValue::from_bool(dirty),
+    );
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn hide_browser_splash() {
+    let func = js_sys::Function::new_no_args(
+        "if (typeof window.__bohatHideSplash === 'function') window.__bohatHideSplash();",
+    );
+    let _ = func.call0(&wasm_bindgen::JsValue::NULL);
 }

@@ -151,6 +151,7 @@ pub fn build_router(config: &ServerConfig) -> Router {
         .route("/ws", get(ws_handler))
         .fallback_service(static_service)
         .with_state(state)
+        .layer(axum::middleware::from_fn(static_cache_headers))
         .layer(CompressionLayer::new())
         .layer(SetResponseHeaderLayer::overriding(
             header::X_CONTENT_TYPE_OPTIONS,
@@ -164,6 +165,28 @@ pub fn build_router(config: &ServerConfig) -> Router {
             header::REFERRER_POLICY,
             HeaderValue::from_static("strict-origin-when-cross-origin"),
         ))
+}
+
+async fn static_cache_headers(
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let path = req.uri().path().to_string();
+    let mut res = next.run(req).await;
+    if !res.headers().contains_key(header::CACHE_CONTROL) {
+        if path.ends_with(".wasm") || path.ends_with(".js") {
+            res.headers_mut().insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=31536000, immutable"),
+            );
+        } else if path == "/" || path.ends_with(".html") {
+            res.headers_mut().insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("no-cache"),
+            );
+        }
+    }
+    res
 }
 
 async fn healthz(State(state): State<Arc<AppState>>) -> impl IntoResponse {

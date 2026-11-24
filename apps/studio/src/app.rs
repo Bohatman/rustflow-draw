@@ -16,8 +16,9 @@ use rustflow_core::{
 };
 use rustflow_io_formats::{
     compute_fit_viewport, export_animated_gif_bytes_with_bg, export_animated_svg,
-    export_drawio_xml, export_png_bytes_with_bg, export_scene_serde_json, import_drawio_xml,
-    import_scene_serde_json,
+    export_document_serde_json, export_drawio_xml, export_mermaid_flowchart,
+    export_png_bytes_with_bg, export_scene_serde_json, import_document_serde_json,
+    import_drawio_xml, import_mermaid_flowchart, import_scene_serde_json,
 };
 use rustflow_renderer::{ExportBgStyle, HeadlessFramebuffer};
 use rustflow_ui_bridge::{EngineBridge, StencilCategory};
@@ -38,6 +39,18 @@ pub enum PaletteViewMode {
     IconOnly,
     IconAndName,
     NameList,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResizeHandle {
+    NW,
+    N,
+    NE,
+    E,
+    SE,
+    S,
+    SW,
+    W,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,7 +106,7 @@ pub struct BohatDrawApp {
     pub drag_origin_world: Point,
     pub drag_start_positions: Vec<(NodeId, Point)>,
     pub active_guides: Vec<(bool, f32, bool)>,
-    pub resizing_node: Option<NodeId>,
+    pub resizing_node: Option<(NodeId, ResizeHandle, Rect)>,
     pub connecting_from: Option<(NodeId, PortId)>,
     pub dragging_waypoint: Option<(EdgeId, usize)>,
     pub marquee_screen: Option<(Pos2, Pos2)>,
@@ -101,9 +114,23 @@ pub struct BohatDrawApp {
     pub editing_focus_body: bool,
     pub editing_needs_focus: bool,
     pub editing_snapshot: Option<(String, String)>,
+    pub editing_edge: Option<EdgeId>,
+    pub editing_edge_needs_focus: bool,
+    pub editing_edge_snapshot: Option<String>,
     pub default_edge_kind: EdgeKind,
     pub default_edge_arrow: EdgeArrowStyle,
     pub default_edge_anim: u8,
+    pub is_dirty: bool,
+    pub last_edit_at: f64,
+    pub last_local_autosave_at: f64,
+    pub last_drive_autosave_at: f64,
+    pub autosave_to_drive: bool,
+    pub recovered_draft: Option<String>,
+    pub splash_hidden: bool,
+    pub show_mermaid_modal: bool,
+    pub mermaid_text: String,
+    pub mermaid_error: Option<String>,
+    pub renaming_page: Option<(u64, String)>,
     pub undo_stack: Vec<SceneGraph>,
     pub redo_stack: Vec<SceneGraph>,
     pub clipboard_nodes: Vec<Node>,
@@ -194,9 +221,27 @@ impl BohatDrawApp {
             editing_focus_body: false,
             editing_needs_focus: false,
             editing_snapshot: None,
+            editing_edge: None,
+            editing_edge_needs_focus: false,
+            editing_edge_snapshot: None,
             default_edge_kind: EdgeKind::Bezier,
             default_edge_arrow: EdgeArrowStyle::OneWay,
             default_edge_anim: 0,
+            is_dirty: false,
+            last_edit_at: 0.0,
+            last_local_autosave_at: 0.0,
+            last_drive_autosave_at: 0.0,
+            autosave_to_drive: false,
+            recovered_draft: if initial_room.is_none() {
+                platform::load_local_autosave()
+            } else {
+                None
+            },
+            splash_hidden: false,
+            show_mermaid_modal: false,
+            mermaid_text: "flowchart LR\n  U((User)) -->|HTTPS| GW[API Gateway]\n  GW --> SVC(Core Service)\n  SVC -.->|Async| Q[Message Queue]\n  SVC --> DB[(Primary DB)]\n".to_string(),
+            mermaid_error: None,
+            renaming_page: None,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             clipboard_nodes: Vec::new(),
@@ -294,12 +339,48 @@ impl BohatDrawApp {
         }
     }
 
+    pub fn start_edge_inline_edit(&mut self, eid: EdgeId) {
+        if let Some(edge) = self.bridge.scene.get_edge(eid) {
+            self.editing_edge_snapshot = Some(edge.label.clone());
+            self.push_undo();
+            self.editing_edge = Some(eid);
+            self.editing_edge_needs_focus = true;
+        }
+    }
+
+    pub fn finish_edge_inline_edit(&mut self, commit: bool) {
+        if let Some(eid) = self.editing_edge.take() {
+            let snap = self.editing_edge_snapshot.take();
+            self.editing_edge_needs_focus = false;
+            if commit {
+                self.mark_dirty();
+                self.broadcast_scene_snapshot();
+            } else if let Some(orig) = snap {
+                if let Some(edge) = self.bridge.scene.get_edge_mut(eid) {
+                    edge.label = orig;
+                }
+            }
+        }
+    }
+
+    pub fn mark_dirty(&mut self) {
+        self.is_dirty = true;
+        self.last_edit_at = self.last_time;
+        platform::set_browser_dirty_flag(true);
+    }
+
+    pub fn mark_clean(&mut self) {
+        self.is_dirty = false;
+        platform::set_browser_dirty_flag(false);
+    }
+
     pub fn push_undo(&mut self) {
         self.undo_stack.push(self.bridge.scene.clone());
         if self.undo_stack.len() > 80 {
             self.undo_stack.remove(0);
         }
         self.redo_stack.clear();
+        self.mark_dirty();
     }
 
     pub fn undo(&mut self) {
@@ -308,6 +389,7 @@ impl BohatDrawApp {
             self.bridge.scene = prev;
             self.bridge.selection.clear();
             self.status_message = "Undo".to_string();
+            self.mark_dirty();
             self.broadcast_scene_snapshot();
         }
     }
@@ -318,6 +400,7 @@ impl BohatDrawApp {
             self.bridge.scene = next;
             self.bridge.selection.clear();
             self.status_message = "Redo".to_string();
+            self.mark_dirty();
             self.broadcast_scene_snapshot();
         }
     }
@@ -767,13 +850,114 @@ impl BohatDrawApp {
         }
     }
 
+    pub fn serialize_full_document_json(&mut self) -> Result<String, String> {
+        self.bridge.sync_active_page_to_document();
+        export_document_serde_json(&self.bridge.document).map_err(|e| e.to_string())
+    }
+
     pub fn export_json_file(&mut self) {
-        match export_scene_serde_json(&self.bridge.scene) {
+        match self.serialize_full_document_json() {
             Ok(json) => match platform::save_bytes_dialog("diagram.bohat.json", json.as_bytes()) {
-                Ok(msg) => self.status_message = msg,
+                Ok(msg) => {
+                    self.mark_clean();
+                    platform::clear_local_autosave();
+                    self.status_message = msg;
+                }
                 Err(err) => self.status_message = err,
             },
             Err(err) => self.status_message = format!("JSON error: {err}"),
+        }
+    }
+
+    pub fn load_starter_template(&mut self, name: &str, mermaid: &str) {
+        match import_mermaid_flowchart(mermaid) {
+            Ok(scene) => {
+                let w = self.bridge.viewport.screen_width.max(1280.0);
+                let h = self.bridge.viewport.screen_height.max(720.0);
+                self.bridge.document = rustflow_core::Document::new(name, w, h);
+                self.bridge.document.active_page_mut().name = format!("Page-1: {name}");
+                self.bridge.scene = scene;
+                self.bridge.selection.clear();
+                self.fit_view();
+                self.bridge.sync_active_page_to_document();
+                self.undo_stack.clear();
+                self.redo_stack.clear();
+                self.inventory.active_file_id = None;
+                self.inventory.active_file_name = name.to_string();
+                self.inventory.save_as_name = name.to_string();
+                self.show_welcome = false;
+                self.mark_dirty();
+                self.set_status(format!("Loaded template: {name}"));
+                self.broadcast_scene_snapshot();
+            }
+            Err(err) => self.set_status(format!("Template error: {err}")),
+        }
+    }
+
+    pub fn open_mermaid_modal(&mut self) {
+        if !self.bridge.scene.nodes().is_empty() {
+            self.mermaid_text = export_mermaid_flowchart(&self.bridge.scene);
+        }
+        self.mermaid_error = None;
+        self.show_mermaid_modal = true;
+    }
+
+    pub fn apply_mermaid_import(&mut self) {
+        match import_mermaid_flowchart(&self.mermaid_text) {
+            Ok(scene) => {
+                self.push_undo();
+                self.bridge.scene = scene;
+                self.bridge.selection.clear();
+                self.fit_view();
+                self.bridge.sync_active_page_to_document();
+                self.show_mermaid_modal = false;
+                self.mermaid_error = None;
+                self.set_status("Imported Mermaid flowchart");
+                self.broadcast_scene_snapshot();
+            }
+            Err(err) => {
+                self.mermaid_error = Some(err.to_string());
+            }
+        }
+    }
+
+    pub fn restore_recovered_draft(&mut self) {
+        if let Some(json) = self.recovered_draft.take() {
+            self.load_diagram_text("Recovered Draft", &json);
+            self.mark_dirty();
+            self.set_status("Restored unsaved local draft");
+        }
+    }
+
+    pub fn dismiss_recovered_draft(&mut self) {
+        self.recovered_draft = None;
+        platform::clear_local_autosave();
+    }
+
+    fn tick_autosave(&mut self, ctx: &egui::Context) {
+        if !self.is_dirty || self.is_interacting() {
+            return;
+        }
+        let now = self.last_time;
+        if now - self.last_edit_at >= 1.8 && now - self.last_local_autosave_at >= 1.8 {
+            if let Ok(json) = self.serialize_full_document_json() {
+                platform::save_local_autosave(&json);
+                self.last_local_autosave_at = now;
+            }
+        }
+        if self.autosave_to_drive
+            && !self.inventory.loading
+            && self.inventory.user.is_some()
+            && self.inventory.active_file_id.is_some()
+            && now - self.last_edit_at >= 4.0
+            && now - self.last_drive_autosave_at >= 4.0
+        {
+            self.last_drive_autosave_at = now;
+            if let Some(fid) = self.inventory.active_file_id.clone() {
+                let name = self.inventory.active_file_name.clone();
+                let folder = self.inventory.active_folder_id.clone();
+                self.save_current_to_drive(Some(fid), folder, name, ctx);
+            }
         }
     }
 
@@ -966,18 +1150,29 @@ impl BohatDrawApp {
     }
 
     pub fn load_diagram_text(&mut self, name: &str, content: &str) {
-        let loaded = if content.trim_start().starts_with('<') {
-            import_drawio_xml(content)
+        let w = self.bridge.viewport.screen_width.max(1280.0);
+        let h = self.bridge.viewport.screen_height.max(720.0);
+        let clean = name
+            .strip_suffix(".bohat.json")
+            .or_else(|| name.strip_suffix(".json"))
+            .or_else(|| name.strip_suffix(".drawio"))
+            .unwrap_or(name)
+            .to_string();
+        let loaded_doc = if content.trim_start().starts_with('<') {
+            import_drawio_xml(content).map(|scene| {
+                let mut doc = rustflow_core::Document::new(&clean, w, h);
+                doc.active_page_mut().name = format!("Page-1: {clean}");
+                doc.active_page_mut().scene = scene;
+                doc
+            })
         } else {
-            import_scene_serde_json(content)
+            import_document_serde_json(content, &clean, w, h)
         };
-        match loaded {
-            Ok(scene) => {
-                let w = self.bridge.viewport.screen_width.max(1280.0);
-                let h = self.bridge.viewport.screen_height.max(720.0);
-                self.bridge.document = rustflow_core::Document::new(name, w, h);
-                self.bridge.document.active_page_mut().name = format!("Page-1: {name}");
-                self.bridge.scene = scene;
+        match loaded_doc {
+            Ok(doc) => {
+                let page_count = doc.pages().len();
+                self.bridge.document = doc;
+                self.bridge.load_active_page_from_document();
                 self.bridge.scene.normalize_layer_order();
                 self.bridge.selection.clear();
                 self.fit_view();
@@ -985,15 +1180,14 @@ impl BohatDrawApp {
                 self.undo_stack.clear();
                 self.redo_stack.clear();
                 self.inventory.active_file_id = None;
-                let clean = name
-                    .strip_suffix(".bohat.json")
-                    .or_else(|| name.strip_suffix(".json"))
-                    .or_else(|| name.strip_suffix(".drawio"))
-                    .unwrap_or(name)
-                    .to_string();
                 self.inventory.active_file_name = clean.clone();
                 self.inventory.save_as_name = clean;
-                self.set_status(format!("Opened {name}"));
+                self.mark_clean();
+                self.set_status(if page_count > 1 {
+                    format!("Opened {name} ({page_count} pages)")
+                } else {
+                    format!("Opened {name}")
+                });
                 self.broadcast_scene_snapshot();
             }
             Err(err) => self.set_status(format!("Open error: {err}")),
@@ -1031,7 +1225,10 @@ impl BohatDrawApp {
     }
 
     fn handle_shortcuts(&mut self, ctx: &egui::Context) {
-        if ctx.wants_keyboard_input() || self.editing_node.is_some() {
+        if ctx.wants_keyboard_input()
+            || self.editing_node.is_some()
+            || self.editing_edge.is_some()
+        {
             return;
         }
         ctx.input(|i| {
@@ -1166,7 +1363,7 @@ impl BohatDrawApp {
         name: String,
         ctx: &egui::Context,
     ) {
-        match export_scene_serde_json(&self.bridge.scene) {
+        match self.serialize_full_document_json() {
             Ok(json) => {
                 self.inventory
                     .save_diagram(file_id, folder_id, name, json, ctx.clone());
@@ -1230,19 +1427,18 @@ impl BohatDrawApp {
                 InventoryEvent::DiagramLoaded(loaded) => {
                     self.inventory.loading = false;
                     self.inventory.last_error = None;
-                    match import_scene_serde_json(&loaded.scene_json) {
-                        Ok(scene) => {
-                            let display_name = loaded
-                                .name
-                                .strip_suffix(".bohat.json")
-                                .unwrap_or(&loaded.name)
-                                .to_string();
-                            let w = self.bridge.viewport.screen_width.max(1280.0);
-                            let h = self.bridge.viewport.screen_height.max(720.0);
-                            self.bridge.document =
-                                rustflow_core::Document::new(&display_name, w, h);
-                            self.bridge.document.active_page_mut().name = display_name.clone();
-                            self.bridge.scene = scene;
+                    let display_name = loaded
+                        .name
+                        .strip_suffix(".bohat.json")
+                        .unwrap_or(&loaded.name)
+                        .to_string();
+                    let w = self.bridge.viewport.screen_width.max(1280.0);
+                    let h = self.bridge.viewport.screen_height.max(720.0);
+                    match import_document_serde_json(&loaded.scene_json, &display_name, w, h) {
+                        Ok(doc) => {
+                            let page_count = doc.pages().len();
+                            self.bridge.document = doc;
+                            self.bridge.load_active_page_from_document();
                             self.bridge.scene.normalize_layer_order();
                             self.bridge.selection.clear();
                             self.fit_view();
@@ -1254,7 +1450,13 @@ impl BohatDrawApp {
                             self.inventory.save_as_name = display_name.clone();
                             self.inventory.active_folder_id = loaded.parent_folder_id;
                             self.inventory.show_modal = false;
-                            self.set_status(format!("Opened '{display_name}' from Google Drive"));
+                            self.recovered_draft = None;
+                            self.mark_clean();
+                            self.set_status(if page_count > 1 {
+                                format!("Opened '{display_name}' ({page_count} pages) from Google Drive")
+                            } else {
+                                format!("Opened '{display_name}' from Google Drive")
+                            });
                             self.broadcast_scene_snapshot();
                         }
                         Err(err) => {
@@ -1303,6 +1505,8 @@ impl BohatDrawApp {
                     self.inventory.active_file_name = display_name.clone();
                     self.inventory.save_as_name = display_name.clone();
                     self.inventory.active_folder_id = Some(saved.parent_folder_id);
+                    self.mark_clean();
+                    platform::clear_local_autosave();
                     let cur_fid = self.inventory.current_folder_id();
                     self.inventory.fetch_folder(cur_fid, ctx.clone());
                     self.set_status(format!("Saved '{display_name}' to Google Drive"));
@@ -1330,6 +1534,10 @@ impl eframe::App for BohatDrawApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if !self.splash_hidden {
+            platform::hide_browser_splash();
+            self.splash_hidden = true;
+        }
         if !self.theme_applied {
             apply_theme(ctx, self.theme_mode);
             self.theme_applied = true;
@@ -1366,6 +1574,7 @@ impl eframe::App for BohatDrawApp {
         self.poll_collab();
         self.poll_inventory(ctx);
         self.handle_shortcuts(ctx);
+        self.tick_autosave(ctx);
 
         let screen_w = ctx.screen_rect().width();
         let narrow = screen_w <= 960.0;
