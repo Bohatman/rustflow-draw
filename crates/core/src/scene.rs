@@ -832,6 +832,7 @@ impl SceneGraph {
     pub fn edge_endpoints(&self, edge: &Edge) -> Option<(Point, Point, PortSide, PortSide)> {
         let src_node = self.get_node(edge.source_node)?;
         let dst_node = self.get_node(edge.target_node)?;
+        let is_self_loop = edge.source_node == edge.target_node;
 
         let (src_pt, src_side) = if let Some(pid) = edge.source_port {
             let pt = src_node
@@ -839,6 +840,9 @@ impl SceneGraph {
                 .unwrap_or_else(|| src_node.bounds.center());
             let side = src_node.port_side(pid).unwrap_or(PortSide::Right);
             (pt, side)
+        } else if is_self_loop {
+            let c1 = src_node.bounds.center();
+            (Point::new(src_node.bounds.right(), c1.y), PortSide::Right)
         } else {
             let c1 = src_node.bounds.center();
             let c2 = dst_node.bounds.center();
@@ -861,6 +865,14 @@ impl SceneGraph {
                 .unwrap_or_else(|| dst_node.bounds.center());
             let side = dst_node.port_side(pid).unwrap_or(PortSide::Left);
             (pt, side)
+        } else if is_self_loop {
+            let c1 = src_node.bounds.center();
+            match src_side {
+                PortSide::Right => (Point::new(c1.x, src_node.bounds.y), PortSide::Top),
+                PortSide::Top => (Point::new(src_node.bounds.x, c1.y), PortSide::Left),
+                PortSide::Left => (Point::new(c1.x, src_node.bounds.bottom()), PortSide::Bottom),
+                PortSide::Bottom => (Point::new(src_node.bounds.right(), c1.y), PortSide::Right),
+            }
         } else {
             let c1 = src_node.bounds.center();
             let c2 = dst_node.bounds.center();
@@ -894,7 +906,12 @@ impl SceneGraph {
             let wp_rect = Rect::new(wp.x, wp.y, 0.0, 0.0);
             rect = rect.union(&wp_rect);
         }
-        rect.expand(24.0)
+        let pad = if edge.source_node == edge.target_node {
+            72.0
+        } else {
+            24.0
+        };
+        rect.expand(pad)
     }
 
     fn refresh_incident_edge_bounds(&mut self, node_id: NodeId) {
@@ -1186,6 +1203,72 @@ impl SceneGraph {
         best.map(|(_, nid, pid, pt)| (nid, pid, pt))
     }
 
+    /// Resolve a drag-from-port drop point, supporting both inter-node connections and self-loops.
+    pub fn resolve_connection_target_from_port(
+        &self,
+        drop_world_pt: Point,
+        snap_radius: f32,
+        src_node: NodeId,
+        src_port: PortId,
+    ) -> Option<(NodeId, Option<PortId>, Point)> {
+        let search_box = Rect::new(
+            drop_world_pt.x - snap_radius,
+            drop_world_pt.y - snap_radius,
+            snap_radius * 2.0,
+            snap_radius * 2.0,
+        );
+        let candidate_ids = self.node_rtree.query_rect(&search_box);
+        let mut best_port: Option<(f32, NodeId, PortId, Point)> = None;
+        for node in self.nodes.iter().filter(|n| n.visible && candidate_ids.contains(&n.id)) {
+            for port in &node.ports {
+                if node.id == src_node && port.id == src_port {
+                    continue;
+                }
+                let pos = port.world_position(&node.bounds);
+                let dist = pos.distance_to(drop_world_pt);
+                if dist <= snap_radius && best_port.is_none_or(|(bd, ..)| dist < bd) {
+                    best_port = Some((dist, node.id, port.id, pos));
+                }
+            }
+        }
+        if let Some((_, nid, pid, pt)) = best_port {
+            return Some((nid, Some(pid), pt));
+        }
+
+        if let Some(target_node) = self
+            .nodes
+            .iter()
+            .filter(|n| {
+                n.visible
+                    && !n.is_section
+                    && candidate_ids.contains(&n.id)
+                    && n.bounds.expand(12.0).contains_point(drop_world_pt)
+            })
+            .max_by_key(|n| (n.z_index, n.id))
+        {
+            if let Some((pid, pt)) = target_node
+                .ports
+                .iter()
+                .filter(|p| !(target_node.id == src_node && p.id == src_port))
+                .map(|p| (p.id, p.world_position(&target_node.bounds)))
+                .min_by(|a, b| {
+                    a.1.distance_to(drop_world_pt)
+                        .partial_cmp(&b.1.distance_to(drop_world_pt))
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+            {
+                return Some((target_node.id, Some(pid), pt));
+            }
+            if target_node.id == src_node {
+                if let Some(pt) = target_node.port_position(src_port) {
+                    return Some((src_node, Some(src_port), pt));
+                }
+            }
+            return Some((target_node.id, None, target_node.bounds.center()));
+        }
+        None
+    }
+
     /// Resolve a drag-from-port drop point: snaps to any port within `snap_radius`, or if dropped
     /// anywhere on a target node's body, snaps to the closest port on that node.
     pub fn resolve_connection_target(
@@ -1268,9 +1351,6 @@ impl SceneGraph {
         new_source: (NodeId, Option<PortId>),
         new_target: (NodeId, Option<PortId>),
     ) -> bool {
-        if new_source.0 == new_target.0 {
-            return false;
-        }
         let Some(edge) = self.edges.iter_mut().find(|e| e.id == edge_id) else {
             return false;
         };

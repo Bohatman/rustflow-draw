@@ -489,11 +489,147 @@ pub fn tessellate_smooth_step_oriented(
     dedup_polyline(pts)
 }
 
+pub fn tessellate_self_loop(
+    bounds: Rect,
+    start: Point,
+    end: Point,
+    start_side: PortSide,
+    end_side: PortSide,
+    kind: EdgeKind,
+) -> Vec<Point> {
+    let sn = port_normal(start_side);
+    let en = port_normal(end_side);
+    let out = 42.0_f32;
+
+    if start_side == end_side {
+        let tangent = Point::new(-sn.y, sn.x);
+        let (p_start, p_end) = if start.distance_to(end) < 8.0 {
+            let s = Point::new(start.x - tangent.x * 10.0, start.y - tangent.y * 10.0);
+            let e = Point::new(end.x + tangent.x * 10.0, end.y + tangent.y * 10.0);
+            (s, e)
+        } else {
+            (start, end)
+        };
+        if matches!(kind, EdgeKind::Bezier) {
+            let c1 = Point::new(
+                p_start.x + sn.x * 56.0 - tangent.x * 26.0,
+                p_start.y + sn.y * 56.0 - tangent.y * 26.0,
+            );
+            let c2 = Point::new(
+                p_end.x + en.x * 56.0 + tangent.x * 26.0,
+                p_end.y + en.y * 56.0 + tangent.y * 26.0,
+            );
+            let steps = 28usize;
+            let mut pts = Vec::with_capacity(steps + 1);
+            for i in 0..=steps {
+                pts.push(eval_cubic_bezier(p_start, c1, c2, p_end, i as f32 / steps as f32));
+            }
+            return dedup_polyline(pts);
+        }
+        let p1 = Point::new(p_start.x + sn.x * out, p_start.y + sn.y * out);
+        let p2 = Point::new(p_end.x + en.x * out, p_end.y + en.y * out);
+        let base = dedup_polyline(vec![p_start, p1, p2, p_end]);
+        return if matches!(kind, EdgeKind::SmoothStep) {
+            round_polyline_corners(&base, 12.0)
+        } else {
+            base
+        };
+    }
+
+    let opposite = (sn.x + en.x).abs() < 0.1 && (sn.y + en.y).abs() < 0.1;
+    if !opposite {
+        let corner = Point::new(
+            if sn.x.abs() > 0.5 {
+                (start.x + sn.x * out).max(bounds.right() + 28.0).min(if sn.x < 0.0 {
+                    bounds.x - 28.0
+                } else {
+                    f32::INFINITY
+                })
+            } else {
+                (end.x + en.x * out).max(bounds.right() + 28.0).min(if en.x < 0.0 {
+                    bounds.x - 28.0
+                } else {
+                    f32::INFINITY
+                })
+            },
+            if sn.y.abs() > 0.5 {
+                (start.y + sn.y * out).max(bounds.bottom() + 28.0).min(if sn.y < 0.0 {
+                    bounds.y - 28.0
+                } else {
+                    f32::INFINITY
+                })
+            } else {
+                (end.y + en.y * out).max(bounds.bottom() + 28.0).min(if en.y < 0.0 {
+                    bounds.y - 28.0
+                } else {
+                    f32::INFINITY
+                })
+            },
+        );
+        if matches!(kind, EdgeKind::Bezier) {
+            let c1 = Point::new(start.x + sn.x * 54.0, start.y + sn.y * 54.0);
+            let c2 = Point::new(end.x + en.x * 54.0, end.y + en.y * 54.0);
+            let steps = 26usize;
+            let mut pts = Vec::with_capacity(steps + 1);
+            for i in 0..=steps {
+                pts.push(eval_cubic_bezier(start, c1, c2, end, i as f32 / steps as f32));
+            }
+            return dedup_polyline(pts);
+        }
+        let p1 = if sn.x.abs() > 0.5 {
+            Point::new(corner.x, start.y)
+        } else {
+            Point::new(start.x, corner.y)
+        };
+        let p2 = if en.x.abs() > 0.5 {
+            Point::new(corner.x, end.y)
+        } else {
+            Point::new(end.x, corner.y)
+        };
+        let base = dedup_polyline(vec![start, p1, corner, p2, end]);
+        return if matches!(kind, EdgeKind::SmoothStep) {
+            round_polyline_corners(&base, 14.0)
+        } else {
+            base
+        };
+    }
+
+    let p1 = Point::new(start.x + sn.x * 32.0, start.y + sn.y * 32.0);
+    let p2 = Point::new(end.x + en.x * 32.0, end.y + en.y * 32.0);
+    let base = if sn.x.abs() > 0.5 {
+        let top_y = bounds.y - 36.0;
+        dedup_polyline(vec![
+            start,
+            p1,
+            Point::new(p1.x, top_y),
+            Point::new(p2.x, top_y),
+            p2,
+            end,
+        ])
+    } else {
+        let right_x = bounds.right() + 36.0;
+        dedup_polyline(vec![
+            start,
+            p1,
+            Point::new(right_x, p1.y),
+            Point::new(right_x, p2.y),
+            p2,
+            end,
+        ])
+    };
+    round_polyline_corners(&base, if matches!(kind, EdgeKind::Orthogonal) { 0.0 } else { 14.0 })
+}
+
 /// Tessellate an `Edge` into a world-space polyline according to its `EdgeKind`.
 pub fn tessellate_edge_path(scene: &SceneGraph, edge: &Edge) -> Vec<Point> {
     let Some((start, end, start_side, end_side)) = scene.edge_endpoints(edge) else {
         return Vec::new();
     };
+    if edge.source_node == edge.target_node && edge.waypoints.is_empty() {
+        if let Some(node) = scene.get_node(edge.source_node) {
+            return tessellate_self_loop(node.bounds, start, end, start_side, end_side, edge.kind);
+        }
+    }
     match edge.kind {
         EdgeKind::Straight => {
             let s = if edge.source_port.is_some() {

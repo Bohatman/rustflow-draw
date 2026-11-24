@@ -90,6 +90,13 @@ impl HeadlessFramebuffer {
         self.render_background(vp, bg_style);
 
         let frustum = vp.visible_world_rect();
+        let visible_nodes = scene.query_visible_nodes(&frustum);
+        for node in &visible_nodes {
+            if node.is_section || matches!(node.shape, ShapeKind::Section) {
+                self.render_node_aa(node, vp, time_seconds);
+            }
+        }
+
         let mut placed_labels: Vec<rustflow_core::Rect> = Vec::new();
 
         for edge in scene.query_visible_edges(&frustum) {
@@ -100,6 +107,9 @@ impl HeadlessFramebuffer {
             let screen_pts: Vec<Point> = pts.iter().map(|&p| vp.world_to_screen(p)).collect();
             let color = rgba_u8(edge.stroke.r, edge.stroke.g, edge.stroke.b, 1.0);
             let thickness = ((edge.stroke_width * vp.zoom).round() as i32).clamp(1, 5);
+            let h = edge.id.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+            let edge_phase = ((h >> 32) as u32 as f32) / (u32::MAX as f32);
+            let speed_factor = 0.86 + (((h & 0xFFFF) as u32 as f32) / 65535.0) * 0.28;
 
             match edge.animation {
                 EdgeAnimation::MarchingAnts {
@@ -111,7 +121,7 @@ impl HeadlessFramebuffer {
                     let dir = if reverse { 1.0 } else { -1.0 };
                     let dash = (dash_length * vp.zoom).max(4.0);
                     let gap = (gap_length * vp.zoom).max(3.0);
-                    let offset = time_seconds * speed * 0.9 * dir;
+                    let offset = (time_seconds * speed * speed_factor * 0.9 + edge_phase * 24.0) * dir;
                     self.draw_dashed_polyline_aa(&screen_pts, color, thickness, dash, gap, offset);
                 }
                 EdgeAnimation::PulseParticles {
@@ -126,9 +136,16 @@ impl HeadlessFramebuffer {
                     let count = particle_count.clamp(1, 12);
                     let pr = ((radius * vp.zoom).round() as i32).clamp(2, 9);
                     let pc = rgba_u8(pcol.r, pcol.g, pcol.b, 1.0);
-                    let rate = if speed > 4.0 { speed * 0.004 } else { speed };
+                    let path_len: f32 = pts
+                        .windows(2)
+                        .map(|w| w[0].distance_to(w[1]))
+                        .sum::<f32>()
+                        .max(48.0);
+                    let vel_px = (if speed > 4.0 { speed * 1.65 } else { speed * 145.0 }) * speed_factor;
+                    let rate = (vel_px / path_len).clamp(0.12, 1.35);
                     for idx in 0..count {
-                        let t = (time_seconds * rate + idx as f32 / count as f32).rem_euclid(1.0);
+                        let t = (time_seconds * rate + edge_phase + idx as f32 / count as f32)
+                            .rem_euclid(1.0);
                         if let Some(world_pt) = sample_polyline_at(&pts, t) {
                             let sp = vp.world_to_screen(world_pt);
                             self.fill_circle_aa(sp.x.round() as i32, sp.y.round() as i32, pr, pc);
@@ -221,8 +238,10 @@ impl HeadlessFramebuffer {
             }
         }
 
-        for node in scene.query_visible_nodes(&frustum) {
-            self.render_node_aa(node, vp, time_seconds);
+        for node in visible_nodes {
+            if !node.is_section && !matches!(node.shape, ShapeKind::Section) {
+                self.render_node_aa(node, vp, time_seconds);
+            }
         }
     }
 

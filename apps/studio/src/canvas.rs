@@ -24,7 +24,8 @@ use rustflow_core::{
     PortId, PortSide, Rect, ShapeKind,
 };
 use rustflow_renderer::{
-    tessellate_cubic_bezier, tessellate_edge_path, tessellate_smooth_step_oriented,
+    tessellate_cubic_bezier, tessellate_edge_path, tessellate_self_loop,
+    tessellate_smooth_step_oriented,
 };
 
 pub fn world_to_screen(canvas_rect: EguiRect, app: &BohatDrawApp, pt: Point) -> Pos2 {
@@ -110,16 +111,13 @@ pub fn render_canvas(app: &mut BohatDrawApp, ui: &mut egui::Ui) {
         (n.z_index, n.id)
     });
 
-    let mut placed_labels: Vec<Rect> = Vec::with_capacity(app.bridge.scene.edges().len());
-    let edge_count = app.bridge.scene.edges().len();
-    for edge_idx in 0..edge_count {
-        draw_edge(&painter, canvas_rect, app, edge_idx, now_f32, &mut placed_labels);
-    }
-
     let skip_shadows = app.is_interacting() || node_indices.len() > 36;
     let cull_rect = canvas_rect.expand(48.0);
-    for idx in node_indices {
+    for &idx in &node_indices {
         let node = &app.bridge.scene.nodes()[idx];
+        if !(node.is_section || matches!(node.shape, ShapeKind::Section)) {
+            continue;
+        }
         if !rect_to_screen(canvas_rect, app, node.bounds).intersects(cull_rect) {
             continue;
         }
@@ -133,6 +131,39 @@ pub fn render_canvas(app: &mut BohatDrawApp, ui: &mut egui::Ui) {
             is_selected,
             is_hovered,
             hovered_port,
+            pointer_pos,
+            busy_dragging,
+            skip_shadows,
+            now_f32,
+        );
+    }
+
+    let mut placed_labels: Vec<Rect> = Vec::with_capacity(app.bridge.scene.edges().len());
+    let edge_count = app.bridge.scene.edges().len();
+    for edge_idx in 0..edge_count {
+        draw_edge(&painter, canvas_rect, app, edge_idx, now_f32, &mut placed_labels);
+    }
+
+    for idx in node_indices {
+        let node = &app.bridge.scene.nodes()[idx];
+        if node.is_section || matches!(node.shape, ShapeKind::Section) {
+            continue;
+        }
+        if !rect_to_screen(canvas_rect, app, node.bounds).intersects(cull_rect) {
+            continue;
+        }
+        let is_selected = app.bridge.selection.selected_nodes.contains(&node.id);
+        let is_hovered = hovered_node == Some(node.id);
+        draw_node(
+            &painter,
+            canvas_rect,
+            app,
+            node,
+            is_selected,
+            is_hovered,
+            hovered_port,
+            pointer_pos,
+            busy_dragging,
             skip_shadows,
             now_f32,
         );
@@ -144,6 +175,7 @@ pub fn render_canvas(app: &mut BohatDrawApp, ui: &mut egui::Ui) {
 
     if let Some((src_nid, src_pid)) = app.connecting_from {
         if let Some(src_node) = app.bridge.scene.get_node(src_nid) {
+            let src_bounds = src_node.bounds;
             let start_w = src_node
                 .port_position(src_pid)
                 .unwrap_or_else(|| src_node.bounds.center());
@@ -154,8 +186,8 @@ pub fn render_canvas(app: &mut BohatDrawApp, ui: &mut egui::Ui) {
                 let snapped = app
                     .bridge
                     .scene
-                    .resolve_connection_target(cur_w, snap_r, src_nid);
-                let (end_w, end_side) = if let Some((dst_nid, dst_pid, pt)) = snapped {
+                    .resolve_connection_target_from_port(cur_w, snap_r, src_nid, src_pid);
+                let (end_w, end_side, is_self_target) = if let Some((dst_nid, dst_pid, pt)) = snapped {
                     let side = dst_pid
                         .and_then(|pid| app.bridge.scene.get_node(dst_nid)?.port_side(pid))
                         .unwrap_or(PortSide::Left);
@@ -166,7 +198,7 @@ pub fn render_canvas(app: &mut BohatDrawApp, ui: &mut egui::Ui) {
                         Stroke::new(2.0_f32, Color32::from_rgb(16, 185, 129)),
                     );
                     painter.circle_filled(snap_s, 4.5, Color32::from_rgb(16, 185, 129));
-                    (pt, side)
+                    (pt, side, dst_nid == src_nid)
                 } else {
                     let dx = cur_w.x - start_w.x;
                     let dy = cur_w.y - start_w.y;
@@ -177,13 +209,24 @@ pub fn render_canvas(app: &mut BohatDrawApp, ui: &mut egui::Ui) {
                     } else {
                         PortSide::Bottom
                     };
-                    (cur_w, inferred)
+                    (cur_w, inferred, false)
                 };
-                let preview_w = match app.default_edge_kind {
-                    EdgeKind::Straight => vec![start_w, end_w],
-                    EdgeKind::Bezier => tessellate_cubic_bezier(start_w, end_w, start_side, end_side, 20),
-                    EdgeKind::SmoothStep | EdgeKind::Orthogonal => {
-                        tessellate_smooth_step_oriented(start_w, end_w, start_side, end_side)
+                let preview_w = if is_self_target {
+                    tessellate_self_loop(
+                        src_bounds,
+                        start_w,
+                        end_w,
+                        start_side,
+                        end_side,
+                        app.default_edge_kind,
+                    )
+                } else {
+                    match app.default_edge_kind {
+                        EdgeKind::Straight => vec![start_w, end_w],
+                        EdgeKind::Bezier => tessellate_cubic_bezier(start_w, end_w, start_side, end_side, 20),
+                        EdgeKind::SmoothStep | EdgeKind::Orthogonal => {
+                            tessellate_smooth_step_oriented(start_w, end_w, start_side, end_side)
+                        }
                     }
                 };
                 let preview_s: Vec<Pos2> = preview_w
@@ -722,8 +765,10 @@ fn draw_node(
     app: &BohatDrawApp,
     node: &Node,
     is_selected: bool,
-    is_hovered: bool,
+    _is_hovered: bool,
     hovered_port: Option<(NodeId, PortId)>,
+    pointer_pos: Option<Pos2>,
+    busy_dragging: bool,
     skip_shadows: bool,
     now_sec: f32,
 ) {
@@ -1398,17 +1443,45 @@ fn draw_node(
         painter.rect_stroke(handle, 1.0, sel_stroke, egui::StrokeKind::Inside);
     }
 
-    if is_hovered || is_selected || app.connecting_from.is_some() {
-        for port in &node.ports {
-            let pt_w = port.world_position(&draw_bounds);
-            let pt_s = world_to_screen(canvas_rect, app, pt_w);
-            let is_hot = hovered_port == Some((node.id, port.id));
-            if is_hot {
-                painter.circle_filled(pt_s, 4.5, Color32::from_rgb(16, 185, 129));
-                painter.circle_stroke(pt_s, 4.5, Stroke::new(1.5_f32, Color32::WHITE));
-            } else {
-                painter.circle_filled(pt_s, 3.0, Color32::WHITE);
-                painter.circle_stroke(pt_s, 3.0, Stroke::new(1.2_f32, Color32::from_rgb(0, 0, 140)));
+    if !busy_dragging {
+        let reveal_radius = if app.connecting_from.is_some() {
+            46.0_f32
+        } else {
+            32.0_f32
+        };
+        if pointer_pos.is_some_and(|p| srect.expand(reveal_radius + 8.0).contains(p))
+            || app.connecting_from.is_some_and(|(snid, _)| snid == node.id)
+        {
+            for port in &node.ports {
+                let pt_w = port.world_position(&draw_bounds);
+                let pt_s = world_to_screen(canvas_rect, app, pt_w);
+                let is_src = app.connecting_from == Some((node.id, port.id));
+                let is_hot = hovered_port == Some((node.id, port.id));
+                let dist = pointer_pos
+                    .map(|p| pt_s.distance(p))
+                    .unwrap_or(f32::INFINITY);
+                if is_hot || is_src {
+                    painter.circle_filled(pt_s, 5.0, Color32::from_rgb(16, 185, 129));
+                    painter.circle_stroke(pt_s, 5.0, Stroke::new(1.5_f32, Color32::WHITE));
+                } else if dist <= reveal_radius {
+                    let proximity =
+                        (1.0 - ((dist - 12.0).max(0.0) / (reveal_radius - 12.0))).clamp(0.3, 1.0);
+                    let r = 2.4 + 1.4 * proximity;
+                    let alpha = (255.0 * proximity).round() as u8;
+                    painter.circle_filled(
+                        pt_s,
+                        r,
+                        Color32::from_rgba_unmultiplied(255, 255, 255, alpha),
+                    );
+                    painter.circle_stroke(
+                        pt_s,
+                        r,
+                        Stroke::new(
+                            1.25_f32,
+                            Color32::from_rgba_unmultiplied(0, 0, 140, alpha),
+                        ),
+                    );
+                }
             }
         }
     }
@@ -1563,6 +1636,10 @@ fn draw_edge(
         .clamp(1.2, 8.0);
     let stroke = Stroke::new(width, color);
 
+    let h = edge.id.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    let edge_phase = ((h >> 32) as u32 as f32) / (u32::MAX as f32);
+    let speed_factor = 0.86 + (((h & 0xFFFF) as u32 as f32) / 65535.0) * 0.28;
+
     match &edge.animation {
         EdgeAnimation::MarchingAnts { speed, reverse, .. } => {
             let dir = if *reverse { 1.0 } else { -1.0 };
@@ -1571,7 +1648,7 @@ fn draw_edge(
                 &screen_pts,
                 stroke,
                 BorderStyle::Dashed,
-                now_sec * speed * 0.9 * dir,
+                (now_sec * speed * speed_factor * 0.9 + edge_phase * 24.0) * dir,
             );
         }
         EdgeAnimation::PulseParticles {
@@ -1582,15 +1659,49 @@ fn draw_edge(
         } => {
             draw_stroked_polyline(painter, &screen_pts, stroke, BorderStyle::Solid, 0.0);
             let count = (*particle_count).clamp(1, 12);
-            let rate = if *speed > 4.0 { *speed * 0.004 } else { *speed };
+            let path_len: f32 = world_pts
+                .windows(2)
+                .map(|w| w[0].distance_to(w[1]))
+                .sum::<f32>()
+                .max(48.0);
+            let vel_px =
+                (if *speed > 4.0 { *speed * 1.65 } else { *speed * 145.0 }) * speed_factor;
+            let rate = (vel_px / path_len).clamp(0.12, 1.35);
+            let base_col = to_color32(*pcol);
+            let base_r = (*radius * app.bridge.viewport.zoom).clamp(2.5, 9.0);
             for i in 0..count {
-                let t = (now_sec * rate + i as f32 / count as f32).rem_euclid(1.0);
+                let t = (now_sec * rate + edge_phase + i as f32 / count as f32).rem_euclid(1.0);
+                let env = if t < 0.08 {
+                    (t / 0.08).clamp(0.15, 1.0)
+                } else if t > 0.92 {
+                    ((1.0 - t) / 0.08).clamp(0.15, 1.0)
+                } else {
+                    1.0
+                };
                 if let Some(pt_w) = rustflow_renderer::sample_polyline_at(&world_pts, t) {
                     let pt_s = world_to_screen(canvas_rect, app, pt_w);
+                    let r = base_r * (0.68 + 0.32 * env);
+                    let halo_a = (68.0 * env).round() as u8;
+                    let core_a = (255.0 * env).round() as u8;
                     painter.circle_filled(
                         pt_s,
-                        (*radius * app.bridge.viewport.zoom).clamp(2.5, 9.0),
-                        to_color32(*pcol),
+                        r * 1.45,
+                        Color32::from_rgba_unmultiplied(
+                            base_col.r(),
+                            base_col.g(),
+                            base_col.b(),
+                            halo_a,
+                        ),
+                    );
+                    painter.circle_filled(
+                        pt_s,
+                        r,
+                        Color32::from_rgba_unmultiplied(
+                            base_col.r(),
+                            base_col.g(),
+                            base_col.b(),
+                            core_a,
+                        ),
                     );
                 }
             }
@@ -2497,7 +2608,12 @@ fn handle_canvas_input(
                 if let Some((dst_nid, dst_pid, _)) = app
                     .bridge
                     .scene
-                    .resolve_connection_target(wp, 34.0 / app.bridge.viewport.zoom, src_nid)
+                    .resolve_connection_target_from_port(
+                        wp,
+                        34.0 / app.bridge.viewport.zoom,
+                        src_nid,
+                        src_pid,
+                    )
                 {
                     app.push_undo();
                     let eid = app.bridge.scene.allocate_id();
