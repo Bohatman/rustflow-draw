@@ -141,6 +141,8 @@ pub fn build_router(config: &ServerConfig) -> Router {
         .route("/api/auth/me", get(auth::auth_me))
         .route("/api/auth/logout", post(auth::auth_logout))
         .route("/api/drive/list", get(drive::drive_list))
+        .route("/api/drive/browse-folders", get(drive::drive_browse_folders))
+        .route("/api/drive/root", post(drive::drive_set_root))
         .route("/api/drive/folders", post(drive::drive_create_folder))
         .route("/api/drive/diagrams", post(drive::drive_save_diagram))
         .route("/api/drive/diagrams/{id}", get(drive::drive_load_diagram))

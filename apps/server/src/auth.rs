@@ -64,6 +64,8 @@ pub struct StoredSession {
     pub refresh_token: Option<String>,
     pub expires_at: u64,
     pub root_folder_id: Option<String>,
+    #[serde(default)]
+    pub root_folder_name: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -135,11 +137,17 @@ impl AuthStore {
         Some(updated)
     }
 
-    pub async fn set_root_folder_id(&self, token: &str, folder_id: String) {
+    pub async fn set_root_folder(
+        &self,
+        token: &str,
+        folder_id: Option<String>,
+        folder_name: Option<String>,
+    ) {
         {
             let mut guard = self.sessions.write().await;
             if let Some(sess) = guard.get_mut(token) {
-                sess.root_folder_id = Some(folder_id);
+                sess.root_folder_id = folder_id;
+                sess.root_folder_name = folder_name;
             }
         }
         self.persist().await;
@@ -252,7 +260,7 @@ pub async fn google_login(
         );
     }
 
-    let scope = "openid email profile https://www.googleapis.com/auth/drive.file";
+    let scope = "openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly";
     let auth_url = format!(
         "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope={}&access_type=offline&prompt=consent&state={}&code_challenge={}&code_challenge_method=S256",
         urlencoding::encode(&cfg.client_id),
@@ -400,6 +408,7 @@ pub async fn google_callback(
         refresh_token: tok_resp.refresh_token,
         expires_at: unix_now() + tok_resp.expires_in.unwrap_or(3500),
         root_folder_id: None,
+        root_folder_name: None,
     };
 
     state

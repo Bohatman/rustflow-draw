@@ -9,8 +9,9 @@ use axum::{
     Json,
 };
 use rustflow_collab_protocol::{
-    DriveCreateFolderReq, DriveItem, DriveListResponse, DriveLoadDiagramResp, DriveSaveDiagramReq,
-    DriveSaveDiagramResp, DriveUpdateItemReq,
+    DriveCreateFolderReq, DriveFolderBrowseResponse, DriveItem, DriveListResponse,
+    DriveLoadDiagramResp, DriveSaveDiagramReq, DriveSaveDiagramResp, DriveSetRootReq,
+    DriveUpdateItemReq,
 };
 use serde::Deserialize;
 use std::sync::Arc;
@@ -95,7 +96,11 @@ async fn ensure_root_folder(
     if let Some(existing) = list.files.first() {
         state
             .auth
-            .set_root_folder_id(token, existing.id.clone())
+            .set_root_folder(
+                token,
+                Some(existing.id.clone()),
+                Some(ROOT_FOLDER_NAME.to_string()),
+            )
             .await;
         return Ok(existing.id.clone());
     }
@@ -123,7 +128,11 @@ async fn ensure_root_folder(
         .map_err(|e| format!("Drive root parse error: {e}"))?;
     state
         .auth
-        .set_root_folder_id(token, created.id.clone())
+        .set_root_folder(
+            token,
+            Some(created.id.clone()),
+            Some(ROOT_FOLDER_NAME.to_string()),
+        )
         .await;
     Ok(created.id)
 }
@@ -212,12 +221,147 @@ pub async fn drive_list(
         })
         .collect();
 
+    let root_name = sess
+        .root_folder_name
+        .clone()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| ROOT_FOLDER_NAME.to_string());
+
     Json(DriveListResponse {
         root_folder_id: root_id,
+        root_folder_name: root_name,
         current_folder_id: current_id,
         items,
     })
     .into_response()
+}
+
+#[derive(Deserialize)]
+pub struct BrowseFoldersQuery {
+    pub parent_id: Option<String>,
+}
+
+pub async fn drive_browse_folders(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Query(query): Query<BrowseFoldersQuery>,
+) -> Response {
+    let (_, sess) = match require_session(&state, &headers).await {
+        Ok(v) => v,
+        Err(resp) => return resp,
+    };
+    let parent_id = query
+        .parent_id
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "root".to_string());
+    let safe_id = parent_id.replace('\'', "");
+    let q = format!("'{safe_id}' in parents and mimeType = '{FOLDER_MIME}' and trashed = false");
+    let url = format!(
+        "https://www.googleapis.com/drive/v3/files?q={}&orderBy=name&fields=files(id,name,mimeType,parents,modifiedTime)&pageSize=200",
+        urlencoding::encode(&q)
+    );
+    let resp = match state
+        .auth
+        .http
+        .get(&url)
+        .bearer_auth(&sess.access_token)
+        .send()
+        .await
+    {
+        Ok(r) if r.status().is_success() => r,
+        Ok(r) => {
+            let st = r.status();
+            let txt = r.text().await.unwrap_or_default();
+            return (
+                StatusCode::BAD_GATEWAY,
+                Json(serde_json::json!({ "error": format!("Browse folders failed ({st}): {txt}") })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::BAD_GATEWAY,
+                Json(serde_json::json!({ "error": format!("Browse folders error: {e}") })),
+            )
+                .into_response()
+        }
+    };
+    let parsed = match resp.json::<DriveFilesList>().await {
+        Ok(l) => l,
+        Err(e) => {
+            return (
+                StatusCode::BAD_GATEWAY,
+                Json(serde_json::json!({ "error": format!("Browse parse error: {e}") })),
+            )
+                .into_response()
+        }
+    };
+    let folders: Vec<DriveItem> = parsed
+        .files
+        .into_iter()
+        .map(|f| DriveItem {
+            id: f.id,
+            name: f.name,
+            is_folder: true,
+            parent_id: f.parents.and_then(|p| p.into_iter().next()),
+            modified_time: f.modified_time,
+            size_bytes: None,
+        })
+        .collect();
+    Json(DriveFolderBrowseResponse {
+        current_folder_id: parent_id,
+        folders,
+    })
+    .into_response()
+}
+
+pub async fn drive_set_root(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(req): Json<DriveSetRootReq>,
+) -> Response {
+    let (tok, sess) = match require_session(&state, &headers).await {
+        Ok(v) => v,
+        Err(resp) => return resp,
+    };
+    let folder_id = req.folder_id.map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let folder_name = req
+        .folder_name
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    if let Some(fid) = folder_id {
+        let fname = folder_name.unwrap_or_else(|| "Selected Folder".to_string());
+        state
+            .auth
+            .set_root_folder(&tok, Some(fid.clone()), Some(fname.clone()))
+            .await;
+        return Json(serde_json::json!({
+            "ok": true,
+            "root_folder_id": fid,
+            "root_folder_name": fname,
+        }))
+        .into_response();
+    }
+
+    state.auth.set_root_folder(&tok, None, None).await;
+    let mut cleared_sess = sess;
+    cleared_sess.root_folder_id = None;
+    cleared_sess.root_folder_name = None;
+    match ensure_root_folder(&state, &tok, &cleared_sess).await {
+        Ok(default_id) => Json(serde_json::json!({
+            "ok": true,
+            "root_folder_id": default_id,
+            "root_folder_name": ROOT_FOLDER_NAME,
+        }))
+        .into_response(),
+        Err(err) => (
+            StatusCode::BAD_GATEWAY,
+            Json(serde_json::json!({ "error": err })),
+        )
+            .into_response(),
+    }
 }
 
 pub async fn drive_create_folder(

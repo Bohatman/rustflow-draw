@@ -3345,6 +3345,17 @@ pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
                     if ui.small_button(view_lbl).clicked() {
                         app.inventory.list_view = !app.inventory.list_view;
                     }
+                    if ui
+                        .small_button("Change Folder...")
+                        .on_hover_text("Browse My Drive and pick any folder as your workspace root")
+                        .clicked()
+                    {
+                        app.inventory.show_folder_picker = true;
+                        app.inventory.picker_stack =
+                            vec![("root".to_string(), "My Drive".to_string())];
+                        app.inventory.picker_search.clear();
+                        app.inventory.browse_drive_folders(Some("root".to_string()), ctx.clone());
+                    }
                 });
             });
             ui.separator();
@@ -3605,5 +3616,141 @@ pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
     } else if refresh_now {
         let fid = app.inventory.current_folder_id();
         app.inventory.fetch_folder(fid, ctx.clone());
+    }
+
+    if app.inventory.show_folder_picker {
+        let mut picker_open = app.inventory.show_folder_picker;
+        let pw = (screen.width() - 36.0).clamp(290.0, 520.0);
+        let ph = (screen.height() - 88.0).clamp(280.0, 420.0);
+        let mut enter_folder: Option<(String, String)> = None;
+        let mut jump_picker_idx: Option<usize> = None;
+        let mut confirm_current = false;
+        let mut reset_default = false;
+
+        egui::Window::new("Select Google Drive Folder")
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .collapsible(false)
+            .resizable(true)
+            .default_size(Vec2::new(pw, ph))
+            .open(&mut picker_open)
+            .show(ctx, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    if app.inventory.picker_stack.len() > 1 && ui.small_button("<- Up").clicked() {
+                        jump_picker_idx = Some(app.inventory.picker_stack.len() - 2);
+                    }
+                    let crumbs = app.inventory.picker_stack.clone();
+                    for (idx, (_, name)) in crumbs.iter().enumerate() {
+                        if idx > 0 {
+                            ui.label(RichText::new("/").weak());
+                        }
+                        let is_last = idx + 1 == crumbs.len();
+                        if ui
+                            .selectable_label(is_last, RichText::new(name).strong().size(11.5))
+                            .clicked()
+                            && !is_last
+                        {
+                            jump_picker_idx = Some(idx);
+                        }
+                    }
+                });
+                ui.horizontal(|ui| {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut app.inventory.picker_search)
+                            .hint_text("Filter folders...")
+                            .desired_width((ui.available_width() - 70.0).max(120.0)),
+                    );
+                    if app.inventory.loading {
+                        ui.label(RichText::new("Loading...").small().weak());
+                    }
+                });
+                if let Some(err) = &app.inventory.last_error {
+                    ui.label(RichText::new(err).small().color(Color32::from_rgb(200, 30, 30)));
+                }
+                ui.separator();
+
+                let pq = app.inventory.picker_search.trim().to_lowercase();
+                let folders: Vec<_> = app
+                    .inventory
+                    .picker_folders
+                    .iter()
+                    .filter(|f| pq.is_empty() || f.name.to_lowercase().contains(&pq))
+                    .cloned()
+                    .collect();
+
+                ScrollArea::vertical()
+                    .max_height((ph - 132.0).max(120.0))
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        if folders.is_empty() && !app.inventory.loading {
+                            ui.add_space(16.0);
+                            ui.vertical_centered(|ui| {
+                                ui.label(
+                                    RichText::new("No subfolders here. Click 'Use This Folder' below to select this directory.")
+                                        .weak(),
+                                );
+                            });
+                        } else {
+                            for f in &folders {
+                                ui.horizontal(|ui| {
+                                    let (ir, _) = ui.allocate_exact_size(
+                                        Vec2::new(22.0, 20.0),
+                                        Sense::hover(),
+                                    );
+                                    draw_drive_folder_icon(ui.painter(), ir);
+                                    if ui.selectable_label(false, &f.name).clicked() {
+                                        enter_folder = Some((f.id.clone(), f.name.clone()));
+                                    }
+                                });
+                            }
+                        }
+                    });
+
+                ui.separator();
+                let cur_label = app
+                    .inventory
+                    .picker_stack
+                    .last()
+                    .map(|(_, n)| n.clone())
+                    .unwrap_or_else(|| "My Drive".to_string());
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .add(
+                            egui::Button::new(
+                                RichText::new(format!("Use '{cur_label}'")).color(Color32::WHITE),
+                            )
+                            .fill(Color32::from_rgb(0, 0, 128)),
+                        )
+                        .clicked()
+                    {
+                        confirm_current = true;
+                    }
+                    if ui.button("Reset Default (Bohat Draw.io)").clicked() {
+                        reset_default = true;
+                    }
+                });
+            });
+
+        app.inventory.show_folder_picker = picker_open;
+        if let Some((fid, fname)) = enter_folder {
+            app.inventory.picker_stack.push((fid.clone(), fname));
+            app.inventory.picker_search.clear();
+            app.inventory.browse_drive_folders(Some(fid), ctx.clone());
+        } else if let Some(idx) = jump_picker_idx {
+            app.inventory.picker_stack.truncate(idx + 1);
+            let pid = app
+                .inventory
+                .picker_stack
+                .last()
+                .map(|(id, _)| id.clone())
+                .unwrap_or_else(|| "root".to_string());
+            app.inventory.browse_drive_folders(Some(pid), ctx.clone());
+        } else if confirm_current {
+            if let Some((fid, fname)) = app.inventory.picker_stack.last().cloned() {
+                app.inventory
+                    .select_root_folder(Some(fid), Some(fname), ctx.clone());
+            }
+        } else if reset_default {
+            app.inventory.select_root_folder(None, None, ctx.clone());
+        }
     }
 }

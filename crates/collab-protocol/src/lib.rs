@@ -127,8 +127,24 @@ pub struct DriveItem {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DriveListResponse {
     pub root_folder_id: String,
+    #[serde(default)]
+    pub root_folder_name: String,
     pub current_folder_id: String,
     pub items: Vec<DriveItem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DriveSetRootReq {
+    #[serde(default)]
+    pub folder_id: Option<String>,
+    #[serde(default)]
+    pub folder_name: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DriveFolderBrowseResponse {
+    pub current_folder_id: String,
+    pub folders: Vec<DriveItem>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

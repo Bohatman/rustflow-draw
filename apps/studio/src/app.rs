@@ -1153,13 +1153,34 @@ impl BohatDrawApp {
                 InventoryEvent::ListLoaded(list) => {
                     self.inventory.loading = false;
                     self.inventory.last_error = None;
+                    let rname = if list.root_folder_name.is_empty() {
+                        "Bohat Draw.io".to_string()
+                    } else {
+                        list.root_folder_name.clone()
+                    };
                     self.inventory.root_folder_id = Some(list.root_folder_id.clone());
+                    self.inventory.root_folder_name = rname.clone();
                     if self.inventory.folder_stack.is_empty() {
                         self.inventory
                             .folder_stack
-                            .push((list.root_folder_id, "Bohat Draw.io".to_string()));
+                            .push((list.root_folder_id, rname));
                     }
                     self.inventory.items = list.items;
+                }
+                InventoryEvent::PickerFoldersLoaded(resp) => {
+                    self.inventory.loading = false;
+                    self.inventory.last_error = None;
+                    self.inventory.picker_folders = resp.folders;
+                }
+                InventoryEvent::RootFolderChanged(fid, fname) => {
+                    self.inventory.loading = false;
+                    self.inventory.last_error = None;
+                    self.inventory.show_folder_picker = false;
+                    self.inventory.root_folder_id = Some(fid.clone());
+                    self.inventory.root_folder_name = fname.clone();
+                    self.inventory.folder_stack = vec![(fid.clone(), fname.clone())];
+                    self.inventory.fetch_folder(Some(fid), ctx.clone());
+                    self.set_status(format!("Drive workspace folder set to '{fname}'"));
                 }
                 InventoryEvent::DiagramLoaded(loaded) => {
                     self.inventory.loading = false;

@@ -1,15 +1,19 @@
 use rustflow_collab_protocol::{
-    AuthMeResponse, DriveCreateFolderReq, DriveItem, DriveListResponse, DriveLoadDiagramResp,
-    DriveSaveDiagramReq, DriveSaveDiagramResp, DriveUpdateItemReq, UserProfile,
+    AuthMeResponse, DriveCreateFolderReq, DriveFolderBrowseResponse, DriveItem, DriveListResponse,
+    DriveLoadDiagramResp, DriveSaveDiagramReq, DriveSaveDiagramResp, DriveSetRootReq,
+    DriveUpdateItemReq, UserProfile,
 };
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub enum InventoryEvent {
     AuthLoaded(AuthMeResponse),
+    #[allow(dead_code)]
     NativeTokenReceived(String),
     LoggedOut,
     ListLoaded(DriveListResponse),
+    PickerFoldersLoaded(DriveFolderBrowseResponse),
+    RootFolderChanged(String, String),
     DiagramLoaded(DriveLoadDiagramResp),
     DiagramSaved(DriveSaveDiagramResp),
     Mutated(String),
@@ -23,8 +27,13 @@ pub struct InventoryState {
     pub bearer_token: Option<String>,
     pub server_base: String,
     pub root_folder_id: Option<String>,
+    pub root_folder_name: String,
     pub folder_stack: Vec<(String, String)>,
     pub items: Vec<DriveItem>,
+    pub show_folder_picker: bool,
+    pub picker_stack: Vec<(String, String)>,
+    pub picker_folders: Vec<DriveItem>,
+    pub picker_search: String,
     pub active_file_id: Option<String>,
     pub active_file_name: String,
     pub active_folder_id: Option<String>,
@@ -58,8 +67,13 @@ impl InventoryState {
             bearer_token: None,
             server_base,
             root_folder_id: None,
+            root_folder_name: "Bohat Draw.io".to_string(),
             folder_stack: Vec::new(),
             items: Vec::new(),
+            show_folder_picker: false,
+            picker_stack: vec![("root".to_string(), "My Drive".to_string())],
+            picker_folders: Vec::new(),
+            picker_search: String::new(),
             active_file_id: None,
             active_file_name: "Untitled Diagram".to_string(),
             active_folder_id: None,
@@ -203,6 +217,73 @@ impl InventoryState {
                 Ok(body) => match serde_json::from_str::<DriveListResponse>(&body) {
                     Ok(list) => InventoryEvent::ListLoaded(list),
                     Err(e) => InventoryEvent::Error(format!("Drive list parse error: {e}")),
+                },
+                Err(err) => InventoryEvent::Error(err),
+            };
+            push_event(&events, ev);
+        });
+    }
+
+    pub fn browse_drive_folders(&mut self, parent_id: Option<String>, ctx: egui::Context) {
+        if self.user.is_none() {
+            return;
+        }
+        self.loading = true;
+        self.last_error = None;
+        let pid = parent_id.unwrap_or_else(|| "root".to_string());
+        let url = format!("{}/api/drive/browse-folders?parent_id={pid}", self.server_base);
+        let token = self.bearer_token.clone();
+        let events = Arc::clone(&self.events);
+        spawn_http_json("GET", url, None, token, ctx, move |res| {
+            let ev = match res {
+                Ok(body) => match serde_json::from_str::<DriveFolderBrowseResponse>(&body) {
+                    Ok(parsed) => InventoryEvent::PickerFoldersLoaded(parsed),
+                    Err(e) => InventoryEvent::Error(format!("Folder browse parse error: {e}")),
+                },
+                Err(err) => InventoryEvent::Error(err),
+            };
+            push_event(&events, ev);
+        });
+    }
+
+    pub fn select_root_folder(
+        &mut self,
+        folder_id: Option<String>,
+        folder_name: Option<String>,
+        ctx: egui::Context,
+    ) {
+        if self.user.is_none() {
+            return;
+        }
+        self.loading = true;
+        self.last_error = None;
+        let req = DriveSetRootReq {
+            folder_id,
+            folder_name,
+        };
+        let Ok(body) = serde_json::to_string(&req) else {
+            return;
+        };
+        let url = format!("{}/api/drive/root", self.server_base);
+        let token = self.bearer_token.clone();
+        let events = Arc::clone(&self.events);
+        spawn_http_json("POST", url, Some(body), token, ctx, move |res| {
+            let ev = match res {
+                Ok(txt) => match serde_json::from_str::<serde_json::Value>(&txt) {
+                    Ok(v) => {
+                        let id = v
+                            .get("root_folder_id")
+                            .and_then(|x| x.as_str())
+                            .unwrap_or("root")
+                            .to_string();
+                        let name = v
+                            .get("root_folder_name")
+                            .and_then(|x| x.as_str())
+                            .unwrap_or("Bohat Draw.io")
+                            .to_string();
+                        InventoryEvent::RootFolderChanged(id, name)
+                    }
+                    Err(e) => InventoryEvent::Error(format!("Set root parse error: {e}")),
                 },
                 Err(err) => InventoryEvent::Error(err),
             };
