@@ -94,6 +94,86 @@ pub enum ServerMsg {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UserProfile {
+    pub id: String,
+    pub email: String,
+    pub name: String,
+    #[serde(default)]
+    pub avatar_url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthMeResponse {
+    pub authenticated: bool,
+    pub google_enabled: bool,
+    #[serde(default)]
+    pub user: Option<UserProfile>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DriveItem {
+    pub id: String,
+    pub name: String,
+    pub is_folder: bool,
+    #[serde(default)]
+    pub parent_id: Option<String>,
+    #[serde(default)]
+    pub modified_time: Option<String>,
+    #[serde(default)]
+    pub size_bytes: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DriveListResponse {
+    pub root_folder_id: String,
+    pub current_folder_id: String,
+    pub items: Vec<DriveItem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DriveCreateFolderReq {
+    pub name: String,
+    #[serde(default)]
+    pub parent_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DriveSaveDiagramReq {
+    #[serde(default)]
+    pub file_id: Option<String>,
+    #[serde(default)]
+    pub parent_folder_id: Option<String>,
+    pub name: String,
+    pub scene_json: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DriveSaveDiagramResp {
+    pub id: String,
+    pub name: String,
+    pub parent_folder_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DriveLoadDiagramResp {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub parent_folder_id: Option<String>,
+    pub scene_json: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DriveUpdateItemReq {
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub new_parent_id: Option<String>,
+    #[serde(default)]
+    pub old_parent_id: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

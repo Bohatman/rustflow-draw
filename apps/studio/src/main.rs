@@ -1,6 +1,7 @@
 mod app;
 mod canvas;
 mod collab;
+mod inventory;
 mod panels;
 mod platform;
 mod theme;

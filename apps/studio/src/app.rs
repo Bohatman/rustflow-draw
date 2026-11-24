@@ -1,8 +1,9 @@
 use crate::canvas::render_canvas;
 use crate::collab::CollabClient;
+use crate::inventory::{InventoryEvent, InventoryState};
 use crate::panels::{
     render_bottom_bar, render_collab_and_duel_modals, render_extra_modals, render_inspector_panel,
-    render_menu_and_toolbar, render_palette_panel,
+    render_inventory_modals, render_menu_and_toolbar, render_palette_panel,
 };
 use crate::platform;
 use crate::theme::{apply_theme, canvas_clear_rgba, desktop_bg_color, draw_platinum_titlebar, platinum_window_frame};
@@ -107,6 +108,7 @@ pub struct BohatDrawApp {
     pub clipboard_nodes: Vec<Node>,
     pub clipboard_edges: Vec<Edge>,
     pub collab: CollabClient,
+    pub inventory: InventoryState,
     pub show_collab_modal: bool,
     pub show_cmd_palette: bool,
     pub cmd_query: String,
@@ -198,6 +200,7 @@ impl BohatDrawApp {
             clipboard_nodes: Vec::new(),
             clipboard_edges: Vec::new(),
             collab: CollabClient::default(),
+            inventory: InventoryState::new(),
             show_collab_modal: false,
             show_cmd_palette: false,
             cmd_query: String::new(),
@@ -252,6 +255,7 @@ impl BohatDrawApp {
         if let Some(room) = initial_room {
             app.collab.connect(&ws_url, &room, cc.egui_ctx.clone());
         }
+        app.inventory.fetch_auth_me(cc.egui_ctx.clone());
         app
     }
 
@@ -1109,6 +1113,120 @@ impl BohatDrawApp {
             }
         }
     }
+
+    pub fn save_current_to_drive(
+        &mut self,
+        file_id: Option<String>,
+        folder_id: Option<String>,
+        name: String,
+        ctx: &egui::Context,
+    ) {
+        match export_scene_serde_json(&self.bridge.scene) {
+            Ok(json) => {
+                self.inventory
+                    .save_diagram(file_id, folder_id, name, json, ctx.clone());
+            }
+            Err(err) => self.set_status(format!("Serialize error: {err}")),
+        }
+    }
+
+    fn poll_inventory(&mut self, ctx: &egui::Context) {
+        for ev in self.inventory.drain_events() {
+            match ev {
+                InventoryEvent::AuthLoaded(me) => {
+                    self.inventory.auth_checked = true;
+                    self.inventory.google_enabled = me.google_enabled;
+                    if let Some(ref u) = me.user {
+                        self.collab.display_name = u.name.clone();
+                    }
+                    self.inventory.user = me.user;
+                }
+                InventoryEvent::NativeTokenReceived(tok) => {
+                    self.inventory.bearer_token = Some(tok);
+                    self.inventory.fetch_auth_me(ctx.clone());
+                    self.inventory.show_modal = true;
+                    self.set_status("Signed in with Google!");
+                }
+                InventoryEvent::LoggedOut => {
+                    self.set_status("Signed out (Guest Mode)");
+                }
+                InventoryEvent::ListLoaded(list) => {
+                    self.inventory.loading = false;
+                    self.inventory.last_error = None;
+                    self.inventory.root_folder_id = Some(list.root_folder_id.clone());
+                    if self.inventory.folder_stack.is_empty() {
+                        self.inventory
+                            .folder_stack
+                            .push((list.root_folder_id, "Bohat Draw.io".to_string()));
+                    }
+                    self.inventory.items = list.items;
+                }
+                InventoryEvent::DiagramLoaded(loaded) => {
+                    self.inventory.loading = false;
+                    self.inventory.last_error = None;
+                    match import_scene_serde_json(&loaded.scene_json) {
+                        Ok(scene) => {
+                            let display_name = loaded
+                                .name
+                                .strip_suffix(".bohat.json")
+                                .unwrap_or(&loaded.name)
+                                .to_string();
+                            let w = self.bridge.viewport.screen_width.max(1280.0);
+                            let h = self.bridge.viewport.screen_height.max(720.0);
+                            self.bridge.document =
+                                rustflow_core::Document::new(&display_name, w, h);
+                            self.bridge.document.active_page_mut().name = display_name.clone();
+                            self.bridge.scene = scene;
+                            self.bridge.scene.normalize_layer_order();
+                            self.bridge.selection.clear();
+                            self.fit_view();
+                            self.bridge.sync_active_page_to_document();
+                            self.undo_stack.clear();
+                            self.redo_stack.clear();
+                            self.inventory.active_file_id = Some(loaded.id);
+                            self.inventory.active_file_name = display_name.clone();
+                            self.inventory.save_as_name = display_name.clone();
+                            self.inventory.active_folder_id = loaded.parent_folder_id;
+                            self.inventory.show_modal = false;
+                            self.set_status(format!("Opened '{display_name}' from Google Drive"));
+                            self.broadcast_scene_snapshot();
+                        }
+                        Err(err) => {
+                            self.inventory.last_error = Some(format!("Invalid diagram: {err}"));
+                        }
+                    }
+                }
+                InventoryEvent::DiagramSaved(saved) => {
+                    self.inventory.loading = false;
+                    self.inventory.last_error = None;
+                    let display_name = saved
+                        .name
+                        .strip_suffix(".bohat.json")
+                        .unwrap_or(&saved.name)
+                        .to_string();
+                    self.inventory.active_file_id = Some(saved.id);
+                    self.inventory.active_file_name = display_name.clone();
+                    self.inventory.save_as_name = display_name.clone();
+                    self.inventory.active_folder_id = Some(saved.parent_folder_id);
+                    let cur_fid = self.inventory.current_folder_id();
+                    self.inventory.fetch_folder(cur_fid, ctx.clone());
+                    self.set_status(format!("Saved '{display_name}' to Google Drive"));
+                }
+                InventoryEvent::Mutated(msg) => {
+                    self.inventory.loading = false;
+                    self.inventory.last_error = None;
+                    let cur_fid = self.inventory.current_folder_id();
+                    self.inventory.fetch_folder(cur_fid, ctx.clone());
+                    self.set_status(msg);
+                }
+                InventoryEvent::Error(err) => {
+                    self.inventory.loading = false;
+                    self.inventory.last_error = Some(err.clone());
+                    self.set_status(err);
+                }
+            }
+        }
+    }
 }
 
 impl eframe::App for BohatDrawApp {
@@ -1151,6 +1269,7 @@ impl eframe::App for BohatDrawApp {
         }
         self.sync_image_uploads_and_textures(ctx);
         self.poll_collab();
+        self.poll_inventory(ctx);
         self.handle_shortcuts(ctx);
 
         let screen_w = ctx.screen_rect().width();
@@ -1213,5 +1332,6 @@ impl eframe::App for BohatDrawApp {
 
         render_collab_and_duel_modals(self, ctx);
         render_extra_modals(self, ctx);
+        render_inventory_modals(self, ctx);
     }
 }

@@ -8,6 +8,7 @@ User=bohat
 WorkingDirectory=/home/bohat/projects/rustflow-draw
 Environment=PORT=6129
 Environment=BOHAT_STATIC_DIR=/home/bohat/projects/rustflow-draw/apps/studio/dist
+EnvironmentFile=-/home/bohat/projects/rustflow-draw/.env
 ExecStart=/bin/bash /home/bohat/projects/rustflow-draw/start.sh
 Restart=always
 RestartSec=3

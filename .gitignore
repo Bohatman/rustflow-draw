@@ -2,5 +2,7 @@
 /node_modules
 /dist
 /.antigravity
+/data
+.env
 *.log
 .DS_Store

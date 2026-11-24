@@ -225,6 +225,87 @@ pub fn render_menu_and_toolbar(app: &mut BohatDrawApp, ctx: &egui::Context, narr
                             }
                         });
 
+                        ui.separator();
+                        if let Some(user) = app.inventory.user.clone() {
+                            if ui
+                                .add(
+                                    egui::Button::new(
+                                        RichText::new("Drive").size(11.0).color(Color32::WHITE),
+                                    )
+                                    .fill(Color32::from_rgb(0, 0, 128)),
+                                )
+                                .on_hover_text("Open Google Drive Folder Inventory")
+                                .clicked()
+                            {
+                                app.inventory.show_modal = true;
+                                let fid = app.inventory.current_folder_id();
+                                app.inventory.fetch_folder(fid, ctx.clone());
+                            }
+                            if ui
+                                .small_button("Save")
+                                .on_hover_text("Save diagram to Google Drive")
+                                .clicked()
+                            {
+                                if let Some(fid) = app.inventory.active_file_id.clone() {
+                                    let name = app.inventory.active_file_name.clone();
+                                    let folder = app.inventory.active_folder_id.clone();
+                                    app.save_current_to_drive(Some(fid), folder, name, ctx);
+                                } else {
+                                    app.inventory.show_modal = true;
+                                    let folder = app.inventory.current_folder_id();
+                                    app.inventory.fetch_folder(folder, ctx.clone());
+                                }
+                            }
+                            let short_name: String = user.name.chars().take(14).collect();
+                            ui.menu_button(short_name, |ui| {
+                                ui.label(RichText::new(&user.email).small().weak());
+                                ui.separator();
+                                if ui.button("Open Drive Inventory...").clicked() {
+                                    app.inventory.show_modal = true;
+                                    let fid = app.inventory.current_folder_id();
+                                    app.inventory.fetch_folder(fid, ctx.clone());
+                                    ui.close_menu();
+                                }
+                                if ui.button("Save to Google Drive").clicked() {
+                                    if let Some(fid) = app.inventory.active_file_id.clone() {
+                                        let name = app.inventory.active_file_name.clone();
+                                        let folder = app.inventory.active_folder_id.clone();
+                                        app.save_current_to_drive(Some(fid), folder, name, ctx);
+                                    } else {
+                                        app.inventory.show_modal = true;
+                                        let folder = app.inventory.current_folder_id();
+                                        app.inventory.fetch_folder(folder, ctx.clone());
+                                    }
+                                    ui.close_menu();
+                                }
+                                ui.separator();
+                                if ui.button("Sign Out").clicked() {
+                                    app.inventory.logout(ctx.clone());
+                                    ui.close_menu();
+                                }
+                            });
+                        } else {
+                            let btn_lbl = if is_phone {
+                                "Sign In"
+                            } else {
+                                "Sign in with Google"
+                            };
+                            if ui
+                                .add(
+                                    egui::Button::new(
+                                        RichText::new(btn_lbl).size(11.0).color(Color32::WHITE),
+                                    )
+                                    .fill(Color32::from_rgb(37, 99, 235)),
+                                )
+                                .on_hover_text(
+                                    "Sign in with Google to unlock Google Drive Folder Inventory (Guest Mode works without login)",
+                                )
+                                .clicked()
+                            {
+                                app.inventory.start_google_login(ctx.clone());
+                            }
+                        }
+
                         if !is_phone {
                             ui.separator();
                             let theme_lbl = match app.theme_mode {
@@ -3088,5 +3169,441 @@ pub fn render_extra_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
                 });
             });
         app.show_guide_tour = open && !close_now;
+    }
+}
+
+fn draw_drive_folder_icon(painter: &egui::Painter, rect: egui::Rect) {
+    let tab = egui::Rect::from_min_max(
+        egui::Pos2::new(rect.min.x + 2.0, rect.min.y + 3.0),
+        egui::Pos2::new(rect.min.x + rect.width() * 0.48, rect.min.y + 10.0),
+    );
+    let body = egui::Rect::from_min_max(
+        egui::Pos2::new(rect.min.x + 2.0, rect.min.y + 8.0),
+        egui::Pos2::new(rect.max.x - 2.0, rect.max.y - 3.0),
+    );
+    painter.rect_filled(tab, 2.0, Color32::from_rgb(234, 179, 8));
+    painter.rect_filled(body, 2.5, Color32::from_rgb(250, 204, 21));
+    painter.rect_stroke(
+        body,
+        2.5,
+        Stroke::new(1.1_f32, Color32::from_rgb(161, 98, 7)),
+        egui::StrokeKind::Inside,
+    );
+}
+
+fn draw_drive_diagram_icon(painter: &egui::Painter, rect: egui::Rect) {
+    let page = rect.shrink2(Vec2::new(5.0, 2.0));
+    painter.rect_filled(page, 2.0, Color32::WHITE);
+    painter.rect_stroke(
+        page,
+        2.0,
+        Stroke::new(1.1_f32, Color32::from_rgb(0, 0, 140)),
+        egui::StrokeKind::Inside,
+    );
+    let top_box = egui::Rect::from_center_size(
+        egui::Pos2::new(page.center().x, page.min.y + page.height() * 0.30),
+        Vec2::new(page.width() * 0.56, page.height() * 0.22),
+    );
+    let bot_box = egui::Rect::from_center_size(
+        egui::Pos2::new(page.center().x, page.min.y + page.height() * 0.72),
+        Vec2::new(page.width() * 0.56, page.height() * 0.22),
+    );
+    painter.rect_filled(top_box, 1.5, Color32::from_rgb(219, 234, 254));
+    painter.rect_stroke(
+        top_box,
+        1.5,
+        Stroke::new(1.0_f32, Color32::from_rgb(37, 99, 235)),
+        egui::StrokeKind::Inside,
+    );
+    painter.rect_filled(bot_box, 1.5, Color32::from_rgb(220, 252, 231));
+    painter.rect_stroke(
+        bot_box,
+        1.5,
+        Stroke::new(1.0_f32, Color32::from_rgb(16, 185, 129)),
+        egui::StrokeKind::Inside,
+    );
+    painter.line_segment(
+        [
+            egui::Pos2::new(page.center().x, top_box.max.y),
+            egui::Pos2::new(page.center().x, bot_box.min.y),
+        ],
+        Stroke::new(1.1_f32, Color32::from_rgb(0, 0, 140)),
+    );
+}
+
+pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
+    if app.inventory.show_setup_help {
+        let mut open = app.inventory.show_setup_help;
+        let mut close_now = false;
+        let w = (ctx.screen_rect().width() - 28.0).clamp(280.0, 480.0);
+        egui::Window::new("Google Sign-In & Drive Inventory Setup")
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .collapsible(false)
+            .resizable(false)
+            .fixed_size(Vec2::new(w, 290.0))
+            .open(&mut open)
+            .show(ctx, |ui| {
+                ui.label(
+                    RichText::new("Guest Mode is active — you can draw and export freely without signing in.")
+                        .strong()
+                        .size(12.0),
+                );
+                ui.add_space(6.0);
+                ui.label("To enable Google Sign-In & Google Drive Folder Inventory on this server:");
+                ui.add_space(4.0);
+                ui.label("1. In Google Cloud Console, enable Google Drive API and create a Web OAuth 2.0 Client ID.");
+                ui.label("2. Add Redirect URI: <PUBLIC_BASE_URL>/api/auth/google/callback");
+                ui.label("3. Create a local .env file in the project root:");
+                ui.add_space(4.0);
+                Frame::new()
+                    .fill(Color32::from_rgb(236, 240, 248))
+                    .stroke(Stroke::new(1.0_f32, Color32::from_rgb(160, 170, 196)))
+                    .corner_radius(3)
+                    .inner_margin(Margin::same(6))
+                    .show(ui, |ui| {
+                        ui.label(
+                            RichText::new(
+                                "GOOGLE_CLIENT_ID=your-id.apps.googleusercontent.com\n\
+                                 GOOGLE_CLIENT_SECRET=GOCSPX-your-secret\n\
+                                 PUBLIC_BASE_URL=http://localhost:6129",
+                            )
+                            .monospace()
+                            .size(10.5),
+                        );
+                    });
+                ui.add_space(6.0);
+                ui.label(RichText::new("4. Restart the server: systemctl --user restart bohat-drawio").small());
+                ui.add_space(8.0);
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui
+                        .add(
+                            egui::Button::new(RichText::new("Continue as Guest").color(Color32::WHITE))
+                                .fill(Color32::from_rgb(0, 0, 128)),
+                        )
+                        .clicked()
+                    {
+                        close_now = true;
+                    }
+                });
+            });
+        app.inventory.show_setup_help = open && !close_now;
+    }
+
+    if !app.inventory.show_modal {
+        return;
+    }
+    if app.inventory.user.is_none() {
+        app.inventory.show_modal = false;
+        return;
+    }
+
+    let mut open = app.inventory.show_modal;
+    let screen = ctx.screen_rect();
+    let win_w = (screen.width() - 28.0).clamp(300.0, 680.0);
+    let win_h = (screen.height() - 64.0).clamp(320.0, 520.0);
+
+    let mut open_folder_action: Option<(String, String)> = None;
+    let mut jump_crumb_idx: Option<usize> = None;
+    let mut open_diagram_id: Option<String> = None;
+    let mut create_folder_name: Option<String> = None;
+    let mut save_here_name: Option<String> = None;
+    let mut rename_commit: Option<(String, String)> = None;
+    let mut move_up_item: Option<(String, String, String)> = None;
+    let mut delete_item_id: Option<String> = None;
+    let mut refresh_now = false;
+
+    egui::Window::new("Google Drive Inventory — Bohat Draw.io")
+        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+        .collapsible(false)
+        .resizable(true)
+        .default_size(Vec2::new(win_w, win_h))
+        .open(&mut open)
+        .show(ctx, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                if app.inventory.folder_stack.len() > 1 && ui.small_button("<- Up").clicked() {
+                    jump_crumb_idx = Some(app.inventory.folder_stack.len() - 2);
+                }
+                let crumbs = app.inventory.folder_stack.clone();
+                for (idx, (_, name)) in crumbs.iter().enumerate() {
+                    if idx > 0 {
+                        ui.label(RichText::new("/").weak());
+                    }
+                    let is_last = idx + 1 == crumbs.len();
+                    if ui
+                        .selectable_label(is_last, RichText::new(name).strong().size(11.5))
+                        .clicked()
+                        && !is_last
+                    {
+                        jump_crumb_idx = Some(idx);
+                    }
+                }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.small_button("Refresh").clicked() {
+                        refresh_now = true;
+                    }
+                    let view_lbl = if app.inventory.list_view { "Icons" } else { "List" };
+                    if ui.small_button(view_lbl).clicked() {
+                        app.inventory.list_view = !app.inventory.list_view;
+                    }
+                });
+            });
+            ui.separator();
+
+            ui.horizontal_wrapped(|ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut app.inventory.new_folder_name)
+                        .hint_text("New folder name...")
+                        .desired_width(130.0),
+                );
+                if ui.button("+ Folder").clicked() && !app.inventory.new_folder_name.trim().is_empty()
+                {
+                    create_folder_name = Some(app.inventory.new_folder_name.trim().to_string());
+                    app.inventory.new_folder_name.clear();
+                }
+                ui.separator();
+                ui.add(
+                    egui::TextEdit::singleline(&mut app.inventory.save_as_name)
+                        .hint_text("Diagram name...")
+                        .desired_width(140.0),
+                );
+                if ui
+                    .add(
+                        egui::Button::new(
+                            RichText::new("Save Current Here").color(Color32::WHITE),
+                        )
+                        .fill(Color32::from_rgb(0, 0, 128)),
+                    )
+                    .clicked()
+                    && !app.inventory.save_as_name.trim().is_empty()
+                {
+                    save_here_name = Some(app.inventory.save_as_name.trim().to_string());
+                }
+            });
+
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut app.inventory.search)
+                        .hint_text("Search in this folder...")
+                        .desired_width((ui.available_width() - 90.0).max(120.0)),
+                );
+                if app.inventory.loading {
+                    ui.label(RichText::new("Syncing Drive...").small().color(Color32::from_rgb(0, 0, 140)));
+                }
+            });
+
+            if let Some(err) = &app.inventory.last_error {
+                ui.label(RichText::new(err).small().color(Color32::from_rgb(200, 30, 30)));
+            }
+
+            if let Some((rid, mut rname)) = app.inventory.renaming_item.clone() {
+                let mut cancel_rename = false;
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Rename:").strong());
+                    ui.add(egui::TextEdit::singleline(&mut rname).desired_width(180.0));
+                    if ui.small_button("Save").clicked() {
+                        rename_commit = Some((rid.clone(), rname.clone()));
+                        cancel_rename = true;
+                    }
+                    if ui.small_button("Cancel").clicked() {
+                        cancel_rename = true;
+                    }
+                });
+                if cancel_rename {
+                    app.inventory.renaming_item = None;
+                } else {
+                    app.inventory.renaming_item = Some((rid, rname));
+                }
+            }
+
+            ui.separator();
+
+            let q = app.inventory.search.trim().to_lowercase();
+            let filtered: Vec<_> = app
+                .inventory
+                .items
+                .iter()
+                .filter(|it| q.is_empty() || it.name.to_lowercase().contains(&q))
+                .cloned()
+                .collect();
+
+            let parent_above: Option<(String, String)> = if app.inventory.folder_stack.len() >= 2 {
+                let cur_id = app.inventory.folder_stack.last().unwrap().0.clone();
+                let up_id = app.inventory.folder_stack[app.inventory.folder_stack.len() - 2]
+                    .0
+                    .clone();
+                Some((cur_id, up_id))
+            } else {
+                None
+            };
+
+            ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    if filtered.is_empty() && !app.inventory.loading {
+                        ui.add_space(24.0);
+                        ui.vertical_centered(|ui| {
+                            ui.label(
+                                RichText::new("This folder is empty. Create a folder or click 'Save Current Here'.")
+                                    .weak(),
+                            );
+                        });
+                        return;
+                    }
+
+                    if app.inventory.list_view {
+                        for item in &filtered {
+                            let disp_name = if item.is_folder {
+                                item.name.clone()
+                            } else {
+                                item.name
+                                    .strip_suffix(".bohat.json")
+                                    .unwrap_or(&item.name)
+                                    .to_string()
+                            };
+                            ui.horizontal(|ui| {
+                                let (icon_r, _) =
+                                    ui.allocate_exact_size(Vec2::new(22.0, 20.0), Sense::hover());
+                                if item.is_folder {
+                                    draw_drive_folder_icon(ui.painter(), icon_r);
+                                } else {
+                                    draw_drive_diagram_icon(ui.painter(), icon_r);
+                                }
+                                let resp = ui.selectable_label(false, &disp_name);
+                                if resp.clicked() || resp.double_clicked() {
+                                    if item.is_folder {
+                                        open_folder_action = Some((item.id.clone(), item.name.clone()));
+                                    } else {
+                                        open_diagram_id = Some(item.id.clone());
+                                    }
+                                }
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if ui.small_button("Trash").clicked() {
+                                            delete_item_id = Some(item.id.clone());
+                                        }
+                                        if ui.small_button("Rename").clicked() {
+                                            app.inventory.renaming_item =
+                                                Some((item.id.clone(), item.name.clone()));
+                                        }
+                                        if let Some((ref cur_id, ref up_id)) = parent_above {
+                                            if ui.small_button("Move Up").clicked() {
+                                                move_up_item = Some((
+                                                    item.id.clone(),
+                                                    cur_id.clone(),
+                                                    up_id.clone(),
+                                                ));
+                                            }
+                                        }
+                                    },
+                                );
+                            });
+                            ui.separator();
+                        }
+                    } else {
+                        let avail_w = ui.available_width().max(220.0);
+                        let cols = ((avail_w / 128.0).floor() as usize).clamp(2, 5);
+                        let card_w = ((avail_w - (cols as f32 - 1.0) * 8.0) / cols as f32)
+                            .floor()
+                            .max(96.0);
+                        for chunk in filtered.chunks(cols) {
+                            ui.horizontal(|ui| {
+                                ui.spacing_mut().item_spacing.x = 8.0;
+                                for item in chunk {
+                                    let disp_name = if item.is_folder {
+                                        item.name.clone()
+                                    } else {
+                                        item.name
+                                            .strip_suffix(".bohat.json")
+                                            .unwrap_or(&item.name)
+                                            .to_string()
+                                    };
+                                    Frame::new()
+                                        .fill(Color32::WHITE)
+                                        .stroke(Stroke::new(1.0_f32, Color32::from_rgb(174, 180, 198)))
+                                        .corner_radius(3)
+                                        .inner_margin(Margin::same(6))
+                                        .show(ui, |ui| {
+                                            ui.set_width(card_w - 14.0);
+                                            ui.vertical_centered(|ui| {
+                                                let (ir, resp) = ui.allocate_exact_size(
+                                                    Vec2::new(40.0, 34.0),
+                                                    Sense::click(),
+                                                );
+                                                if item.is_folder {
+                                                    draw_drive_folder_icon(ui.painter(), ir);
+                                                } else {
+                                                    draw_drive_diagram_icon(ui.painter(), ir);
+                                                }
+                                                let short: String = if disp_name.chars().count() > 14 {
+                                                    format!(
+                                                        "{}..",
+                                                        disp_name.chars().take(12).collect::<String>()
+                                                    )
+                                                } else {
+                                                    disp_name.clone()
+                                                };
+                                                let lbl_resp = ui.selectable_label(false, short);
+                                                if resp.clicked() || lbl_resp.clicked() {
+                                                    if item.is_folder {
+                                                        open_folder_action =
+                                                            Some((item.id.clone(), item.name.clone()));
+                                                    } else {
+                                                        open_diagram_id = Some(item.id.clone());
+                                                    }
+                                                }
+                                                ui.horizontal(|ui| {
+                                                    if ui.small_button("Ren").on_hover_text("Rename").clicked() {
+                                                        app.inventory.renaming_item =
+                                                            Some((item.id.clone(), item.name.clone()));
+                                                    }
+                                                    if let Some((ref cur_id, ref up_id)) = parent_above {
+                                                        if ui.small_button("Up").on_hover_text("Move to parent folder").clicked() {
+                                                            move_up_item = Some((
+                                                                item.id.clone(),
+                                                                cur_id.clone(),
+                                                                up_id.clone(),
+                                                            ));
+                                                        }
+                                                    }
+                                                    if ui.small_button("x").on_hover_text("Move to Trash").clicked() {
+                                                        delete_item_id = Some(item.id.clone());
+                                                    }
+                                                });
+                                            });
+                                        });
+                                }
+                            });
+                            ui.add_space(6.0);
+                        }
+                    }
+                });
+        });
+
+    app.inventory.show_modal = open;
+
+    if let Some((fid, fname)) = open_folder_action {
+        app.inventory.folder_stack.push((fid.clone(), fname));
+        app.inventory.fetch_folder(Some(fid), ctx.clone());
+    } else if let Some(idx) = jump_crumb_idx {
+        app.inventory.folder_stack.truncate(idx + 1);
+        let fid = app.inventory.current_folder_id();
+        app.inventory.fetch_folder(fid, ctx.clone());
+    } else if let Some(did) = open_diagram_id {
+        app.inventory.load_diagram(did, ctx.clone());
+    } else if let Some(fname) = create_folder_name {
+        app.inventory.create_folder(fname, ctx.clone());
+    } else if let Some(dname) = save_here_name {
+        let cur_fid = app.inventory.current_folder_id();
+        app.save_current_to_drive(None, cur_fid, dname, ctx);
+    } else if let Some((id, new_name)) = rename_commit {
+        app.inventory.rename_item(id, new_name, ctx.clone());
+    } else if let Some((id, old_p, new_p)) = move_up_item {
+        app.inventory.move_item_to_folder(id, old_p, new_p, ctx.clone());
+    } else if let Some(id) = delete_item_id {
+        app.inventory.delete_item(id, ctx.clone());
+    } else if refresh_now {
+        let fid = app.inventory.current_folder_id();
+        app.inventory.fetch_folder(fid, ctx.clone());
     }
 }

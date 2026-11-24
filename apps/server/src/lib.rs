@@ -1,3 +1,6 @@
+pub mod auth;
+pub mod drive;
+
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -5,7 +8,7 @@ use axum::{
     },
     http::{header, HeaderValue, StatusCode},
     response::IntoResponse,
-    routing::get,
+    routing::{delete, get, patch, post},
     Json, Router,
 };
 use futures_util::{SinkExt, StreamExt};
@@ -95,6 +98,7 @@ pub struct AppState {
     port: u16,
     next_client: AtomicU64,
     rooms: RwLock<HashMap<String, Arc<RwLock<RoomState>>>>,
+    pub auth: auth::AuthStore,
 }
 
 impl AppState {
@@ -104,6 +108,7 @@ impl AppState {
             port,
             next_client: AtomicU64::new(1),
             rooms: RwLock::new(HashMap::new()),
+            auth: auth::AuthStore::new(),
         })
     }
 
@@ -131,6 +136,16 @@ pub fn build_router(config: &ServerConfig) -> Router {
     Router::new()
         .route("/healthz", get(healthz))
         .route("/api/version", get(healthz))
+        .route("/api/auth/google/login", get(auth::google_login))
+        .route("/api/auth/google/callback", get(auth::google_callback))
+        .route("/api/auth/me", get(auth::auth_me))
+        .route("/api/auth/logout", post(auth::auth_logout))
+        .route("/api/drive/list", get(drive::drive_list))
+        .route("/api/drive/folders", post(drive::drive_create_folder))
+        .route("/api/drive/diagrams", post(drive::drive_save_diagram))
+        .route("/api/drive/diagrams/{id}", get(drive::drive_load_diagram))
+        .route("/api/drive/items/{id}", patch(drive::drive_update_item))
+        .route("/api/drive/items/{id}", delete(drive::drive_delete_item))
         .route("/ws", get(ws_handler))
         .fallback_service(static_service)
         .with_state(state)
@@ -516,6 +531,44 @@ mod tests {
             }
         }
         assert!(saw_duel_started, "expected DuelStarted broadcast");
+        server_task.abort();
+    }
+
+    #[tokio::test]
+    async fn auth_me_guest_and_drive_requires_auth() {
+        let challenge = auth::pkce_code_challenge("test_verifier_12345");
+        assert!(!challenge.is_empty());
+        assert!(!challenge.contains('='));
+
+        let cfg = ServerConfig {
+            host: "127.0.0.1".into(),
+            port: 0,
+            static_dir: PathBuf::from("."),
+        };
+        let app = build_router(&cfg);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server_task = tokio::spawn(async move {
+            let _ = axum::serve(listener, app).await;
+        });
+
+        let client = reqwest::Client::new();
+        let me_resp = client
+            .get(format!("http://{addr}/api/auth/me"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(me_resp.status(), StatusCode::OK);
+        let me: rustflow_collab_protocol::AuthMeResponse = me_resp.json().await.unwrap();
+        assert!(!me.authenticated);
+        assert!(me.user.is_none());
+
+        let drive_resp = client
+            .get(format!("http://{addr}/api/drive/list"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(drive_resp.status(), StatusCode::UNAUTHORIZED);
         server_task.abort();
     }
 }

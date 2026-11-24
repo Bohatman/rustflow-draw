@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [ -f /home/bohat/projects/rustflow-draw/.env ]; then
+  set -a
+  source /home/bohat/projects/rustflow-draw/.env
+  set +a
+fi
+
 export PORT="${PORT:-6129}"
 export BOHAT_STATIC_DIR="${BOHAT_STATIC_DIR:-/home/bohat/projects/rustflow-draw/apps/studio/dist}"
 
