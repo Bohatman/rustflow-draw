@@ -66,6 +66,11 @@
         window.visualViewport.addEventListener('resize', syncViewport, { passive: true });
         window.visualViewport.addEventListener('scroll', syncViewport, { passive: true });
       }
+      window.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key && e.key.toLowerCase() === 's') {
+          e.preventDefault();
+        }
+      }, true);
       document.addEventListener('DOMContentLoaded', syncViewport);
       syncViewport();
     })();

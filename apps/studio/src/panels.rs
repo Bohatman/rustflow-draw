@@ -243,18 +243,10 @@ pub fn render_menu_and_toolbar(app: &mut BohatDrawApp, ctx: &egui::Context, narr
                             }
                             if ui
                                 .small_button("Save")
-                                .on_hover_text("Save diagram to Google Drive")
+                                .on_hover_text("Save to Google Drive (Ctrl+S — updates current file)")
                                 .clicked()
                             {
-                                if let Some(fid) = app.inventory.active_file_id.clone() {
-                                    let name = app.inventory.active_file_name.clone();
-                                    let folder = app.inventory.active_folder_id.clone();
-                                    app.save_current_to_drive(Some(fid), folder, name, ctx);
-                                } else {
-                                    app.inventory.show_modal = true;
-                                    let folder = app.inventory.current_folder_id();
-                                    app.inventory.fetch_folder(folder, ctx.clone());
-                                }
+                                app.quick_save(ctx);
                             }
                             let short_name: String = user.name.chars().take(14).collect();
                             ui.menu_button(short_name, |ui| {
@@ -2795,6 +2787,7 @@ pub fn render_extra_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
                     ("Double-click Node", "Inline rename title"),
                     ("Drag from Port Dot", "Connect edge (hover node to reveal ports)"),
                     ("Right-click Canvas/Item", "Context menu (Layers, Border, Copy PNG/GIF)"),
+                    ("Ctrl/Cmd + S", "Save to same Google Drive file (or export JSON in Guest Mode)"),
                     ("Ctrl/Cmd + Z / Y", "Undo / Redo"),
                     ("Ctrl/Cmd + C / V / D", "Copy / Paste / Duplicate"),
                     ("Ctrl/Cmd + A", "Select All"),
@@ -3606,7 +3599,31 @@ pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
         app.inventory.create_folder(fname, ctx.clone());
     } else if let Some(dname) = save_here_name {
         let cur_fid = app.inventory.current_folder_id();
-        app.save_current_to_drive(None, cur_fid, dname, ctx);
+        let target_file_name = if dname.ends_with(".bohat.json") {
+            dname.clone()
+        } else {
+            format!("{dname}.bohat.json")
+        };
+        let existing_id = app
+            .inventory
+            .items
+            .iter()
+            .find(|it| {
+                !it.is_folder
+                    && (it.name.eq_ignore_ascii_case(&target_file_name)
+                        || it.name.eq_ignore_ascii_case(&dname))
+            })
+            .map(|it| it.id.clone())
+            .or_else(|| {
+                if app.inventory.active_folder_id == cur_fid
+                    && app.inventory.active_file_name.eq_ignore_ascii_case(&dname)
+                {
+                    app.inventory.active_file_id.clone()
+                } else {
+                    None
+                }
+            });
+        app.save_current_to_drive(existing_id, cur_fid, dname, ctx);
     } else if let Some((id, new_name)) = rename_commit {
         app.inventory.rename_item(id, new_name, ctx.clone());
     } else if let Some((id, old_p, new_p)) = move_up_item {

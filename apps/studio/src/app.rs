@@ -528,6 +528,9 @@ impl BohatDrawApp {
         self.image_textures.clear();
         self.undo_stack.clear();
         self.redo_stack.clear();
+        self.inventory.active_file_id = None;
+        self.inventory.active_file_name = "Untitled Diagram".to_string();
+        self.inventory.save_as_name = "Untitled Diagram".to_string();
         if !self.collab.connected {
             let fresh = platform::generate_unique_room_id();
             self.collab_ws_url = platform::default_ws_url(&fresh);
@@ -1040,6 +1043,9 @@ impl BohatDrawApp {
             if has_paste_ev || (cmd && i.key_pressed(egui::Key::V)) {
                 self.paste_clipboard();
             }
+            if cmd && i.key_pressed(egui::Key::S) {
+                self.quick_save(ctx);
+            }
             if cmd && i.key_pressed(egui::Key::A) {
                 self.select_all();
             }
@@ -1111,6 +1117,22 @@ impl BohatDrawApp {
                 }
                 _ => {}
             }
+        }
+    }
+
+    pub fn quick_save(&mut self, ctx: &egui::Context) {
+        if self.inventory.user.is_some() {
+            if let Some(fid) = self.inventory.active_file_id.clone() {
+                let name = self.inventory.active_file_name.clone();
+                let folder = self.inventory.active_folder_id.clone();
+                self.save_current_to_drive(Some(fid), folder, name, ctx);
+            } else {
+                self.inventory.show_modal = true;
+                let folder = self.inventory.current_folder_id();
+                self.inventory.fetch_folder(folder, ctx.clone());
+            }
+        } else {
+            self.export_json_file();
         }
     }
 
