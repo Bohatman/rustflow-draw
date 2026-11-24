@@ -1195,8 +1195,16 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                             let mut drag_custom_idx: Option<usize> = None;
                             let mut spawn_item_idx: Option<usize> = None;
                             let mut drag_item_idx: Option<usize> = None;
+                            let is_touch_or_mobile =
+                                screen_w <= 960.0 || ctx.input(|i| i.any_touches());
+                            let tile_sense = if is_touch_or_mobile {
+                                Sense::click()
+                            } else {
+                                Sense::click_and_drag()
+                            };
 
                             ScrollArea::vertical()
+                                .drag_to_scroll(true)
                                 .auto_shrink([false, false])
                                 .show_rows(ui, tile_h + 4.0, rows.len(), |ui, row_range| {
                                     for ridx in row_range {
@@ -1239,7 +1247,7 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                                                         let c = &app.custom_stencils[cidx];
                                                         let (rect, resp) = ui.allocate_exact_size(
                                                             Vec2::new(tile_w, tile_h),
-                                                            Sense::click_and_drag(),
+                                                            tile_sense,
                                                         );
                                                         let hovered = resp.hovered();
                                                         ui.painter().rect_filled(
@@ -1359,7 +1367,7 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                                                         let item = &app.palette_cache[item_idx];
                                                         let (rect, resp) = ui.allocate_exact_size(
                                                             Vec2::new(tile_w, tile_h),
-                                                            Sense::click_and_drag(),
+                                                            tile_sense,
                                                         );
                                                         let hovered = resp.hovered();
                                                         ui.painter().rect_filled(
