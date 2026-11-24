@@ -825,7 +825,7 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                         ui.horizontal(|ui| {
                             let has_q = !app.palette_search.is_empty();
                             let clear_w = if has_q { 24.0 } else { 0.0 };
-                            let search_w = (inner_w - 74.0 - clear_w).max(60.0);
+                            let search_w = (inner_w - 102.0 - clear_w).max(52.0);
                             ui.add(
                                 egui::TextEdit::singleline(&mut app.palette_search)
                                     .hint_text("Search 130+ symbols...")
@@ -836,7 +836,7 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                             }
                             if ui
                                 .add_sized(
-                                    [54.0, 22.0],
+                                    [50.0, 22.0],
                                     egui::Button::new(RichText::new("+ New").color(Color32::WHITE).size(11.0))
                                         .fill(Color32::from_rgb(0, 0, 128)),
                                 )
@@ -845,6 +845,62 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                             {
                                 app.show_symbol_studio = true;
                             }
+                            let burger_id = ui.make_persistent_id("palette_view_burger_menu");
+                            let (brect, bresp) =
+                                ui.allocate_exact_size(Vec2::new(24.0, 22.0), Sense::click());
+                            let b_open = ui.memory(|m| m.is_popup_open(burger_id));
+                            let b_bg = if b_open {
+                                Color32::from_rgb(0, 0, 128)
+                            } else if bresp.hovered() {
+                                Color32::from_rgb(232, 238, 252)
+                            } else {
+                                Color32::from_rgb(240, 241, 246)
+                            };
+                            let b_fg = if b_open {
+                                Color32::WHITE
+                            } else {
+                                Color32::from_rgb(24, 28, 42)
+                            };
+                            ui.painter().rect_filled(brect, 3.0, b_bg);
+                            ui.painter().rect_stroke(
+                                brect,
+                                3.0,
+                                Stroke::new(1.0_f32, Color32::from_rgb(148, 152, 168)),
+                                egui::StrokeKind::Inside,
+                            );
+                            let cx = brect.center().x;
+                            let cy = brect.center().y;
+                            for dy in [-4.0_f32, 0.0, 4.0] {
+                                ui.painter().line_segment(
+                                    [egui::Pos2::new(cx - 5.5, cy + dy), egui::Pos2::new(cx + 5.5, cy + dy)],
+                                    Stroke::new(1.6_f32, b_fg),
+                                );
+                            }
+                            let bresp = bresp.on_hover_text("Symbol View Mode");
+                            if bresp.clicked() {
+                                ui.memory_mut(|m| m.toggle_popup(burger_id));
+                            }
+                            egui::popup_below_widget(
+                                ui,
+                                burger_id,
+                                &bresp,
+                                egui::PopupCloseBehavior::CloseOnClick,
+                                |ui| {
+                                    ui.set_min_width(126.0);
+                                    ui.label(RichText::new("View Mode").small().strong().weak());
+                                    ui.separator();
+                                    for (mode, lbl) in [
+                                        (PaletteViewMode::IconOnly, "Icon"),
+                                        (PaletteViewMode::IconAndName, "Icon + Name"),
+                                        (PaletteViewMode::NameList, "Name"),
+                                    ] {
+                                        let sel = app.palette_view_mode == mode;
+                                        if ui.selectable_label(sel, lbl).clicked() {
+                                            app.palette_view_mode = mode;
+                                        }
+                                    }
+                                },
+                            );
                         });
                         ui.add_space(5.0);
 
@@ -1140,53 +1196,9 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                                 }
                             });
                         }
-                        // View Mode Switcher (Icon / Icon+Name Finder style / Name List)
-                        ui.add_space(4.0);
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("View").size(10.5).weak());
-                            let vw = ((inner_w - 38.0 - 10.0) / 3.0).floor().max(42.0);
-                            for (mode, lbl) in [
-                                (PaletteViewMode::IconOnly, "Icon"),
-                                (PaletteViewMode::IconAndName, "Icon+Name"),
-                                (PaletteViewMode::NameList, "Name"),
-                            ] {
-                                let sel = app.palette_view_mode == mode;
-                                let (rect, resp) =
-                                    ui.allocate_exact_size(Vec2::new(vw, 20.0), Sense::click());
-                                let bg = if sel {
-                                    Color32::from_rgb(0, 0, 128)
-                                } else if resp.hovered() {
-                                    Color32::from_rgb(232, 238, 252)
-                                } else {
-                                    Color32::from_rgb(240, 241, 246)
-                                };
-                                let fg = if sel {
-                                    Color32::WHITE
-                                } else {
-                                    Color32::from_rgb(24, 28, 42)
-                                };
-                                ui.painter().rect_filled(rect, 3.0, bg);
-                                ui.painter().rect_stroke(
-                                    rect,
-                                    3.0,
-                                    Stroke::new(1.0_f32, Color32::from_rgb(160, 164, 178)),
-                                    egui::StrokeKind::Inside,
-                                );
-                                ui.painter().text(
-                                    rect.center(),
-                                    Align2::CENTER_CENTER,
-                                    lbl,
-                                    FontId::proportional(10.0),
-                                    fg,
-                                );
-                                if resp.clicked() {
-                                    app.palette_view_mode = mode;
-                                }
-                            }
-                        });
-                        ui.add_space(3.0);
+                        ui.add_space(2.0);
                         ui.separator();
-                        ui.add_space(3.0);
+                        ui.add_space(2.0);
 
                         enum PalRow {
                             Header(&'static str, usize, Option<Color32>),
@@ -1294,21 +1306,44 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                                 Sense::click_and_drag()
                             };
 
+                            let row_spacing = 4.0_f32;
+                            let header_h = 22.0_f32;
+                            let mut row_tops: Vec<f32> = Vec::with_capacity(rows.len() + 1);
+                            let mut y_acc = 0.0_f32;
+                            for r in &rows {
+                                row_tops.push(y_acc);
+                                let rh = match r {
+                                    PalRow::Header(..) => header_h,
+                                    PalRow::Custom(..) | PalRow::Items(..) => tile_h,
+                                };
+                                y_acc += rh + row_spacing;
+                            }
+                            row_tops.push(y_acc);
+
                             ScrollArea::vertical()
                                 .drag_to_scroll(true)
                                 .auto_shrink([false, false])
-                                .show_rows(ui, tile_h + 4.0, rows.len(), |ui, row_range| {
-                                    for ridx in row_range {
+                                .show_viewport(ui, |ui, viewport| {
+                                    ui.spacing_mut().item_spacing.y = row_spacing;
+                                    let vis_min = (viewport.min.y - 80.0).max(0.0);
+                                    let vis_max = viewport.max.y + 80.0;
+                                    let first = row_tops
+                                        .partition_point(|&y| y < vis_min)
+                                        .saturating_sub(1)
+                                        .min(rows.len());
+                                    let last = row_tops
+                                        .partition_point(|&y| y <= vis_max)
+                                        .min(rows.len());
+
+                                    if first > 0 {
+                                        ui.add_space((row_tops[first] - row_spacing).max(0.0));
+                                    }
+                                    for ridx in first..last {
                                         match rows[ridx] {
                                             PalRow::Header(name, cnt, accent_opt) => {
-                                                let (hrect, _) = ui.allocate_exact_size(
-                                                    Vec2::new(avail_w, tile_h),
+                                                let (bar, _) = ui.allocate_exact_size(
+                                                    Vec2::new(avail_w, header_h),
                                                     Sense::hover(),
-                                                );
-                                                let bar_h = 22.0_f32.min(hrect.height());
-                                                let bar = egui::Rect::from_min_max(
-                                                    egui::Pos2::new(hrect.min.x, hrect.max.y - bar_h - 1.0),
-                                                    egui::Pos2::new(hrect.max.x, hrect.max.y - 1.0),
                                                 );
                                                 ui.painter().rect_filled(
                                                     bar,
@@ -1590,6 +1625,9 @@ pub fn render_palette_panel(app: &mut BohatDrawApp, ctx: &egui::Context) {
                                                 });
                                             }
                                         }
+                                    }
+                                    if last < rows.len() {
+                                        ui.add_space((y_acc - row_tops[last]).max(0.0));
                                     }
                                 });
 
