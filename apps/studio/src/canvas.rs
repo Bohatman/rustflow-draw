@@ -272,8 +272,12 @@ pub fn render_canvas(app: &mut BohatDrawApp, ui: &mut egui::Ui) {
 
     draw_remote_cursors(&painter, canvas_rect, app);
 
-    if app.show_minimap && canvas_rect.width() > 480.0 && canvas_rect.height() > 340.0 {
-        draw_minimap(&painter, canvas_rect, app);
+    if canvas_rect.width() > 480.0 && canvas_rect.height() > 340.0 {
+        if app.show_minimap {
+            draw_minimap(&painter, canvas_rect, app, pointer_pos);
+        } else {
+            draw_minimap_restore_pill(&painter, canvas_rect, pointer_pos);
+        }
     }
 
     if let Some((msg, until)) = app.toast.clone() {
@@ -2023,14 +2027,51 @@ fn draw_remote_cursors(painter: &Painter, canvas_rect: EguiRect, app: &BohatDraw
     }
 }
 
-fn minimap_rects(canvas_rect: EguiRect) -> (EguiRect, EguiRect) {
+fn minimap_rects(canvas_rect: EguiRect) -> (EguiRect, EguiRect, EguiRect) {
     let size = Vec2::new(192.0, 124.0);
     let outer = EguiRect::from_min_size(canvas_rect.max - size - Vec2::new(12.0, 12.0), size);
     let inner = EguiRect::from_min_max(
         Pos2::new(outer.min.x + 4.0, outer.min.y + 18.0),
         Pos2::new(outer.max.x - 4.0, outer.max.y - 4.0),
     );
-    (outer, inner)
+    let close_rect = EguiRect::from_min_size(
+        Pos2::new(outer.max.x - 17.0, outer.min.y + 3.0),
+        Vec2::splat(12.0),
+    );
+    (outer, inner, close_rect)
+}
+
+fn minimap_restore_pill_rect(canvas_rect: EguiRect) -> EguiRect {
+    let size = Vec2::new(52.0, 20.0);
+    EguiRect::from_min_size(canvas_rect.max - size - Vec2::new(12.0, 12.0), size)
+}
+
+fn draw_minimap_restore_pill(
+    painter: &Painter,
+    canvas_rect: EguiRect,
+    pointer_pos: Option<Pos2>,
+) {
+    let rect = minimap_restore_pill_rect(canvas_rect);
+    let hovered = pointer_pos.is_some_and(|p| rect.contains(p));
+    let bg = if hovered {
+        Color32::from_rgb(232, 238, 255)
+    } else {
+        Color32::from_rgba_unmultiplied(232, 234, 240, 235)
+    };
+    let border = if hovered {
+        Color32::from_rgb(0, 0, 160)
+    } else {
+        Color32::from_rgb(120, 126, 144)
+    };
+    painter.rect_filled(rect, 3.0, bg);
+    painter.rect_stroke(rect, 3.0, Stroke::new(1.0_f32, border), egui::StrokeKind::Inside);
+    painter.text(
+        rect.center(),
+        Align2::CENTER_CENTER,
+        "Minimap",
+        FontId::proportional(9.5),
+        Color32::from_rgb(24, 28, 42),
+    );
 }
 
 fn pan_viewport_from_minimap(app: &mut BohatDrawApp, inner: EguiRect, pos: Pos2) {
@@ -2045,8 +2086,13 @@ fn pan_viewport_from_minimap(app: &mut BohatDrawApp, inner: EguiRect, pos: Pos2)
     vp.pan.y = vp.screen_height * 0.5 - world_center.y * vp.zoom;
 }
 
-fn draw_minimap(painter: &Painter, canvas_rect: EguiRect, app: &BohatDrawApp) {
-    let (mrect, inner) = minimap_rects(canvas_rect);
+fn draw_minimap(
+    painter: &Painter,
+    canvas_rect: EguiRect,
+    app: &BohatDrawApp,
+    pointer_pos: Option<Pos2>,
+) {
+    let (mrect, inner, close_rect) = minimap_rects(canvas_rect);
     let header_rect = EguiRect::from_min_max(mrect.min, Pos2::new(mrect.max.x, inner.min.y));
 
     painter.rect_filled(
@@ -2068,11 +2114,38 @@ fn draw_minimap(painter: &Painter, canvas_rect: EguiRect, app: &BohatDrawApp) {
         Color32::from_rgb(24, 28, 42),
     );
     painter.text(
-        Pos2::new(header_rect.max.x - 6.0, header_rect.center().y),
+        Pos2::new(close_rect.min.x - 6.0, header_rect.center().y),
         Align2::RIGHT_CENTER,
         format!("{:.0}%", app.bridge.viewport.zoom * 100.0),
         FontId::monospace(9.0),
         Color32::from_rgb(0, 0, 140),
+    );
+    let close_hovered = pointer_pos.is_some_and(|p| close_rect.expand(2.0).contains(p));
+    let close_bg = if close_hovered {
+        Color32::from_rgb(220, 38, 38)
+    } else {
+        Color32::from_rgb(228, 230, 238)
+    };
+    let close_fg = if close_hovered {
+        Color32::WHITE
+    } else {
+        Color32::from_rgb(76, 82, 98)
+    };
+    painter.rect_filled(close_rect, 1.5, close_bg);
+    painter.rect_stroke(
+        close_rect,
+        1.5,
+        Stroke::new(1.0_f32, Color32::from_rgb(120, 126, 144)),
+        egui::StrokeKind::Inside,
+    );
+    let cc = close_rect.center();
+    painter.line_segment(
+        [Pos2::new(cc.x - 2.4, cc.y - 2.4), Pos2::new(cc.x + 2.4, cc.y + 2.4)],
+        Stroke::new(1.2_f32, close_fg),
+    );
+    painter.line_segment(
+        [Pos2::new(cc.x + 2.4, cc.y - 2.4), Pos2::new(cc.x - 2.4, cc.y + 2.4)],
+        Stroke::new(1.2_f32, close_fg),
     );
 
     let snap = app
@@ -2225,45 +2298,66 @@ fn handle_canvas_input(
         }
     }
 
-    if app.show_minimap && canvas_rect.width() > 480.0 && canvas_rect.height() > 340.0 {
-        let (mrect, inner) = minimap_rects(canvas_rect);
-        let in_minimap = pointer_pos.is_some_and(|p| mrect.contains(p));
-        if app.dragging_minimap {
-            if primary_down {
-                if let Some(pos) = pointer_pos {
-                    app.target_zoom = None;
-                    pan_viewport_from_minimap(app, inner, pos);
-                }
-                ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
-                return;
-            } else {
-                app.dragging_minimap = false;
-            }
-        } else if in_minimap && !app.is_interacting() {
-            ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
-            if primary_pressed {
-                if let Some(pos) = pointer_pos {
-                    if inner.contains(pos) {
-                        app.dragging_minimap = true;
+    if canvas_rect.width() > 480.0 && canvas_rect.height() > 340.0 {
+        if app.show_minimap {
+            let (mrect, inner, close_rect) = minimap_rects(canvas_rect);
+            let in_minimap = pointer_pos.is_some_and(|p| mrect.contains(p));
+            let in_close = pointer_pos.is_some_and(|p| close_rect.expand(3.0).contains(p));
+            if app.dragging_minimap {
+                if primary_down {
+                    if let Some(pos) = pointer_pos {
                         app.target_zoom = None;
                         pan_viewport_from_minimap(app, inner, pos);
                     }
+                    ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+                    return;
+                } else {
+                    app.dragging_minimap = false;
                 }
-                return;
+            } else if in_minimap && !app.is_interacting() {
+                if in_close {
+                    ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                    if primary_pressed {
+                        app.show_minimap = false;
+                        app.dragging_minimap = false;
+                        return;
+                    }
+                } else {
+                    ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+                    if primary_pressed {
+                        if let Some(pos) = pointer_pos {
+                            if inner.contains(pos) {
+                                app.dragging_minimap = true;
+                                app.target_zoom = None;
+                                pan_viewport_from_minimap(app, inner, pos);
+                            }
+                        }
+                        return;
+                    }
+                }
+                if scroll_delta.y.abs() > 0.1 {
+                    let factor = (1.0 + scroll_delta.y * 0.0025).clamp(0.8, 1.25);
+                    let base = app
+                        .target_zoom
+                        .map(|(z, ..)| z)
+                        .unwrap_or(app.bridge.viewport.zoom);
+                    let target = (base * factor).clamp(0.15, 4.0);
+                    app.target_zoom = Some((
+                        target,
+                        canvas_rect.width() * 0.5,
+                        canvas_rect.height() * 0.5,
+                    ));
+                    return;
+                }
             }
-            if scroll_delta.y.abs() > 0.1 {
-                let factor = (1.0 + scroll_delta.y * 0.0025).clamp(0.8, 1.25);
-                let base = app
-                    .target_zoom
-                    .map(|(z, ..)| z)
-                    .unwrap_or(app.bridge.viewport.zoom);
-                let target = (base * factor).clamp(0.15, 4.0);
-                app.target_zoom = Some((
-                    target,
-                    canvas_rect.width() * 0.5,
-                    canvas_rect.height() * 0.5,
-                ));
-                return;
+        } else if !app.is_interacting() {
+            let pill = minimap_restore_pill_rect(canvas_rect);
+            if pointer_pos.is_some_and(|p| pill.contains(p)) {
+                ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                if primary_pressed {
+                    app.show_minimap = true;
+                    return;
+                }
             }
         }
     }
@@ -2945,6 +3039,15 @@ fn render_context_menu(app: &mut BohatDrawApp, response: &egui::Response, canvas
         }
         if ui.button("Fit View").clicked() {
             app.fit_view();
+            ui.close_menu();
+        }
+        let map_lbl = if app.show_minimap {
+            "Hide Minimap"
+        } else {
+            "Show Minimap"
+        };
+        if ui.button(map_lbl).clicked() {
+            app.show_minimap = !app.show_minimap;
             ui.close_menu();
         }
     });
