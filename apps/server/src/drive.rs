@@ -20,6 +20,32 @@ const FOLDER_MIME: &str = "application/vnd.google-apps.folder";
 const DIAGRAM_MIME: &str = "application/json";
 const ROOT_FOLDER_NAME: &str = "Bohat Draw.io";
 
+fn drive_err_response(status: reqwest::StatusCode, context: &str, body: &str) -> Response {
+    if status == reqwest::StatusCode::UNAUTHORIZED || status == reqwest::StatusCode::FORBIDDEN {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({
+                "error": "Google Drive permission required — please Sign Out and Sign in with Google again."
+            })),
+        )
+            .into_response();
+    }
+    let clean: String = body.chars().take(240).collect();
+    (
+        StatusCode::BAD_REQUEST,
+        Json(serde_json::json!({ "error": format!("{context} ({status}): {clean}") })),
+    )
+        .into_response()
+}
+
+fn drive_net_err_response(msg: String) -> Response {
+    (
+        StatusCode::BAD_REQUEST,
+        Json(serde_json::json!({ "error": msg })),
+    )
+        .into_response()
+}
+
 async fn require_session(
     state: &AppState,
     headers: &HeaderMap,
@@ -153,13 +179,7 @@ pub async fn drive_list(
     };
     let root_id = match ensure_root_folder(&state, &tok, &sess).await {
         Ok(id) => id,
-        Err(err) => {
-            return (
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({ "error": err })),
-            )
-                .into_response()
-        }
+        Err(err) => return drive_net_err_response(err),
     };
     let current_id = query
         .folder_id
@@ -183,29 +203,13 @@ pub async fn drive_list(
         Ok(r) => {
             let st = r.status();
             let txt = r.text().await.unwrap_or_default();
-            return (
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({ "error": format!("Drive list failed ({st}): {txt}") })),
-            )
-                .into_response();
+            return drive_err_response(st, "Drive list failed", &txt);
         }
-        Err(e) => {
-            return (
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({ "error": format!("Drive list error: {e}") })),
-            )
-                .into_response()
-        }
+        Err(e) => return drive_net_err_response(format!("Drive list error: {e}")),
     };
     let parsed = match resp.json::<DriveFilesList>().await {
         Ok(l) => l,
-        Err(e) => {
-            return (
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({ "error": format!("Drive parse error: {e}") })),
-            )
-                .into_response()
-        }
+        Err(e) => return drive_net_err_response(format!("Drive parse error: {e}")),
     };
 
     let items: Vec<DriveItem> = parsed
@@ -273,29 +277,13 @@ pub async fn drive_browse_folders(
         Ok(r) => {
             let st = r.status();
             let txt = r.text().await.unwrap_or_default();
-            return (
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({ "error": format!("Browse folders failed ({st}): {txt}") })),
-            )
-                .into_response();
+            return drive_err_response(st, "Browse folders failed", &txt);
         }
-        Err(e) => {
-            return (
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({ "error": format!("Browse folders error: {e}") })),
-            )
-                .into_response()
-        }
+        Err(e) => return drive_net_err_response(format!("Browse folders error: {e}")),
     };
     let parsed = match resp.json::<DriveFilesList>().await {
         Ok(l) => l,
-        Err(e) => {
-            return (
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({ "error": format!("Browse parse error: {e}") })),
-            )
-                .into_response()
-        }
+        Err(e) => return drive_net_err_response(format!("Browse parse error: {e}")),
     };
     let folders: Vec<DriveItem> = parsed
         .files
@@ -357,7 +345,7 @@ pub async fn drive_set_root(
         }))
         .into_response(),
         Err(err) => (
-            StatusCode::BAD_GATEWAY,
+            StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": err })),
         )
             .into_response(),
@@ -387,7 +375,7 @@ pub async fn drive_create_folder(
             Ok(id) => id,
             Err(err) => {
                 return (
-                    StatusCode::BAD_GATEWAY,
+                    StatusCode::BAD_REQUEST,
                     Json(serde_json::json!({ "error": err })),
                 )
                     .into_response()
@@ -412,14 +400,14 @@ pub async fn drive_create_folder(
             let st = r.status();
             let txt = r.text().await.unwrap_or_default();
             return (
-                StatusCode::BAD_GATEWAY,
+                StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": format!("Create folder failed ({st}): {txt}") })),
             )
                 .into_response();
         }
         Err(e) => {
             return (
-                StatusCode::BAD_GATEWAY,
+                StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": format!("Create folder error: {e}") })),
             )
                 .into_response()
@@ -436,7 +424,7 @@ pub async fn drive_create_folder(
         })
         .into_response(),
         Err(e) => (
-            StatusCode::BAD_GATEWAY,
+            StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": format!("Parse folder error: {e}") })),
         )
             .into_response(),
@@ -471,7 +459,7 @@ pub async fn drive_save_diagram(
             Ok(id) => id,
             Err(err) => {
                 return (
-                    StatusCode::BAD_GATEWAY,
+                    StatusCode::BAD_REQUEST,
                     Json(serde_json::json!({ "error": err })),
                 )
                     .into_response()
@@ -519,14 +507,14 @@ pub async fn drive_save_diagram(
             let st = r.status();
             let txt = r.text().await.unwrap_or_default();
             return (
-                StatusCode::BAD_GATEWAY,
+                StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": format!("Save diagram failed ({st}): {txt}") })),
             )
                 .into_response();
         }
         Err(e) => {
             return (
-                StatusCode::BAD_GATEWAY,
+                StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": format!("Save diagram error: {e}") })),
             )
                 .into_response()
@@ -544,7 +532,7 @@ pub async fn drive_save_diagram(
         })
         .into_response(),
         Err(e) => (
-            StatusCode::BAD_GATEWAY,
+            StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": format!("Parse saved file error: {e}") })),
         )
             .into_response(),
@@ -576,7 +564,7 @@ pub async fn drive_load_diagram(
             Ok(m) => m,
             Err(e) => {
                 return (
-                    StatusCode::BAD_GATEWAY,
+                    StatusCode::BAD_REQUEST,
                     Json(serde_json::json!({ "error": format!("Metadata parse error: {e}") })),
                 )
                     .into_response()
@@ -584,14 +572,14 @@ pub async fn drive_load_diagram(
         },
         Ok(r) => {
             return (
-                StatusCode::BAD_GATEWAY,
+                StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": format!("Load metadata failed ({})", r.status()) })),
             )
                 .into_response()
         }
         Err(e) => {
             return (
-                StatusCode::BAD_GATEWAY,
+                StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": format!("Load metadata error: {e}") })),
             )
                 .into_response()
@@ -613,14 +601,14 @@ pub async fn drive_load_diagram(
         Ok(r) if r.status().is_success() => r.text().await.unwrap_or_default(),
         Ok(r) => {
             return (
-                StatusCode::BAD_GATEWAY,
+                StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": format!("Download failed ({})", r.status()) })),
             )
                 .into_response()
         }
         Err(e) => {
             return (
-                StatusCode::BAD_GATEWAY,
+                StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": format!("Download error: {e}") })),
             )
                 .into_response()
@@ -675,14 +663,14 @@ pub async fn drive_update_item(
             let st = r.status();
             let txt = r.text().await.unwrap_or_default();
             return (
-                StatusCode::BAD_GATEWAY,
+                StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": format!("Update failed ({st}): {txt}") })),
             )
                 .into_response();
         }
         Err(e) => {
             return (
-                StatusCode::BAD_GATEWAY,
+                StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": format!("Update error: {e}") })),
             )
                 .into_response()
@@ -699,7 +687,7 @@ pub async fn drive_update_item(
         })
         .into_response(),
         Err(e) => (
-            StatusCode::BAD_GATEWAY,
+            StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": format!("Parse update error: {e}") })),
         )
             .into_response(),
@@ -735,13 +723,13 @@ pub async fn drive_delete_item(
             let st = r.status();
             let txt = r.text().await.unwrap_or_default();
             (
-                StatusCode::BAD_GATEWAY,
+                StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": format!("Delete failed ({st}): {txt}") })),
             )
                 .into_response()
         }
         Err(e) => (
-            StatusCode::BAD_GATEWAY,
+            StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": format!("Delete error: {e}") })),
         )
             .into_response(),

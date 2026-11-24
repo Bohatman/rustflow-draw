@@ -453,6 +453,18 @@ impl InventoryState {
     }
 }
 
+fn format_http_error(status: u16, text: &str) -> String {
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(text) {
+        if let Some(msg) = v.get("error").and_then(|e| e.as_str()) {
+            return msg.to_string();
+        }
+    }
+    if text.trim_start().starts_with('<') {
+        return format!("HTTP {status} (server/gateway error — please retry or Sign Out & Sign In again)");
+    }
+    format!("HTTP {status}: {}", text.chars().take(180).collect::<String>())
+}
+
 fn push_event(events: &Arc<Mutex<Vec<InventoryEvent>>>, ev: InventoryEvent) {
     if let Ok(mut guard) = events.lock() {
         guard.push(ev);
@@ -503,7 +515,7 @@ fn spawn_http_json(
                 if status.is_success() {
                     Ok(text)
                 } else {
-                    Err(format!("HTTP {status}: {text}"))
+                    Err(format_http_error(status.as_u16(), &text))
                 }
             }
             Err(e) => Err(format!("Network error: {e}")),
@@ -556,7 +568,7 @@ fn spawn_http_json(
             if resp.ok() {
                 Ok(text)
             } else {
-                Err(format!("HTTP {}: {text}", resp.status()))
+                Err(format_http_error(resp.status(), &text))
             }
         }
         .await;
