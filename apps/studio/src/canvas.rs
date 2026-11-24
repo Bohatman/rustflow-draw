@@ -1444,42 +1444,31 @@ fn draw_node(
     }
 
     if !busy_dragging {
-        let reveal_radius = if app.connecting_from.is_some() {
-            46.0_f32
+        let reveal_margin = if app.connecting_from.is_some() {
+            36.0_f32
         } else {
-            32.0_f32
+            20.0_f32
         };
-        if pointer_pos.is_some_and(|p| srect.expand(reveal_radius + 8.0).contains(p))
-            || app.connecting_from.is_some_and(|(snid, _)| snid == node.id)
-        {
+        let show_all_ports_on_node = pointer_pos
+            .is_some_and(|p| srect.expand(reveal_margin).contains(p))
+            || hovered_port.is_some_and(|(hnid, _)| hnid == node.id)
+            || app.connecting_from.is_some_and(|(snid, _)| snid == node.id);
+
+        if show_all_ports_on_node {
             for port in &node.ports {
                 let pt_w = port.world_position(&draw_bounds);
                 let pt_s = world_to_screen(canvas_rect, app, pt_w);
                 let is_src = app.connecting_from == Some((node.id, port.id));
                 let is_hot = hovered_port == Some((node.id, port.id));
-                let dist = pointer_pos
-                    .map(|p| pt_s.distance(p))
-                    .unwrap_or(f32::INFINITY);
                 if is_hot || is_src {
                     painter.circle_filled(pt_s, 5.0, Color32::from_rgb(16, 185, 129));
                     painter.circle_stroke(pt_s, 5.0, Stroke::new(1.5_f32, Color32::WHITE));
-                } else if dist <= reveal_radius {
-                    let proximity =
-                        (1.0 - ((dist - 12.0).max(0.0) / (reveal_radius - 12.0))).clamp(0.3, 1.0);
-                    let r = 2.4 + 1.4 * proximity;
-                    let alpha = (255.0 * proximity).round() as u8;
-                    painter.circle_filled(
-                        pt_s,
-                        r,
-                        Color32::from_rgba_unmultiplied(255, 255, 255, alpha),
-                    );
+                } else {
+                    painter.circle_filled(pt_s, 3.2, Color32::WHITE);
                     painter.circle_stroke(
                         pt_s,
-                        r,
-                        Stroke::new(
-                            1.25_f32,
-                            Color32::from_rgba_unmultiplied(0, 0, 140, alpha),
-                        ),
+                        3.2,
+                        Stroke::new(1.25_f32, Color32::from_rgb(0, 0, 140)),
                     );
                 }
             }
