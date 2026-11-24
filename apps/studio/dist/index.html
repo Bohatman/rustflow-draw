@@ -8,8 +8,8 @@
   <title>Bohat Draw.io — 100% Rust</title>
   
 <script type="module">
-import init, * as bindings from '/bohat-draw-1a05c54dc5391825.js';
-const wasm = await init({ module_or_path: '/bohat-draw-1a05c54dc5391825_bg.wasm' });
+import init, * as bindings from '/bohat-draw-f4f05dd8dd70fa2e.js';
+const wasm = await init({ module_or_path: '/bohat-draw-f4f05dd8dd70fa2e_bg.wasm' });
 
 
 window.wasmBindings = bindings;
@@ -86,7 +86,7 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
       syncViewport();
     })();
   </script>
-<link rel="modulepreload" href="/bohat-draw-1a05c54dc5391825.js" crossorigin="anonymous" integrity="sha384-yphwrH57hN8o5FesKY2yBKZrqXmdJBCBI5Kz28id/ndqOVBhSGlCR49gUSsSQ+hQ"><link rel="preload" href="/bohat-draw-1a05c54dc5391825_bg.wasm" crossorigin="anonymous" integrity="sha384-RYS8YToyINPlWDH7NGg1kJoWf4IvVyMotk4ZUTcukYd2T8/SFd8yIQ1diCuq4wSg" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="/bohat-draw-f4f05dd8dd70fa2e.js" crossorigin="anonymous" integrity="sha384-zKi57V53QpnXG10oOG9gbKd71ghNAowej9NrxT8wH8PqsPY38UNYIpCRz3ODN/EA"><link rel="preload" href="/bohat-draw-f4f05dd8dd70fa2e_bg.wasm" crossorigin="anonymous" integrity="sha384-3syYotxqYMwSAsxbXqHnQekRbO/TukLtypNSGgGNhZ52lwsW8yrYICDyESlUgbu6" as="fetch" type="application/wasm"></head>
 <body>
   <div id="app_shell">
     <canvas id="bohat_canvas"></canvas>

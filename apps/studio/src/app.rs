@@ -15,10 +15,11 @@ use rustflow_core::{
     ThemeMode,
 };
 use rustflow_io_formats::{
-    export_animated_gif_bytes_with_bg, export_animated_svg, export_drawio_xml,
-    export_png_bytes_with_bg, export_scene_serde_json, import_drawio_xml, import_scene_serde_json,
+    compute_fit_viewport, export_animated_gif_bytes_with_bg, export_animated_svg,
+    export_drawio_xml, export_png_bytes_with_bg, export_scene_serde_json, import_drawio_xml,
+    import_scene_serde_json,
 };
-use rustflow_renderer::ExportBgStyle;
+use rustflow_renderer::{ExportBgStyle, HeadlessFramebuffer};
 use rustflow_ui_bridge::{EngineBridge, StencilCategory};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -1259,6 +1260,35 @@ impl BohatDrawApp {
                         Err(err) => {
                             self.inventory.last_error = Some(format!("Invalid diagram: {err}"));
                         }
+                    }
+                }
+                InventoryEvent::PreviewLoaded(cache_key, scene_json) => {
+                    let parsed = if scene_json.trim_start().starts_with('<') {
+                        import_drawio_xml(&scene_json).ok()
+                    } else {
+                        import_scene_serde_json(&scene_json).ok()
+                    };
+                    if let Some(mut scene) = parsed {
+                        scene.normalize_layer_order();
+                        let w = 220u32;
+                        let h = 140u32;
+                        let vp = compute_fit_viewport(&scene, w, h, 24.0);
+                        let mut fb = HeadlessFramebuffer::new(w, h, [248, 250, 253, 255]);
+                        fb.render_scene_with_bg(&scene, &vp, 0.0, ExportBgStyle::Dots);
+                        let mut rgba = Vec::with_capacity((w * h * 4) as usize);
+                        for px in &fb.pixels {
+                            rgba.extend_from_slice(px);
+                        }
+                        let ci = egui::ColorImage::from_rgba_unmultiplied(
+                            [w as usize, h as usize],
+                            &rgba,
+                        );
+                        let tex = ctx.load_texture(
+                            format!("drive_prev_{cache_key}"),
+                            ci,
+                            egui::TextureOptions::LINEAR,
+                        );
+                        self.inventory.preview_textures.insert(cache_key, tex);
                     }
                 }
                 InventoryEvent::DiagramSaved(saved) => {

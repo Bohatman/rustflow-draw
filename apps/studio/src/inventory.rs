@@ -3,6 +3,7 @@ use rustflow_collab_protocol::{
     DriveLoadDiagramResp, DriveSaveDiagramReq, DriveSaveDiagramResp, DriveSetRootReq,
     DriveUpdateItemReq, UserProfile,
 };
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
@@ -15,6 +16,7 @@ pub enum InventoryEvent {
     PickerFoldersLoaded(DriveFolderBrowseResponse),
     RootFolderChanged(String, String),
     DiagramLoaded(DriveLoadDiagramResp),
+    PreviewLoaded(String, String),
     DiagramSaved(DriveSaveDiagramResp),
     Mutated(String),
     Error(String),
@@ -30,6 +32,8 @@ pub struct InventoryState {
     pub root_folder_name: String,
     pub folder_stack: Vec<(String, String)>,
     pub items: Vec<DriveItem>,
+    pub preview_textures: HashMap<String, egui::TextureHandle>,
+    pub preview_requested: HashSet<String>,
     pub show_folder_picker: bool,
     pub picker_stack: Vec<(String, String)>,
     pub picker_folders: Vec<DriveItem>,
@@ -70,6 +74,8 @@ impl InventoryState {
             root_folder_name: "Bohat Draw.io".to_string(),
             folder_stack: Vec::new(),
             items: Vec::new(),
+            preview_textures: HashMap::new(),
+            preview_requested: HashSet::new(),
             show_folder_picker: false,
             picker_stack: vec![("root".to_string(), "My Drive".to_string())],
             picker_folders: Vec::new(),
@@ -189,6 +195,8 @@ impl InventoryState {
         self.user = None;
         self.bearer_token = None;
         self.items.clear();
+        self.preview_textures.clear();
+        self.preview_requested.clear();
         self.folder_stack.clear();
         self.root_folder_id = None;
         self.active_file_id = None;
@@ -372,6 +380,25 @@ impl InventoryState {
                 Err(err) => InventoryEvent::Error(err),
             };
             push_event(&events, ev);
+        });
+    }
+
+    pub fn request_diagram_preview(&mut self, file_id: String, cache_key: String, ctx: egui::Context) {
+        if self.user.is_none()
+            || self.preview_textures.contains_key(&cache_key)
+            || !self.preview_requested.insert(cache_key.clone())
+        {
+            return;
+        }
+        let url = format!("{}/api/drive/diagrams/{file_id}", self.server_base);
+        let token = self.bearer_token.clone();
+        let events = Arc::clone(&self.events);
+        spawn_http_json("GET", url, None, token, ctx, move |res| {
+            if let Ok(txt) = res {
+                if let Ok(loaded) = serde_json::from_str::<DriveLoadDiagramResp>(&txt) {
+                    push_event(&events, InventoryEvent::PreviewLoaded(cache_key, loaded.scene_json));
+                }
+            }
         });
     }
 

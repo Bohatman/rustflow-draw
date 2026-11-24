@@ -3458,6 +3458,8 @@ pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
                 None
             };
 
+            let mut preview_requests: Vec<(String, String)> = Vec::new();
+
             ScrollArea::vertical()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
@@ -3482,11 +3484,42 @@ pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
                                     .unwrap_or(&item.name)
                                     .to_string()
                             };
+                            let cache_key = format!(
+                                "{}:{}",
+                                item.id,
+                                item.modified_time.as_deref().unwrap_or("")
+                            );
+                            if !item.is_folder
+                                && !app.inventory.preview_textures.contains_key(&cache_key)
+                                && !app.inventory.preview_requested.contains(&cache_key)
+                            {
+                                preview_requests.push((item.id.clone(), cache_key.clone()));
+                            }
                             ui.horizontal(|ui| {
-                                let (icon_r, _) =
-                                    ui.allocate_exact_size(Vec2::new(22.0, 20.0), Sense::hover());
+                                let (icon_r, _) = ui.allocate_exact_size(
+                                    if item.is_folder {
+                                        Vec2::new(26.0, 22.0)
+                                    } else {
+                                        Vec2::new(36.0, 24.0)
+                                    },
+                                    Sense::hover(),
+                                );
                                 if item.is_folder {
                                     draw_drive_folder_icon(ui.painter(), icon_r);
+                                } else if let Some(tex) =
+                                    app.inventory.preview_textures.get(&cache_key)
+                                {
+                                    let uv = egui::Rect::from_min_max(
+                                        egui::Pos2::ZERO,
+                                        egui::Pos2::new(1.0, 1.0),
+                                    );
+                                    ui.painter().image(tex.id(), icon_r, uv, Color32::WHITE);
+                                    ui.painter().rect_stroke(
+                                        icon_r,
+                                        2.0,
+                                        Stroke::new(1.0_f32, Color32::from_rgb(160, 168, 190)),
+                                        egui::StrokeKind::Inside,
+                                    );
                                 } else {
                                     draw_drive_diagram_icon(ui.painter(), icon_r);
                                 }
@@ -3523,11 +3556,13 @@ pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
                             ui.separator();
                         }
                     } else {
-                        let avail_w = ui.available_width().max(220.0);
-                        let cols = ((avail_w / 128.0).floor() as usize).clamp(2, 5);
+                        let avail_w = ui.available_width().max(240.0);
+                        let cols = ((avail_w / 146.0).floor() as usize).clamp(2, 4);
                         let card_w = ((avail_w - (cols as f32 - 1.0) * 8.0) / cols as f32)
                             .floor()
-                            .max(96.0);
+                            .max(112.0);
+                        let thumb_w = (card_w - 20.0).max(86.0);
+                        let thumb_h = (thumb_w * 0.64).clamp(54.0, 82.0);
                         for chunk in filtered.chunks(cols) {
                             ui.horizontal(|ui| {
                                 ui.spacing_mut().item_spacing.x = 8.0;
@@ -3540,6 +3575,17 @@ pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
                                             .unwrap_or(&item.name)
                                             .to_string()
                                     };
+                                    let cache_key = format!(
+                                        "{}:{}",
+                                        item.id,
+                                        item.modified_time.as_deref().unwrap_or("")
+                                    );
+                                    if !item.is_folder
+                                        && !app.inventory.preview_textures.contains_key(&cache_key)
+                                        && !app.inventory.preview_requested.contains(&cache_key)
+                                    {
+                                        preview_requests.push((item.id.clone(), cache_key.clone()));
+                                    }
                                     Frame::new()
                                         .fill(Color32::WHITE)
                                         .stroke(Stroke::new(1.0_f32, Color32::from_rgb(174, 180, 198)))
@@ -3549,18 +3595,49 @@ pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
                                             ui.set_width(card_w - 14.0);
                                             ui.vertical_centered(|ui| {
                                                 let (ir, resp) = ui.allocate_exact_size(
-                                                    Vec2::new(40.0, 34.0),
+                                                    Vec2::new(thumb_w, thumb_h),
                                                     Sense::click(),
                                                 );
                                                 if item.is_folder {
-                                                    draw_drive_folder_icon(ui.painter(), ir);
+                                                    let f_rect = egui::Rect::from_center_size(
+                                                        ir.center(),
+                                                        Vec2::new(46.0, 38.0),
+                                                    );
+                                                    draw_drive_folder_icon(ui.painter(), f_rect);
+                                                } else if let Some(tex) =
+                                                    app.inventory.preview_textures.get(&cache_key)
+                                                {
+                                                    let uv = egui::Rect::from_min_max(
+                                                        egui::Pos2::ZERO,
+                                                        egui::Pos2::new(1.0, 1.0),
+                                                    );
+                                                    ui.painter()
+                                                        .image(tex.id(), ir, uv, Color32::WHITE);
+                                                    ui.painter().rect_stroke(
+                                                        ir,
+                                                        2.0,
+                                                        Stroke::new(
+                                                            1.0_f32,
+                                                            Color32::from_rgb(184, 190, 208),
+                                                        ),
+                                                        egui::StrokeKind::Inside,
+                                                    );
                                                 } else {
-                                                    draw_drive_diagram_icon(ui.painter(), ir);
+                                                    ui.painter().rect_filled(
+                                                        ir,
+                                                        2.0,
+                                                        Color32::from_rgb(246, 248, 252),
+                                                    );
+                                                    let d_rect = egui::Rect::from_center_size(
+                                                        ir.center(),
+                                                        Vec2::new(38.0, 34.0),
+                                                    );
+                                                    draw_drive_diagram_icon(ui.painter(), d_rect);
                                                 }
-                                                let short: String = if disp_name.chars().count() > 14 {
+                                                let short: String = if disp_name.chars().count() > 16 {
                                                     format!(
                                                         "{}..",
-                                                        disp_name.chars().take(12).collect::<String>()
+                                                        disp_name.chars().take(14).collect::<String>()
                                                     )
                                                 } else {
                                                     disp_name.clone()
@@ -3600,6 +3677,9 @@ pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
                         }
                     }
                 });
+            for (fid, ckey) in preview_requests.into_iter().take(24) {
+                app.inventory.request_diagram_preview(fid, ckey, ctx.clone());
+            }
         });
 
     app.inventory.show_modal = open;
