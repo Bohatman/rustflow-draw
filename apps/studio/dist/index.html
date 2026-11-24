@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Bohat Draw.io — 100% Rust</title>
   
 <script type="module">
-import init, * as bindings from '/bohat-draw-5a79062b6abec83c.js';
-const wasm = await init({ module_or_path: '/bohat-draw-5a79062b6abec83c_bg.wasm' });
+import init, * as bindings from '/bohat-draw-e77f7be01e5bbd39.js';
+const wasm = await init({ module_or_path: '/bohat-draw-e77f7be01e5bbd39_bg.wasm' });
 
 
 window.wasmBindings = bindings;
@@ -119,21 +119,48 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
   <script>
     (function() {
       window.__bohatDirty = false;
+      var lastAppliedH = 0;
+      var rafPending = false;
+      function isTextInputActive() {
+        var el = document.activeElement;
+        if (!el) return false;
+        var tag = el.tagName;
+        return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+      }
+      function applyViewportNow(force) {
+        rafPending = false;
+        if (!force && isTextInputActive()) {
+          return;
+        }
+        var h = window.innerHeight;
+        if (!isTextInputActive() && window.visualViewport) {
+          var vvh = window.visualViewport.height;
+          if (vvh > 0 && Math.abs(vvh - h) < 120) {
+            h = vvh;
+          }
+        }
+        var floored = Math.floor(h);
+        if (force || Math.abs(floored - lastAppliedH) >= 2) {
+          lastAppliedH = floored;
+          document.documentElement.style.setProperty('--vvh', floored + 'px');
+          document.documentElement.style.setProperty('--vv-top', '0px');
+        }
+      }
       function syncViewport() {
-        var vv = window.visualViewport;
-        var h = vv ? vv.height : window.innerHeight;
-        var top = vv ? vv.offsetTop : 0;
-        document.documentElement.style.setProperty('--vvh', Math.floor(h) + 'px');
-        document.documentElement.style.setProperty('--vv-top', Math.floor(top) + 'px');
+        if (isTextInputActive() || rafPending) return;
+        rafPending = true;
+        requestAnimationFrame(function() { applyViewportNow(false); });
       }
       window.addEventListener('resize', syncViewport, { passive: true });
       window.addEventListener('orientationchange', function() {
-        setTimeout(syncViewport, 60);
-        setTimeout(syncViewport, 240);
+        setTimeout(function() { applyViewportNow(true); }, 120);
+        setTimeout(function() { applyViewportNow(true); }, 320);
+      }, { passive: true });
+      window.addEventListener('focusout', function() {
+        setTimeout(function() { applyViewportNow(false); }, 180);
       }, { passive: true });
       if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', syncViewport, { passive: true });
-        window.visualViewport.addEventListener('scroll', syncViewport, { passive: true });
       }
       window.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key && e.key.toLowerCase() === 's') {
@@ -157,7 +184,7 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
       syncViewport();
     })();
   </script>
-<link rel="modulepreload" href="/bohat-draw-5a79062b6abec83c.js" crossorigin="anonymous" integrity="sha384-A5NtwnZt1gVEN7dTnKdUf750Tva5ej4VWo4zx98vMMrpnsTDueUeLPoDtQSX3RJ9"><link rel="preload" href="/bohat-draw-5a79062b6abec83c_bg.wasm" crossorigin="anonymous" integrity="sha384-pgA+xqsq0cJ28hYcahWdo/7LLpMvbEedUqFHBaK2OFiQFAOx3fgl8Syj1rzcNlse" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="/bohat-draw-e77f7be01e5bbd39.js" crossorigin="anonymous" integrity="sha384-A5NtwnZt1gVEN7dTnKdUf750Tva5ej4VWo4zx98vMMrpnsTDueUeLPoDtQSX3RJ9"><link rel="preload" href="/bohat-draw-e77f7be01e5bbd39_bg.wasm" crossorigin="anonymous" integrity="sha384-U2rQCrwwXZI8m0uBCaIM8St7bK2BkuBtoGDELOpecoANz9KlbR1OB6KprdupCdso" as="fetch" type="application/wasm"></head>
 <body>
   <div id="bohat_splash">
     <div class="bohat-splash-logo">B</div>

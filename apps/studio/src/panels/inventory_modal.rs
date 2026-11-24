@@ -167,8 +167,16 @@ pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
     let mut open = app.inventory.show_modal;
     let screen = ctx.screen_rect();
     let is_compact = screen.width() <= 640.0;
-    let win_w = (screen.width() - 28.0).clamp(300.0, 820.0);
-    let win_h = (screen.height() - 60.0).clamp(340.0, 560.0);
+    let win_w = if is_compact {
+        (screen.width() - 12.0).max(280.0)
+    } else {
+        (screen.width() - 28.0).clamp(300.0, 820.0)
+    };
+    let win_h = if is_compact {
+        (screen.height() - 20.0).clamp(220.0, 560.0)
+    } else {
+        (screen.height() - 60.0).clamp(340.0, 560.0)
+    };
 
     let mut open_folder_action: Option<(String, String)> = None;
     let mut jump_crumb_idx: Option<usize> = None;
@@ -188,12 +196,17 @@ pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
     let text_primary = Color32::from_rgb(28, 30, 36);
     let text_muted = Color32::from_rgb(112, 118, 132);
 
+    let (anchor_align, anchor_offset) = if is_compact {
+        (egui::Align2::CENTER_TOP, [0.0, 8.0])
+    } else {
+        (egui::Align2::CENTER_CENTER, [0.0, 0.0])
+    };
     egui::Window::new("Drive Inventory")
         .id(egui::Id::new("finder_drive_inventory_window"))
         .title_bar(false)
-        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+        .anchor(anchor_align, anchor_offset)
         .collapsible(false)
-        .resizable(true)
+        .resizable(!is_compact)
         .default_size(Vec2::new(win_w, win_h))
         .frame(
             Frame::new()
@@ -535,23 +548,26 @@ pub fn render_inventory_modals(app: &mut BohatDrawApp, ctx: &egui::Context) {
                             ui.set_width((main_w - 26.0).max(220.0));
                             ui.horizontal_wrapped(|ui| {
                                 ui.spacing_mut().item_spacing.x = 6.0;
-                                ui.add(
+                                let name_resp = ui.add(
                                     egui::TextEdit::singleline(&mut app.inventory.save_as_name)
                                         .hint_text("Diagram name...")
-                                        .desired_width(if is_compact { 120.0 } else { 170.0 }),
+                                        .desired_width(if is_compact { 130.0 } else { 170.0 }),
                                 );
-                                if ui
-                                    .add(
-                                        egui::Button::new(
-                                            RichText::new("Save Here")
-                                                .size(11.0)
-                                                .color(Color32::WHITE),
+                                let submit_enter = name_resp.lost_focus()
+                                    && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                                if (submit_enter
+                                    || ui
+                                        .add(
+                                            egui::Button::new(
+                                                RichText::new("Save Here")
+                                                    .size(11.0)
+                                                    .color(Color32::WHITE),
+                                            )
+                                            .fill(accent_blue)
+                                            .corner_radius(6)
+                                            .stroke(Stroke::NONE),
                                         )
-                                        .fill(accent_blue)
-                                        .corner_radius(6)
-                                        .stroke(Stroke::NONE),
-                                    )
-                                    .clicked()
+                                        .clicked())
                                     && !app.inventory.save_as_name.trim().is_empty()
                                 {
                                     save_here_name = Some(app.inventory.save_as_name.trim().to_string());
