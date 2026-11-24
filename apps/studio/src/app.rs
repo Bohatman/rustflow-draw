@@ -135,6 +135,7 @@ pub struct BohatDrawApp {
     pub palette_cache_key: (String, u16, String),
     pub palette_cache: Vec<rustflow_ui_bridge::StencilItem>,
     pub pending_image_upload: Rc<RefCell<Option<(Option<NodeId>, String, Vec<u8>)>>>,
+    pub pending_file_open: Rc<RefCell<Option<(String, String)>>>,
     pub collab_room_input: String,
     pub collab_ws_url: String,
     pub status_message: String,
@@ -235,6 +236,7 @@ impl BohatDrawApp {
             palette_cache_key: (String::new(), 0, String::new()),
             palette_cache: Vec::new(),
             pending_image_upload: Rc::new(RefCell::new(None)),
+            pending_file_open: Rc::new(RefCell::new(None)),
             collab_room_input: room_str.clone(),
             collab_ws_url: ws_url.clone(),
             status_message: "Ready — 100% Rust Platinum Engine".to_string(),
@@ -883,6 +885,11 @@ impl BohatDrawApp {
     }
 
     fn sync_image_uploads_and_textures(&mut self, ctx: &egui::Context) {
+        let pending_file = self.pending_file_open.borrow_mut().take();
+        if let Some((name, content)) = pending_file {
+            self.load_diagram_text(&name, &content);
+        }
+
         let pending = self.pending_image_upload.borrow_mut().take();
         if let Some((target_node, name, bytes)) = pending {
             self.apply_image_bytes(target_node, name, bytes, ctx);
@@ -957,31 +964,46 @@ impl BohatDrawApp {
         }
     }
 
-    pub fn open_file(&mut self) {
-        let Some((name, content)) = platform::open_text_dialog() else {
-            return;
-        };
+    pub fn load_diagram_text(&mut self, name: &str, content: &str) {
         let loaded = if content.trim_start().starts_with('<') {
-            import_drawio_xml(&content)
+            import_drawio_xml(content)
         } else {
-            import_scene_serde_json(&content)
+            import_scene_serde_json(content)
         };
         match loaded {
             Ok(scene) => {
                 let w = self.bridge.viewport.screen_width.max(1280.0);
                 let h = self.bridge.viewport.screen_height.max(720.0);
-                self.bridge.document = rustflow_core::Document::new(&name, w, h);
+                self.bridge.document = rustflow_core::Document::new(name, w, h);
                 self.bridge.document.active_page_mut().name = format!("Page-1: {name}");
                 self.bridge.scene = scene;
+                self.bridge.scene.normalize_layer_order();
                 self.bridge.selection.clear();
                 self.fit_view();
                 self.bridge.sync_active_page_to_document();
                 self.undo_stack.clear();
                 self.redo_stack.clear();
+                self.inventory.active_file_id = None;
+                let clean = name
+                    .strip_suffix(".bohat.json")
+                    .or_else(|| name.strip_suffix(".json"))
+                    .or_else(|| name.strip_suffix(".drawio"))
+                    .unwrap_or(name)
+                    .to_string();
+                self.inventory.active_file_name = clean.clone();
+                self.inventory.save_as_name = clean;
                 self.set_status(format!("Opened {name}"));
                 self.broadcast_scene_snapshot();
             }
-            Err(err) => self.status_message = format!("Open error: {err}"),
+            Err(err) => self.set_status(format!("Open error: {err}")),
+        }
+    }
+
+    pub fn open_file(&mut self, ctx: &egui::Context) {
+        if let Some((name, content)) = platform::open_text_dialog() {
+            self.load_diagram_text(&name, &content);
+        } else {
+            platform::trigger_wasm_text_picker(Rc::clone(&self.pending_file_open), ctx.clone());
         }
     }
 

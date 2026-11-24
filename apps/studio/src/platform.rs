@@ -84,6 +84,13 @@ pub fn open_text_dialog() -> Option<(String, String)> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+pub fn trigger_wasm_text_picker(
+    _slot: std::rc::Rc<std::cell::RefCell<Option<(String, String)>>>,
+    _ctx: egui::Context,
+) {
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub fn default_ws_url(room: &str) -> String {
     format!("ws://127.0.0.1:6129/ws?room={room}")
 }
@@ -278,6 +285,44 @@ pub fn trigger_wasm_image_picker(
 #[cfg(target_arch = "wasm32")]
 pub fn open_text_dialog() -> Option<(String, String)> {
     None
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn trigger_wasm_text_picker(
+    slot: std::rc::Rc<std::cell::RefCell<Option<(String, String)>>>,
+    ctx: egui::Context,
+) {
+    use wasm_bindgen::{closure::Closure, JsCast};
+    let Some(window) = web_sys::window() else { return };
+    let Some(document) = window.document() else { return };
+    let Ok(el) = document.create_element("input") else { return };
+    let Ok(input) = el.dyn_into::<web_sys::HtmlInputElement>() else { return };
+    input.set_type("file");
+    input.set_accept(".json,.bohat.json,.drawio,.xml,application/json,text/xml,application/xml");
+    let input_clone = input.clone();
+    let onchange = Closure::<dyn FnMut()>::new(move || {
+        let Some(files) = input_clone.files() else { return };
+        let Some(file) = files.get(0) else { return };
+        let name = file.name();
+        let Ok(reader) = web_sys::FileReader::new() else { return };
+        let reader_clone = reader.clone();
+        let slot_clone = slot.clone();
+        let ctx_clone = ctx.clone();
+        let onload = Closure::<dyn FnMut()>::new(move || {
+            if let Ok(res) = reader_clone.result() {
+                if let Some(text) = res.as_string() {
+                    *slot_clone.borrow_mut() = Some((name.clone(), text));
+                    ctx_clone.request_repaint();
+                }
+            }
+        });
+        reader.set_onload(Some(onload.as_ref().unchecked_ref()));
+        onload.forget();
+        let _ = reader.read_as_text(&file);
+    });
+    input.set_onchange(Some(onchange.as_ref().unchecked_ref()));
+    onchange.forget();
+    input.click();
 }
 
 #[cfg(target_arch = "wasm32")]

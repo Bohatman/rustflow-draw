@@ -55,11 +55,29 @@ pub fn render_menu_and_toolbar(app: &mut BohatDrawApp, ctx: &egui::Context, narr
                                 app.show_welcome = true;
                                 ui.close_menu();
                             }
-                            if ui.button("Open (.json / .drawio)...").clicked() {
-                                app.open_file();
+                            if ui.button("Open Local (.json / .drawio)...").clicked() {
+                                app.open_file(ctx);
+                                ui.close_menu();
+                            }
+                            if ui.button("Open from Google Drive...").clicked() {
+                                if app.inventory.user.is_some() {
+                                    app.inventory.show_modal = true;
+                                    let fid = app.inventory.current_folder_id();
+                                    app.inventory.fetch_folder(fid, ctx.clone());
+                                } else {
+                                    app.inventory.start_google_login(ctx.clone());
+                                }
                                 ui.close_menu();
                             }
                             ui.separator();
+                            if ui.button("Save to Google Drive (Ctrl+S)").clicked() {
+                                if app.inventory.user.is_some() {
+                                    app.quick_save(ctx);
+                                } else {
+                                    app.inventory.start_google_login(ctx.clone());
+                                }
+                                ui.close_menu();
+                            }
                             if ui.button("Save Native JSON").clicked() {
                                 app.export_json_file();
                                 ui.close_menu();
@@ -373,8 +391,8 @@ pub fn render_menu_and_toolbar(app: &mut BohatDrawApp, ctx: &egui::Context, narr
                 if icon_button(ui, ToolIcon::NewFile, Some("New"), "Create New Empty Space", true, false).clicked() {
                     app.new_blank_diagram();
                 }
-                if icon_button(ui, ToolIcon::OpenFile, Some("Open"), "Open .json / .drawio", true, false).clicked() {
-                    app.open_file();
+                if icon_button(ui, ToolIcon::OpenFile, Some("Open"), "Open Local .json / .drawio", true, false).clicked() {
+                    app.open_file(ctx);
                 }
                 ui.separator();
 
