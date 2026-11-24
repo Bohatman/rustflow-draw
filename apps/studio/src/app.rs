@@ -196,7 +196,7 @@ impl BohatDrawApp {
             editing_snapshot: None,
             default_edge_kind: EdgeKind::Bezier,
             default_edge_arrow: EdgeArrowStyle::OneWay,
-            default_edge_anim: 2,
+            default_edge_anim: 0,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             clipboard_nodes: Vec::new(),

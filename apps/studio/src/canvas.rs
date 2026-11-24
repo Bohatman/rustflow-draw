@@ -1440,11 +1440,19 @@ fn draw_node(
     }
 
     if is_selected {
-        let sel_stroke = Stroke::new(2.0_f32, Color32::from_rgb(0, 0, 160));
-        painter.rect_stroke(srect.expand(2.0), CornerRadius::same(3), sel_stroke, egui::StrokeKind::Outside);
-        let handle = EguiRect::from_center_size(srect.right_bottom(), Vec2::splat(9.0));
-        painter.rect_filled(handle, 1.0, Color32::WHITE);
-        painter.rect_stroke(handle, 1.0, sel_stroke, egui::StrokeKind::Inside);
+        let sel_col = Color32::from_rgb(96, 165, 250);
+        let sel_stroke = Stroke::new(1.6_f32, sel_col);
+        draw_rect_border(
+            painter,
+            srect.expand(3.0),
+            3.0,
+            sel_stroke,
+            BorderStyle::Dotted,
+            0.0,
+        );
+        let handle = EguiRect::from_center_size(srect.right_bottom(), Vec2::splat(8.5));
+        painter.rect_filled(handle, 2.0, Color32::WHITE);
+        painter.rect_stroke(handle, 2.0, Stroke::new(1.4_f32, sel_col), egui::StrokeKind::Inside);
     }
 
     if !busy_dragging {
